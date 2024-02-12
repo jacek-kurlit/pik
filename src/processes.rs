@@ -1,4 +1,7 @@
+use std::time::Duration;
+
 use anyhow::{anyhow, Context, Result};
+use procfs::process::ProcState;
 mod users;
 
 use self::users::UserResolver;
@@ -14,17 +17,20 @@ impl ProcessQuery {
         }
     }
 
+    //FIXME: failing entire app because of single error during fetch of indiwidual status may be not best CX
     pub fn find_all_processes(&self) -> Result<Vec<Process>> {
         let mut result = Vec::new();
         let tps = procfs::ticks_per_second();
-
-        println!("{: >10} {: <8} {: >8} CMD", "PID", "TTY", "TIME");
 
         for prc in procfs::process::all_processes().context("Could not load all processes")? {
             let prc = prc?;
             if let Ok(stat) = prc.stat() {
                 // total_time is in seconds
                 let total_time = (stat.utime + stat.stime) as f32 / (tps as f32);
+                let state = stat
+                    .state()
+                    .context(format!("Failed to retrieve process {} status", stat.pid))?;
+
                 let user_name = self
                     .user_resolver
                     .resolve_name(prc.uid()?)
@@ -32,8 +38,10 @@ impl ProcessQuery {
                 result.push(Process {
                     pid: stat.pid,
                     user_name,
-                    total_time,
+                    total_time: Duration::from_secs_f32(total_time),
                     cmd: stat.comm,
+                    state,
+                    args: prc.cmdline().unwrap_or_default(),
                 });
             }
         }
@@ -44,17 +52,8 @@ impl ProcessQuery {
 pub struct Process {
     pub pid: i32,
     pub user_name: String,
-    pub total_time: f32,
+    pub total_time: Duration,
     pub cmd: String,
-}
-
-impl Process {
-    pub fn ref_array(&self) -> [String; 4] {
-        [
-            format!("\n{}\n", self.user_name),
-            format!("\n{}\n", self.pid),
-            format!("\n{}\n", self.total_time),
-            format!("\n{}\n", self.cmd),
-        ]
-    }
+    pub state: ProcState,
+    pub args: Vec<String>,
 }

@@ -179,38 +179,46 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::REVERSED)
         .fg(app.colors.selected_style_fg);
 
-    let header = ["user", "pid", "time", "cmd"]
-        .iter()
-        .cloned()
-        .map(Cell::from)
-        .collect::<Row>()
-        .style(header_style)
-        .height(1);
+    let header = Row::new(vec![
+        "\nUSER\n",
+        "\nPID\n",
+        "\nTIME\n",
+        "\nSTATUS\n",
+        "\nCMD\n",
+        "\nARGS\n",
+    ])
+    .style(header_style)
+    .height(3);
     let rows = app.processes.iter().enumerate().map(|(i, data)| {
         let color = match i % 2 {
             0 => app.colors.normal_row_color,
             _ => app.colors.alt_row_color,
         };
-        //FIXME: a lot of cloning data, is this needed?
-        let item = data.ref_array();
-        item.into_iter()
-            .map(|content| Cell::from(Text::from(content)))
-            .collect::<Row>()
-            .style(Style::new().fg(app.colors.row_fg).bg(color))
-            .height(4)
+        Row::new(vec![
+            format!("\n{}\n", data.user_name),
+            format!("\n{}\n", data.pid),
+            format!(
+                "\n{:02}:{:02}\n",
+                data.total_time.as_secs() / 3600,
+                (data.total_time.as_secs() % 3600) / 60
+            ),
+            format!("\n{:?}\n", data.state),
+            format!("\n{}\n", data.cmd),
+            format!("\n{:?}\n", data.args),
+        ])
+        .style(Style::new().fg(app.colors.row_fg).bg(color))
+        .height(3)
     });
     let bar = " █ ";
     let t = Table::new(
         rows,
         [
-            // + 1 is for padding.
-            // Constraint::Length(app.longest_item_lens.0 + 1),
-            // Constraint::Min(app.longest_item_lens.1 + 1),
-            // Constraint::Min(app.longest_item_lens.2),
-            Constraint::Percentage(30),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
             Constraint::Percentage(20),
-            Constraint::Percentage(20),
-            Constraint::Percentage(30),
+            Constraint::Percentage(40),
         ],
     )
     .header(header)
