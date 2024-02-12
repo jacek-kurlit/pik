@@ -204,6 +204,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
             ),
             format!("\n{:?}\n", data.state),
             format!("\n{}\n", data.cmd),
+            //FIXME: this should be somehow tructated because args may be really long
             format!("\n{:?}\n", data.args),
         ])
         .style(Style::new().fg(app.colors.row_fg).bg(color))

@@ -39,14 +39,23 @@ impl ProcessQuery {
                     pid: stat.pid,
                     user_name,
                     total_time: Duration::from_secs_f32(total_time),
+                    args: get_process_args(&prc, &stat.comm),
                     cmd: stat.comm,
                     state,
-                    args: prc.cmdline().unwrap_or_default(),
                 });
             }
         }
         Ok(result)
     }
+}
+
+// NOTE: Some processes have path to binary as first argument, but also some processes has different name than cmd (for exmaple firefox)
+fn get_process_args(prc: &procfs::process::Process, cmd: &str) -> Vec<String> {
+    let args = prc.cmdline().unwrap_or_default();
+    if args.first().is_some_and(|arg1| arg1.ends_with(cmd)) {
+        return args.into_iter().skip(1).collect();
+    }
+    args
 }
 
 pub struct Process {
