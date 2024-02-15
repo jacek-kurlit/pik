@@ -6,7 +6,10 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{prelude::*, widgets::*};
+use ratatui::{
+    prelude::*,
+    widgets::{block::Title, *},
+};
 use style::palette::tailwind;
 
 use crate::processes::{Process, ProcessQuery};
@@ -55,6 +58,7 @@ struct App {
     scroll_state: ScrollbarState,
     colors: TableColors,
     color_index: usize,
+    search_criteria: String,
 }
 
 impl App {
@@ -68,6 +72,7 @@ impl App {
             scroll_state: ScrollbarState::new(scroll_size),
             colors: TableColors::new(&PALETTES[0]),
             color_index: 0,
+            search_criteria: "".into(),
         })
     }
     pub fn next(&mut self) {
@@ -160,15 +165,51 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 }
 
 fn ui(f: &mut Frame, app: &mut App) {
-    let rects = Layout::vertical([Constraint::Min(5), Constraint::Length(3)]).split(f.size());
+    let rects = Layout::vertical([
+        Constraint::Length(4),
+        Constraint::Min(5),
+        Constraint::Length(3),
+    ])
+    .split(f.size());
 
     app.set_colors();
 
-    render_table(f, app, rects[0]);
+    render_header(f, app, rects[0]);
 
-    render_scrollbar(f, app, rects[0]);
+    render_table(f, app, rects[1]);
 
-    render_footer(f, app, rects[1]);
+    render_scrollbar(f, app, rects[1]);
+
+    render_footer(f, app, rects[2]);
+}
+
+fn render_header(f: &mut Frame, app: &mut App, area: Rect) {
+    let query = if app.search_criteria.is_empty() {
+        "Displaying all\n".to_string()
+    } else {
+        format!("Query: '{}''\n", app.search_criteria)
+    };
+    let text = vec![
+        query.into(),
+        format!("Number of processes {}\n", app.processes.len()).into(),
+    ];
+    let header = Paragraph::new(text)
+        .style(Style::new().fg(app.colors.row_fg).bg(app.colors.buffer_bg))
+        .centered()
+        .block(
+            Block::default()
+                .title(
+                    Title::from(Span::styled(
+                        " Search criteria ",
+                        Style::default().underline_color(Color::Red),
+                    ))
+                    .alignment(Alignment::Center),
+                )
+                .borders(Borders::ALL)
+                .border_style(Style::new().fg(app.colors.footer_border_color))
+                .border_type(BorderType::Double),
+        );
+    f.render_widget(header, area);
 }
 
 fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
