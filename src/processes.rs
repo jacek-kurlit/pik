@@ -26,21 +26,22 @@ impl ProcessQuery {
         let tps = procfs::ticks_per_second();
         let result = procfs::process::all_processes()
             .context("Could not load all processes")?
-            .filter_map(|prc| prc.ok())
-            .filter_map(|prc| prc.stat().ok().map(|stat| (prc, stat)))
-            .filter_map(|(prc, stat)| {
-                // total_time is in seconds
-                let total_time = (stat.utime + stat.stime) as f32 / (tps as f32);
+            .filter_map(|prc| {
+                let prc = prc.ok()?;
+                let user_id = prc.uid().ok()?;
+                let stat = prc.stat().ok()?;
                 let state = stat.state().ok()?;
 
+                // total_time is in seconds
+                let total_time_seconds = (stat.utime + stat.stime) as f32 / (tps as f32);
                 let user_name = self
                     .user_resolver
-                    .resolve_name(prc.uid().ok()?)
-                    .unwrap_or("UNKNOWN_USER".to_string());
+                    .resolve_name(user_id)
+                    .unwrap_or("".to_string());
                 Some(Process {
                     pid: stat.pid,
                     user_name,
-                    total_time: Duration::from_secs_f32(total_time),
+                    total_time: Duration::from_secs_f32(total_time_seconds),
                     args: get_process_args(&prc, &stat.comm),
                     cmd: stat.comm,
                     state,
