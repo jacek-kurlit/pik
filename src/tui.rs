@@ -21,7 +21,7 @@ const PALETTES: [tailwind::Palette; 4] = [
     tailwind::RED,
 ];
 const INFO_TEXT: &str =
-    "(Esc) quit | (↑) move up | (↓) move down | (→) next color | (←) previous color";
+    "(q) quit | (k) move up | (j) move down | (l) next color | (h) previous color";
 
 const ITEM_HEIGHT: usize = 4;
 
@@ -184,14 +184,19 @@ fn ui(f: &mut Frame, app: &mut App) {
 }
 
 fn render_header(f: &mut Frame, app: &mut App, area: Rect) {
-    let query = if app.search_criteria.is_empty() {
-        "Displaying all\n".to_string()
+    let criteria = if app.search_criteria.is_empty() {
+        "none"
     } else {
-        format!("Query: '{}''\n", app.search_criteria)
+        app.search_criteria.as_str()
     };
     let text = vec![
-        query.into(),
-        format!("Number of processes {}\n", app.processes.len()).into(),
+        format!("Criteria: '{}'\n", criteria).into(),
+        format!(
+            "Selecting {} out of {} processes\n",
+            app.state.selected().unwrap_or(0) + 1,
+            app.processes.len()
+        )
+        .into(),
     ];
     let header = Paragraph::new(text)
         .style(Style::new().fg(app.colors.row_fg).bg(app.colors.buffer_bg))
@@ -251,7 +256,6 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .style(Style::new().fg(app.colors.row_fg).bg(color))
         .height(3)
     });
-    let bar = " █ ";
     let t = Table::new(
         rows,
         [
@@ -265,12 +269,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     )
     .header(header)
     .highlight_style(selected_style)
-    .highlight_symbol(Text::from(vec![
-        "".into(),
-        bar.into(),
-        bar.into(),
-        "".into(),
-    ]))
+    .highlight_symbol(Text::from(vec![" ".into()]))
     .bg(app.colors.buffer_bg)
     .highlight_spacing(HighlightSpacing::Always);
     f.render_stateful_widget(t, area, &mut app.state);
