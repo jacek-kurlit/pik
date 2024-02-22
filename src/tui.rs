@@ -243,6 +243,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         Row::new(vec![
             format!("\n{}\n", data.user_name),
             format!("\n{}\n", data.pid),
+            //FIXME: this is not displaying correct time
             format!(
                 "\n{:02}:{:02}\n",
                 data.total_time.as_secs() / 3600,
@@ -256,7 +257,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .style(Style::new().fg(app.colors.row_fg).bg(color))
         .height(3)
     });
-    let t = Table::new(
+    let table = Table::new(
         rows,
         [
             Constraint::Percentage(10),
@@ -272,7 +273,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     .highlight_symbol(Text::from(vec![" ".into()]))
     .bg(app.colors.buffer_bg)
     .highlight_spacing(HighlightSpacing::Always);
-    f.render_stateful_widget(t, area, &mut app.state);
+    f.render_stateful_widget(table, area, &mut app.state);
 }
 
 fn render_scrollbar(f: &mut Frame, app: &mut App, area: Rect) {
