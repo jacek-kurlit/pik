@@ -62,8 +62,8 @@ struct App {
 }
 
 impl App {
-    fn new(process_query: ProcessQuery) -> Result<App> {
-        let processes = process_query.find_all_processes()?;
+    fn new(process_query: ProcessQuery, search_criteria: String) -> Result<App> {
+        let processes = process_query.find_processes(&search_criteria)?;
         let scroll_size = (processes.len() - 1) * ITEM_HEIGHT;
         Ok(App {
             state: TableState::default().with_selected(0),
@@ -72,7 +72,7 @@ impl App {
             scroll_state: ScrollbarState::new(scroll_size),
             colors: TableColors::new(&PALETTES[0]),
             color_index: 0,
-            search_criteria: "".into(),
+            search_criteria,
         })
     }
     pub fn next(&mut self) {
@@ -119,7 +119,7 @@ impl App {
     }
 }
 
-pub fn start_tui_app() -> Result<()> {
+pub fn start_tui_app(search_criteria: String) -> Result<()> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -129,7 +129,7 @@ pub fn start_tui_app() -> Result<()> {
 
     // create app and run it
     let process_query = ProcessQuery::new();
-    let app = App::new(process_query)?;
+    let app = App::new(process_query, search_criteria)?;
     let res = run_app(&mut terminal, app);
 
     // restore terminal
@@ -152,11 +152,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
             if key.kind == KeyEventKind::Press {
                 use KeyCode::*;
                 match key.code {
-                    Char('q') | Esc => return Ok(()),
-                    Char('j') | Down => app.next(),
-                    Char('k') | Up => app.previous(),
-                    Char('l') | Right => app.next_color(),
-                    Char('h') | Left => app.previous_color(),
+                    Esc => return Ok(()),
+                    Up | BackTab => app.previous(),
+                    Tab | Down => app.next(),
+                    Right => app.next_color(),
+                    Left => app.previous_color(),
                     _ => {}
                 }
             }
@@ -189,16 +189,7 @@ fn render_header(f: &mut Frame, app: &mut App, area: Rect) {
     } else {
         app.search_criteria.as_str()
     };
-    let text = vec![
-        format!("Criteria: '{}'\n", criteria).into(),
-        format!(
-            "Selecting {} out of {} processes\n",
-            app.state.selected().unwrap_or(0) + 1,
-            app.processes.len()
-        )
-        .into(),
-    ];
-    let header = Paragraph::new(text)
+    let header = Paragraph::new(format!("Criteria: '{}'\n", criteria))
         .style(Style::new().fg(app.colors.row_fg).bg(app.colors.buffer_bg))
         .centered()
         .block(
@@ -225,16 +216,9 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::REVERSED)
         .fg(app.colors.selected_style_fg);
 
-    let header = Row::new(vec![
-        "\nUSER\n",
-        "\nPID\n",
-        "\nTIME\n",
-        "\nSTATUS\n",
-        "\nCMD\n",
-        "\nARGS\n",
-    ])
-    .style(header_style)
-    .height(3);
+    let header = Row::new(vec!["\nUSER\n", "\nPID\n", "\nCMD\n", "\nARGS\n"])
+        .style(header_style)
+        .height(3);
     let rows = app.processes.iter().enumerate().map(|(i, data)| {
         let color = match i % 2 {
             0 => app.colors.normal_row_color,
@@ -243,16 +227,8 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         Row::new(vec![
             format!("\n{}\n", data.user_name),
             format!("\n{}\n", data.pid),
-            //FIXME: this is not displaying correct time
-            format!(
-                "\n{:02}:{:02}\n",
-                data.total_time.as_secs() / 3600,
-                (data.total_time.as_secs() % 3600) / 60
-            ),
-            format!("\n{:?}\n", data.state),
             format!("\n{}\n", data.cmd),
-            //FIXME: this should be somehow tructated because args may be really long
-            format!("\n{:?}\n", data.args),
+            format!("\n{}\n", data.args),
         ])
         .style(Style::new().fg(app.colors.row_fg).bg(color))
         .height(3)
@@ -262,13 +238,26 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         [
             Constraint::Percentage(10),
             Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(20),
-            Constraint::Percentage(40),
+            Constraint::Percentage(15),
+            Constraint::Percentage(65),
         ],
     )
     .header(header)
+    .block(
+        Block::default()
+            .title(
+                Title::from(format!(
+                    " {} / {} ",
+                    app.state.selected().unwrap_or(0) + 1,
+                    app.processes.len()
+                ))
+                .position(block::Position::Bottom)
+                .alignment(Alignment::Center),
+            )
+            .borders(Borders::ALL)
+            .border_style(Style::new().fg(app.colors.footer_border_color))
+            .border_type(BorderType::Double),
+    )
     .highlight_style(selected_style)
     .highlight_symbol(Text::from(vec![" ".into()]))
     .bg(app.colors.buffer_bg)
