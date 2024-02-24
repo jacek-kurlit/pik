@@ -64,7 +64,7 @@ struct App {
 impl App {
     fn new(process_query: ProcessQuery, search_criteria: String) -> Result<App> {
         let processes = process_query.find_processes(&search_criteria)?;
-        let scroll_size = (processes.len() - 1) * ITEM_HEIGHT;
+        let scroll_size = processes.len().saturating_sub(1) * ITEM_HEIGHT;
         Ok(App {
             state: TableState::default().with_selected(0),
             _process_query: process_query,

@@ -13,3 +13,5 @@ It works like pkill command but search is interactive.
 - [ ] Nice feature would be to kill process that is using some port
 - [ ] Make UI more slick so that it won't take whole window, something like fzf search
 - [ ] Consider to use https://crates.io/crates/sysinfo as it is cross platform, it also allows to kill process
+- [ ] Handle empty results properly
+- [ ] Add option to search in cmd line args
