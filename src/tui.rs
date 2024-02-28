@@ -12,7 +12,7 @@ use ratatui::{
 };
 use style::palette::tailwind;
 
-use crate::processes::{Process, ProcessQuery};
+use crate::processes::{Process, ProcessManager};
 
 const PALETTES: [tailwind::Palette; 4] = [
     tailwind::BLUE,
@@ -21,7 +21,7 @@ const PALETTES: [tailwind::Palette; 4] = [
     tailwind::RED,
 ];
 const INFO_TEXT: &str =
-    "(q) quit | (k) move up | (j) move down | (l) next color | (h) previous color";
+    "(ESC) quit | (SHIFT + TAB) move up | (TAB) move down | (->) next color | (<-) previous color";
 
 const ITEM_HEIGHT: usize = 4;
 
@@ -53,7 +53,7 @@ impl TableColors {
 
 struct App {
     state: TableState,
-    _process_query: ProcessQuery,
+    process_manager: ProcessManager,
     processes: Vec<Process>,
     scroll_state: ScrollbarState,
     colors: TableColors,
@@ -62,12 +62,13 @@ struct App {
 }
 
 impl App {
-    fn new(process_query: ProcessQuery, search_criteria: String) -> Result<App> {
-        let processes = process_query.find_processes(&search_criteria)?;
+    fn new(search_criteria: String) -> Result<App> {
+        let mut process_manager = ProcessManager::new();
+        let processes = process_manager.find_processes(&search_criteria);
         let scroll_size = processes.len().saturating_sub(1) * ITEM_HEIGHT;
         Ok(App {
             state: TableState::default().with_selected(0),
-            _process_query: process_query,
+            process_manager,
             processes,
             scroll_state: ScrollbarState::new(scroll_size),
             colors: TableColors::new(&PALETTES[0]),
@@ -94,7 +95,7 @@ impl App {
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.processes.len() - 1
+                    self.processes.len().saturating_sub(1)
                 } else {
                     i - 1
                 }
@@ -117,6 +118,20 @@ impl App {
     pub fn set_colors(&mut self) {
         self.colors = TableColors::new(&PALETTES[self.color_index])
     }
+
+    fn kill_selected_process(&mut self) {
+        if self.state.selected().is_none() {
+            return;
+        }
+        let selected_row = self.state.selected().unwrap();
+        if let Some(prc) = self.processes.get(selected_row) {
+            self.process_manager.kill_process(prc.pid);
+            //TODO: this remove is not performant approach, maybe find better way
+            self.processes.remove(selected_row);
+            //FIXME: this is not refereshing I think there maybe issue with cache / process kill still being executed
+            // self.processes = self.process_query.find_processes(&self.search_criteria);
+        }
+    }
 }
 
 pub fn start_tui_app(search_criteria: String) -> Result<()> {
@@ -128,8 +143,7 @@ pub fn start_tui_app(search_criteria: String) -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let process_query = ProcessQuery::new();
-    let app = App::new(process_query, search_criteria)?;
+    let app = App::new(search_criteria)?;
     let res = run_app(&mut terminal, app);
 
     // restore terminal
@@ -157,6 +171,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Tab | Down => app.next(),
                     Right => app.next_color(),
                     Left => app.previous_color(),
+                    Enter => app.kill_selected_process(),
                     _ => {}
                 }
             }
@@ -246,6 +261,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     .block(
         Block::default()
             .title(
+                //FIXME: for empty table this is howing 1 / 0
                 Title::from(format!(
                     " {} / {} ",
                     app.state.selected().unwrap_or(0) + 1,

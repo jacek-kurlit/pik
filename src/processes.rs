@@ -1,35 +1,20 @@
-use anyhow::Result;
-use sysinfo::{System, Users};
+use sysinfo::{Pid, System, Users};
 
-pub struct ProcessQuery {
+pub struct ProcessManager {
     sys: System,
     users: Users,
 }
 
-impl ProcessQuery {
+impl ProcessManager {
     pub fn new() -> Self {
-        let mut sys = System::new_all();
-        //FIXME: Probably should only refresh processes info
-        sys.refresh_all();
+        let sys = System::new_all();
         let users = Users::new_with_refreshed_list();
         Self { sys, users }
     }
 
-    pub fn find_processes(&self, query: &str) -> Result<Vec<Process>> {
-        self.find_all_processes(query)
-        // if query.is_empty() {
-        //     return processes;
-        // }
-        // Ok(processes?
-        //     .into_iter()
-        //     .filter(|p| p.match_query(query))
-        //     .collect::<Vec<Process>>())
-    }
-
-    fn find_all_processes(&self, query: &str) -> Result<Vec<Process>> {
-        //sysinfo can search by name!
-        let result = self
-            .sys
+    pub fn find_processes(&mut self, query: &str) -> Vec<Process> {
+        self.sys.refresh_processes();
+        self.sys
             .processes_by_name(query)
             .filter_map(|prc| {
                 //NOTE: On linux threads can be listed as processes and thus needs filtering
@@ -44,16 +29,19 @@ impl ProcessQuery {
                     .unwrap_or("".to_string());
                 let cmd = prc.name().to_string();
                 Some(Process {
-                    //FIXME: maybe we should use Pid
-                    pid: prc.pid().as_u32() as i32,
+                    pid: prc.pid().as_u32(),
                     args: get_process_args(prc, &cmd),
                     cmd,
                     user_name,
                 })
             })
-            .collect();
+            .collect()
+    }
 
-        Ok(result)
+    pub fn kill_process(&self, pid: u32) {
+        if let Some(prc) = self.sys.process(Pid::from_u32(pid)) {
+            prc.kill();
+        }
     }
 }
 
@@ -68,7 +56,7 @@ fn get_process_args(prc: &sysinfo::Process, cmd: &str) -> String {
 
 //TODO: consider if this is even needed
 pub struct Process {
-    pub pid: i32,
+    pub pid: u32,
     pub user_name: String,
     pub cmd: String,
     pub args: String,
