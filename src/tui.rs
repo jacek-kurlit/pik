@@ -3,8 +3,7 @@ use std::io::{self};
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
     prelude::*,
@@ -135,10 +134,13 @@ impl App {
 pub fn start_tui_app(search_criteria: String) -> Result<()> {
     // setup terminal
     enable_raw_mode()?;
-    let stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-    execute!(terminal.backend_mut(), EnterAlternateScreen)?;
+    let backend = CrosstermBackend::new(io::stdout());
+    let mut terminal = Terminal::with_options(
+        backend,
+        TerminalOptions {
+            viewport: Viewport::Inline(20),
+        },
+    )?;
 
     // create app and run it
     let app = App::new(search_criteria)?;
@@ -146,9 +148,9 @@ pub fn start_tui_app(search_criteria: String) -> Result<()> {
 
     // restore terminal
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
+    terminal.clear()?;
 
+    // TODO: add proper error handling
     if let Err(err) = res {
         println!("{err:?}");
     }
