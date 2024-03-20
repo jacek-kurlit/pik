@@ -63,7 +63,7 @@ impl App {
     fn new(search_criteria: String) -> Result<App> {
         let mut process_manager = ProcessManager::new();
         let processes = process_manager.find_processes(&search_criteria);
-        let scroll_size = processes.len().saturating_sub(1) * ITEM_HEIGHT;
+        let scroll_size = processes.len().saturating_sub(1);
         Ok(App {
             state: TableState::default().with_selected(0),
             process_manager,
