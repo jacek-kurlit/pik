@@ -1,4 +1,4 @@
-use std::io;
+use std::io::{self};
 
 use anyhow::Result;
 use crossterm::{
@@ -22,8 +22,6 @@ const PALETTES: [tailwind::Palette; 4] = [
 ];
 const INFO_TEXT: &str =
     "(q) quit | (k) move up | (j) move down | (l) next color | (h) previous color";
-
-const ITEM_HEIGHT: usize = 4;
 
 struct TableColors {
     buffer_bg: Color,
@@ -64,7 +62,7 @@ struct App {
 impl App {
     fn new(process_query: ProcessQuery, search_criteria: String) -> Result<App> {
         let processes = process_query.find_processes(&search_criteria)?;
-        let scroll_size = (processes.len() - 1) * ITEM_HEIGHT;
+        let scroll_size = processes.len() - 1;
         Ok(App {
             state: TableState::default().with_selected(0),
             _process_query: process_query,
@@ -87,7 +85,7 @@ impl App {
             None => 0,
         };
         self.state.select(Some(i));
-        self.scroll_state = self.scroll_state.position(i * ITEM_HEIGHT);
+        self.scroll_state = self.scroll_state.position(i);
     }
 
     pub fn previous(&mut self) {
@@ -102,7 +100,7 @@ impl App {
             None => 0,
         };
         self.state.select(Some(i));
-        self.scroll_state = self.scroll_state.position(i * ITEM_HEIGHT);
+        self.scroll_state = self.scroll_state.position(i);
     }
 
     pub fn next_color(&mut self) {
@@ -122,10 +120,10 @@ impl App {
 pub fn start_tui_app(search_criteria: String) -> Result<()> {
     // setup terminal
     enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    let stdout = io::stdout();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
+    execute!(terminal.backend_mut(), EnterAlternateScreen)?;
 
     // create app and run it
     let process_query = ProcessQuery::new();
@@ -189,7 +187,7 @@ fn render_header(f: &mut Frame, app: &mut App, area: Rect) {
     } else {
         app.search_criteria.as_str()
     };
-    let header = Paragraph::new(format!("Criteria: '{}'\n", criteria))
+    let header = Paragraph::new(format!("Criteria: '{}'", criteria))
         .style(Style::new().fg(app.colors.row_fg).bg(app.colors.buffer_bg))
         .centered()
         .block(
@@ -216,22 +214,19 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::REVERSED)
         .fg(app.colors.selected_style_fg);
 
-    let header = Row::new(vec!["\nUSER\n", "\nPID\n", "\nCMD\n", "\nARGS\n"])
-        .style(header_style)
-        .height(3);
+    let header = Row::new(vec!["USER", "PID", "CMD", "ARGS"]).style(header_style);
     let rows = app.processes.iter().enumerate().map(|(i, data)| {
         let color = match i % 2 {
             0 => app.colors.normal_row_color,
             _ => app.colors.alt_row_color,
         };
         Row::new(vec![
-            format!("\n{}\n", data.user_name),
-            format!("\n{}\n", data.pid),
-            format!("\n{}\n", data.cmd),
-            format!("\n{}\n", data.args),
+            format!("{}", data.user_name),
+            format!("{}", data.pid),
+            format!("{}", data.cmd),
+            format!("{}", data.args),
         ])
         .style(Style::new().fg(app.colors.row_fg).bg(color))
-        .height(3)
     });
     let table = Table::new(
         rows,
