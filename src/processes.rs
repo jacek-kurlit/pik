@@ -27,6 +27,7 @@ impl ProcessManager {
                     .get_user_by_id(user_id)
                     .map(|u| u.name().to_string())
                     .unwrap_or("".to_string());
+                //FIXME: This may not return exe name sometimes
                 let cmd = prc.name().to_string();
                 Some(Process {
                     pid: prc.pid().as_u32(),
@@ -40,7 +41,8 @@ impl ProcessManager {
 
     pub fn kill_process(&self, pid: u32) {
         if let Some(prc) = self.sys.process(Pid::from_u32(pid)) {
-            prc.kill();
+            //NOTE: On linux Signal::Kill forces process to stop while Signal::Term terminate a process gracefully
+            prc.kill_with(sysinfo::Signal::Term);
         }
     }
 }
@@ -54,7 +56,6 @@ fn get_process_args(prc: &sysinfo::Process, cmd: &str) -> String {
     args.join(", ")
 }
 
-//TODO: consider if this is even needed
 pub struct Process {
     pub pid: u32,
     pub user_name: String,
