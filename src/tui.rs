@@ -13,12 +13,6 @@ use style::palette::tailwind;
 
 use crate::processes::{Process, ProcessManager};
 
-const PALETTES: [tailwind::Palette; 4] = [
-    tailwind::BLUE,
-    tailwind::EMERALD,
-    tailwind::INDIGO,
-    tailwind::RED,
-];
 const INFO_TEXT: &str =
     "(ESC) quit | (SHIFT + TAB) move up | (TAB) move down | (Ctrl + d) kill selected process";
 
@@ -31,13 +25,13 @@ struct TableColors {
 }
 
 impl TableColors {
-    fn new(color: &tailwind::Palette) -> Self {
+    fn new() -> Self {
         Self {
             row_fg: tailwind::SLATE.c200,
-            selected_style_fg: color.c400,
+            selected_style_fg: tailwind::BLUE.c400,
             normal_row_color: tailwind::SLATE.c950,
             alt_row_color: tailwind::SLATE.c900,
-            footer_border_color: color.c400,
+            footer_border_color: tailwind::BLUE.c400,
         }
     }
 }
@@ -47,9 +41,7 @@ struct App {
     process_manager: ProcessManager,
     processes: Vec<Process>,
     scroll_state: ScrollbarState,
-    //TODO: colors should be removed
     colors: TableColors,
-    color_index: usize,
     search_criteria: String,
     character_index: usize,
 }
@@ -64,8 +56,7 @@ impl App {
             process_manager,
             processes,
             scroll_state: ScrollbarState::new(scroll_size),
-            colors: TableColors::new(&PALETTES[0]),
-            color_index: 0,
+            colors: TableColors::new(),
             search_criteria,
             character_index: 0,
         };
@@ -100,10 +91,6 @@ impl App {
         };
         self.state.select(Some(i));
         self.scroll_state = self.scroll_state.position(i);
-    }
-
-    pub fn set_colors(&mut self) {
-        self.colors = TableColors::new(&PALETTES[self.color_index])
     }
 
     fn move_cursor_left(&mut self) {
@@ -186,7 +173,6 @@ impl App {
         let selected_row = self.state.selected().unwrap();
         if let Some(prc) = self.processes.get(selected_row) {
             self.process_manager.kill_process(prc.pid);
-            //TODO: this remove is not performant approach, maybe find better way
             self.processes.remove(selected_row);
             //FIXME: this is not refereshing I think there maybe issue with cache / process kill still being executed
             // self.processes = self.process_query.find_processes(&self.search_criteria);
@@ -256,8 +242,6 @@ fn ui(f: &mut Frame, app: &mut App) {
     ])
     .split(f.size());
 
-    app.set_colors();
-
     render_input(f, app, rects[0]);
 
     render_table(f, app, rects[1]);
@@ -284,16 +268,18 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::REVERSED)
         .fg(app.colors.selected_style_fg);
 
-    let header = Row::new(vec!["USER", "PID", "CMD", "ARGS"]).style(header_style);
+    let header = Row::new(vec!["USER", "PID", "CMD", "EXE PATH", "ARGS"]).style(header_style);
     let rows = app.processes.iter().enumerate().map(|(i, data)| {
         let color = match i % 2 {
             0 => app.colors.normal_row_color,
             _ => app.colors.alt_row_color,
         };
+        //TODO: think about creating this row without allocations
         Row::new(vec![
             format!("{}", data.user_name),
             format!("{}", data.pid),
             format!("{}", data.cmd),
+            format!("{}", data.exe_path),
             format!("{}", data.args),
         ])
         .style(Style::new().fg(app.colors.row_fg).bg(color))
@@ -303,8 +289,9 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         [
             Constraint::Percentage(10),
             Constraint::Percentage(10),
-            Constraint::Percentage(15),
-            Constraint::Percentage(65),
+            Constraint::Percentage(10),
+            Constraint::Percentage(30),
+            Constraint::Percentage(40),
         ],
     )
     .header(header)
@@ -317,8 +304,8 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
                     app.state.selected().unwrap_or(0) + 1,
                     app.processes.len()
                 ))
-                .position(block::Position::Bottom)
-                .alignment(Alignment::Center),
+                .position(block::Position::Top)
+                .alignment(Alignment::Left),
             )
             .borders(Borders::ALL)
             .border_style(Style::new().fg(app.colors.footer_border_color))
