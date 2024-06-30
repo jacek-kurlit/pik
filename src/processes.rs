@@ -12,6 +12,7 @@ impl ProcessManager {
         Self { sys, users }
     }
 
+    //TODO: Add search by Name, Port, Path, Args
     pub fn find_processes(&mut self, query: &str) -> Vec<Process> {
         let lowercase_query = query.to_lowercase();
         self.sys.refresh_processes();
