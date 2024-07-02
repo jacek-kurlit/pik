@@ -49,7 +49,11 @@ impl ProcessManager {
 
     pub fn kill_process(&self, pid: u32) {
         if let Some(prc) = self.sys.process(Pid::from_u32(pid)) {
-            prc.kill_with(sysinfo::Signal::Term);
+            if sysinfo::SUPPORTED_SIGNALS.contains(&sysinfo::Signal::Term) {
+                prc.kill_with(sysinfo::Signal::Term);
+            } else {
+                prc.kill();
+            }
         }
     }
 }

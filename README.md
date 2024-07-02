@@ -7,10 +7,6 @@ It works like pkill command but search is interactive.
 
 - [ ] Fix all TODO's
 - [ ] Fix all FIXME's
-- [ ] There is bug, if list of processes is empty TAB key will make index out of boundary exception
-- [ ] Empty table is showing 1/0 instead of 0/0
-- [ ] On linux Signal::Kill forces process to stop while Signal::Term terminate a process gracefully, add handling to check if os is supporting Term
-- [ ] this + 2 is due to '> ' at the beginning, maybe some fix? `f.set_cursor(area.x + app.character_index as u16 + 2, area.y);`
 
 ## Optimization
 
@@ -35,3 +31,7 @@ It works like pkill command but search is interactive.
 - [ ] Add option to search in environment variables - This is doable, maybe we can show it in process details?
 - [ ] Add Process details - we can either add it at the bottom or add pop up with details
 - [ ] Add option to ask if user wants to kill all processes (???)
+
+## Refactor
+
+- [ ] Consider some ratatui widget that can handle input

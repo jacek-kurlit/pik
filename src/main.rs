@@ -8,5 +8,5 @@ mod tui;
 
 fn main() -> Result<()> {
     let args: Vec<String> = env::args().skip(1).collect();
-    start_tui_app(args.first().cloned().unwrap_or("".to_string()))
+    start_tui_app(args.into_iter().next().unwrap_or("".to_string()))
 }

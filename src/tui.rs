@@ -48,49 +48,38 @@ struct App {
 
 impl App {
     fn new(search_criteria: String) -> Result<App> {
-        let mut process_manager = ProcessManager::new();
-        let processes = process_manager.find_processes(&search_criteria);
-        let scroll_size = processes.len().saturating_sub(1);
         let mut app = App {
-            state: TableState::default().with_selected(0),
-            process_manager,
-            processes,
-            scroll_state: ScrollbarState::new(scroll_size),
+            state: TableState::default(),
+            process_manager: ProcessManager::new(),
+            processes: vec![],
+            scroll_state: ScrollbarState::new(0),
             colors: TableColors::new(),
             search_criteria,
             character_index: 0,
         };
+        app.search_for_processess();
         app.move_cursor_to_end();
         Ok(app)
     }
     pub fn next(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i >= self.processes.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
+        let i = self.state.selected().map(|i| {
+            let mut i = i + 1;
+            if i >= self.processes.len() {
+                i = 0
             }
-            None => 0,
-        };
-        self.state.select(Some(i));
-        self.scroll_state = self.scroll_state.position(i);
+            i
+        });
+        self.state.select(i);
+        self.scroll_state = self.scroll_state.position(i.unwrap_or(0));
     }
 
     pub fn previous(&mut self) {
-        let i = match self.state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.processes.len().saturating_sub(1)
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.state.select(Some(i));
-        self.scroll_state = self.scroll_state.position(i);
+        let previous_index = self.state.selected().map(|i| {
+            let i = i.wrapping_sub(1);
+            i.clamp(0, self.processes.len().saturating_sub(1))
+        });
+        self.state.select(previous_index);
+        self.scroll_state = self.scroll_state.position(previous_index.unwrap_or(0));
     }
 
     fn move_cursor_left(&mut self) {
@@ -123,6 +112,14 @@ impl App {
 
     fn search_for_processess(&mut self) {
         self.processes = self.process_manager.find_processes(&self.search_criteria);
+        self.scroll_state = self
+            .scroll_state
+            .content_length(self.processes.len().saturating_sub(1));
+        if self.processes.is_empty() {
+            self.state.select(None);
+        } else {
+            self.state.select(Some(0));
+        }
     }
 
     /// Returns the byte index based on the character position.
@@ -253,11 +250,15 @@ fn ui(f: &mut Frame, app: &mut App) {
 }
 
 fn render_input(f: &mut Frame, app: &mut App, area: Rect) {
-    let current_input = format!("> {}", app.search_criteria);
+    //TODO: use loop icon instead of '>'
+    let prompt = "> ";
+    let current_input = format!("{}{}", prompt, app.search_criteria);
     let input = Paragraph::new(current_input.as_str());
     f.render_widget(input, area);
-    //FIXME: this + 2 is cue to '> ' at the beggining, maybe some fix?
-    f.set_cursor(area.x + app.character_index as u16 + 2, area.y);
+    f.set_cursor(
+        area.x + app.character_index as u16 + prompt.len() as u16,
+        area.y,
+    );
 }
 
 fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
@@ -298,10 +299,9 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     .block(
         Block::default()
             .title(
-                //FIXME: for empty table this is howing 1 / 0
                 Title::from(format!(
                     " {} / {} ",
-                    app.state.selected().unwrap_or(0) + 1,
+                    app.state.selected().map(|i| i + 1).unwrap_or(0),
                     app.processes.len()
                 ))
                 .position(block::Position::Top)
