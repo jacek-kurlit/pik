@@ -1,4 +1,4 @@
-use super::{ProcessInfo, ProcessPorts};
+use super::Process;
 
 pub(super) struct ProcessFilter {
     query: String,
@@ -29,26 +29,12 @@ impl ProcessFilter {
         }
     }
 
-    //TODO: maybe instead of filtring bool we can filterMap? with Some(Process) or None
-    pub(super) fn apply(&self, prc: &impl ProcessInfo, process_ports: &ProcessPorts) -> bool {
-        //NOTE: On linux threads can be listed as processes and thus needs filtering
-        if prc.is_thread() {
-            return false;
-        }
+    pub(super) fn apply(&self, prc: &Process) -> bool {
         match self.filter_by {
-            FilterBy::Cmd => prc.cmd().to_lowercase().contains(&self.query),
-            FilterBy::Path => prc
-                .exe_path()
-                .map(|e| e.contains(&self.query))
-                .unwrap_or(false),
-            FilterBy::Args => prc
-                .args()
-                .iter()
-                .any(|arg| arg.to_lowercase().contains(&self.query)),
-            FilterBy::Port => process_ports
-                .get(&prc.pid_u32())
-                .map(|ports| ports.iter().any(|port| port.contains(&self.query)))
-                .unwrap_or(false),
+            FilterBy::Cmd => prc.cmd.to_lowercase().contains(&self.query),
+            FilterBy::Path => prc.exe_path.to_lowercase().contains(&self.query),
+            FilterBy::Args => prc.args.to_lowercase().contains(&self.query),
+            FilterBy::Port => prc.ports.contains(&self.query),
             FilterBy::None => true,
         }
     }
@@ -81,110 +67,127 @@ mod tests {
         assert_eq!(filter.filter_by, FilterBy::None);
         assert_eq!(filter.query, "");
     }
-    //
-    // //FIXME: this is pretty cool but how about mockall?
-    // struct MockProcessInfo {
-    //     cmd: String,
-    //     exe_path: Option<String>,
-    //     args: Vec<String>,
-    //     is_thread: bool,
-    // }
-    //
-    // impl ProcessInfo for MockProcessInfo {
-    //     fn cmd(&self) -> &str {
-    //         &self.cmd
-    //     }
-    //
-    //     fn exe_path(&self) -> Option<&str> {
-    //         self.exe_path.as_deref()
-    //     }
-    //
-    //     fn args(&self) -> Vec<&str> {
-    //         self.args.iter().map(|s| s.as_str()).collect()
-    //     }
-    //
-    //     fn is_thread(&self) -> bool {
-    //         self.is_thread
-    //     }
-    // }
-    //
-    // #[test]
-    // fn test_apply_filter_by_cmd() {
-    //     let filter = Filter {
-    //         filter_by: FilterBy::Cmd,
-    //         query: "test".to_lowercase(),
-    //     };
-    //     let process = MockProcessInfo {
-    //         cmd: "test command".to_string(),
-    //         exe_path: None,
-    //         args: vec![],
-    //         is_thread: false,
-    //     };
-    //
-    //     assert!(filter.apply(&process));
-    // }
-    //
-    // #[test]
-    // fn test_apply_filter_by_path() {
-    //     let filter = Filter {
-    //         filter_by: FilterBy::Path,
-    //         query: "test".to_lowercase(),
-    //     };
-    //     let process = MockProcessInfo {
-    //         cmd: "command".to_string(),
-    //         exe_path: Some("/path/to/test".to_string()),
-    //         args: vec![],
-    //         is_thread: false,
-    //     };
-    //
-    //     assert!(filter.apply(&process));
-    // }
-    //
-    // #[test]
-    // fn test_apply_filter_by_args() {
-    //     let filter = Filter {
-    //         filter_by: FilterBy::Args,
-    //         query: "test".to_lowercase(),
-    //     };
-    //     let process = MockProcessInfo {
-    //         cmd: "command".to_string(),
-    //         exe_path: None,
-    //         args: vec!["arg1".to_string(), "testarg".to_string()],
-    //         is_thread: false,
-    //     };
-    //
-    //     assert!(filter.apply(&process));
-    // }
-    //
-    // #[test]
-    // fn test_apply_filter_by_port() {
-    //     let filter = Filter {
-    //         filter_by: FilterBy::Port,
-    //         query: "test".to_lowercase(),
-    //     };
-    //     let process = MockProcessInfo {
-    //         cmd: "command".to_string(),
-    //         exe_path: None,
-    //         args: vec![],
-    //         is_thread: false,
-    //     };
-    //
-    //     assert!(filter.apply(&process)); // This test should panic with "Not implemented yet"
-    // }
-    //
-    // #[test]
-    // fn test_apply_filter_by_none() {
-    //     let filter = Filter {
-    //         filter_by: FilterBy::None,
-    //         query: "test".to_lowercase(),
-    //     };
-    //     let process = MockProcessInfo {
-    //         cmd: "command".to_string(),
-    //         exe_path: None,
-    //         args: vec![],
-    //         is_thread: false,
-    //     };
-    //
-    //     assert!(filter.apply(&process));
-    // }
+
+    #[test]
+    fn test_apply_filter_by_cmd() {
+        let filter = ProcessFilter::new("test");
+        let mut process = some_process();
+
+        process.cmd = "TeSt".to_string();
+        assert!(filter.apply(&process));
+
+        process.cmd = "test".to_string();
+        assert!(filter.apply(&process));
+
+        process.cmd = "TEST".to_string();
+        assert!(filter.apply(&process));
+
+        process.cmd = "Testificator".to_string();
+        assert!(filter.apply(&process));
+
+        process.cmd = "online_TESTER".to_string();
+        assert!(filter.apply(&process));
+
+        process.cmd = "xxx".to_string();
+        assert!(!filter.apply(&process));
+    }
+
+    #[test]
+    fn test_apply_filter_by_path() {
+        let filter = ProcessFilter::new("/test");
+        let mut process = some_process();
+
+        process.exe_path = "/TeSt".to_string();
+        assert!(filter.apply(&process));
+
+        process.exe_path = "/test".to_string();
+        assert!(filter.apply(&process));
+
+        process.exe_path = "/TEST".to_string();
+        assert!(filter.apply(&process));
+
+        process.exe_path = "/testing_dir".to_string();
+        assert!(filter.apply(&process));
+
+        process.exe_path = "/cargo/tests".to_string();
+        assert!(filter.apply(&process));
+
+        process.exe_path = "/xxx".to_string();
+        assert!(!filter.apply(&process));
+    }
+
+    #[test]
+    fn test_apply_filter_by_args() {
+        let filter = ProcessFilter::new("-test");
+        let mut process = some_process();
+
+        process.args = "-TeSt".to_string();
+        assert!(filter.apply(&process));
+
+        process.args = "-test".to_string();
+        assert!(filter.apply(&process));
+
+        process.args = "-TEST".to_string();
+        assert!(filter.apply(&process));
+
+        process.args = "arg1, arg2, --testifier".to_string();
+        assert!(filter.apply(&process));
+
+        process.args = "testimony".to_string();
+        assert!(filter.apply(&process));
+
+        process.args = "-xxx".to_string();
+        assert!(!filter.apply(&process));
+    }
+
+    #[test]
+    fn test_apply_filter_by_port() {
+        let filter = ProcessFilter::new(":12");
+        let mut process = some_process();
+
+        process.ports = "1234".to_string();
+        assert!(filter.apply(&process));
+
+        process.ports = "3312".to_string();
+        assert!(filter.apply(&process));
+
+        process.ports = "5125".to_string();
+        assert!(filter.apply(&process));
+
+        process.ports = "1111, 2222, 1234".to_string();
+        assert!(filter.apply(&process));
+
+        process.ports = "7777".to_string();
+        assert!(!filter.apply(&process));
+    }
+
+    #[test]
+    fn test_apply_filter_by_none() {
+        let filter = ProcessFilter::new("");
+        let mut process = some_process();
+        assert!(filter.apply(&process));
+
+        process.cmd = "TeSt".to_string();
+        assert!(filter.apply(&process));
+
+        process.exe_path = "/TeSt".to_string();
+        assert!(filter.apply(&process));
+
+        process.args = "-TeSt".to_string();
+        assert!(filter.apply(&process));
+
+        process.ports = "1234".to_string();
+        assert!(filter.apply(&process));
+    }
+
+    fn some_process() -> Process {
+        Process {
+            pid: 1,
+            user_name: "xxx".to_string(),
+            cmd: "xxx".to_string(),
+            exe_path: "xxx".to_string(),
+            args: "xxx, xxx2, --xxx3".to_string(),
+            ports: "0000".to_string(),
+        }
+    }
 }

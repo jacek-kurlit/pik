@@ -1,7 +1,7 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::collections::HashMap;
 
 use anyhow::Result;
-use sysinfo::{Pid, System, Uid, Users};
+use sysinfo::{Pid, System, Users};
 
 mod query;
 
@@ -41,12 +41,14 @@ impl ProcessManager {
         self.sys
             .processes()
             .values()
-            .filter(|prc| process_filter.apply(*prc, &self.process_ports))
+            //NOTE: On linux threads can be listed as processes and thus needs filtering
+            .filter(|prc| prc.thread_kind().is_none())
             .map(|prc| self.create_process_info(prc))
+            .filter(|prc| process_filter.apply(prc))
             .collect()
     }
 
-    fn create_process_info(&self, prc: &impl ProcessInfo) -> Process {
+    fn create_process_info(&self, prc: &sysinfo::Process) -> Process {
         let user_name = prc
             .user_id()
             .and_then(|user_id| {
@@ -55,18 +57,19 @@ impl ProcessManager {
                     .map(|u| u.name().to_string())
             })
             .unwrap_or("".to_string());
-        let cmd = prc.cmd().to_string();
+        let cmd = prc.name().to_string();
         let exe_path = prc
-            .exe_path()
-            .map(|e| e.to_string())
+            .exe()
+            .map(|e| e.to_string_lossy().to_string())
             .unwrap_or("".to_string());
+        let pid = prc.pid().as_u32();
         let ports = self
             .process_ports
-            .get(&prc.pid_u32())
+            .get(&pid)
             .map(|ports| ports.join(","))
             .unwrap_or_default();
         Process {
-            pid: prc.pid_u32(),
+            pid,
             args: get_process_args(prc, &exe_path, &cmd),
             cmd,
             exe_path,
@@ -87,8 +90,8 @@ impl ProcessManager {
 }
 
 // NOTE: Some processes have path to binary as first argument, but also some processes has different name than cmd (for exmaple firefox)
-fn get_process_args(prc: &impl ProcessInfo, exe_path: &str, cmd: &str) -> String {
-    let args = prc.args();
+fn get_process_args(prc: &sysinfo::Process, exe_path: &str, cmd: &str) -> String {
+    let args = prc.cmd();
     if args
         .first()
         .is_some_and(|arg1| arg1 == exe_path || arg1.ends_with(cmd))
@@ -105,48 +108,4 @@ pub struct Process {
     pub exe_path: String,
     pub args: String,
     pub ports: String,
-}
-
-//TODO: use this instead of sysinfo::Process
-// this probably could be also ProcessInfo<sysinfo::Process>
-pub trait ProcessInfo {
-    fn pid_u32(&self) -> u32;
-
-    fn user_id(&self) -> Option<&Uid>;
-
-    fn is_thread(&self) -> bool;
-
-    fn cmd(&self) -> &str;
-
-    fn exe_path(&self) -> Option<Cow<str>>;
-
-    fn args(&self) -> &[String];
-}
-
-impl ProcessInfo for sysinfo::Process {
-    fn is_thread(&self) -> bool {
-        self.thread_kind().is_some()
-    }
-
-    fn cmd(&self) -> &str {
-        self.name()
-    }
-
-    fn exe_path(&self) -> Option<Cow<str>> {
-        self.exe().map(|exe| exe.to_string_lossy())
-    }
-
-    //FIXME: this ay cause bug because we are filtering out first argument which most of the time
-    //is exe path
-    fn args(&self) -> &[String] {
-        self.cmd()
-    }
-
-    fn pid_u32(&self) -> u32 {
-        self.pid().as_u32()
-    }
-
-    fn user_id(&self) -> Option<&Uid> {
-        self.user_id()
-    }
 }
