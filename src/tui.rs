@@ -8,6 +8,7 @@ use crossterm::{
 use ratatui::{
     prelude::*,
     widgets::{block::Title, *},
+    TerminalOptions, Viewport,
 };
 use style::palette::tailwind;
 
@@ -50,7 +51,7 @@ impl App {
     fn new(search_criteria: String) -> Result<App> {
         let mut app = App {
             state: TableState::default(),
-            process_manager: ProcessManager::new(),
+            process_manager: ProcessManager::new()?,
             processes: vec![],
             scroll_state: ScrollbarState::new(0),
             colors: TableColors::new(),
@@ -196,7 +197,7 @@ pub fn start_tui_app(search_criteria: String) -> Result<()> {
     disable_raw_mode()?;
     terminal.clear()?;
 
-    // TODO: add proper error handling
+    //FIXME: add error handling, for exaple some error page should be shown
     if let Err(err) = res {
         println!("{err:?}");
     }
@@ -269,7 +270,8 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::REVERSED)
         .fg(app.colors.selected_style_fg);
 
-    let header = Row::new(vec!["USER", "PID", "CMD", "EXE PATH", "ARGS"]).style(header_style);
+    let header =
+        Row::new(vec!["USER", "PID", "CMD", "EXE PATH", "PORTS", "ARGS"]).style(header_style);
     let rows = app.processes.iter().enumerate().map(|(i, data)| {
         let color = match i % 2 {
             0 => app.colors.normal_row_color,
@@ -281,6 +283,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
             format!("{}", data.pid),
             format!("{}", data.cmd),
             format!("{}", data.exe_path),
+            format!("{}", data.ports),
             format!("{}", data.args),
         ])
         .style(Style::new().fg(app.colors.row_fg).bg(color))
@@ -292,7 +295,8 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
             Constraint::Percentage(10),
             Constraint::Percentage(10),
             Constraint::Percentage(30),
-            Constraint::Percentage(40),
+            Constraint::Percentage(10),
+            Constraint::Percentage(30),
         ],
     )
     .header(header)
@@ -324,7 +328,7 @@ fn render_scrollbar(f: &mut Frame, app: &mut App, area: Rect) {
             .orientation(ScrollbarOrientation::VerticalRight)
             .begin_symbol(None)
             .end_symbol(None),
-        area.inner(&Margin {
+        area.inner(Margin {
             vertical: 1,
             horizontal: 1,
         }),
