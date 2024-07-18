@@ -4,6 +4,7 @@ use anyhow::Result;
 use sysinfo::{Pid, System, Users};
 
 mod query;
+mod utils;
 
 type ProcessPorts = HashMap<u32, Vec<String>>;
 
@@ -14,6 +15,8 @@ pub struct ProcessManager {
 }
 
 use query::ProcessFilter;
+
+use self::utils::{format_as_epoch_time, format_as_hh_mm_ss, get_process_args};
 
 impl ProcessManager {
     pub fn new() -> Result<Self> {
@@ -58,23 +61,20 @@ impl ProcessManager {
             })
             .unwrap_or("".to_string());
         let cmd = prc.name().to_string();
-        let exe_path = prc
-            .exe()
-            .map(|e| e.to_string_lossy().to_string())
-            .unwrap_or("".to_string());
+        let exe_path = prc.exe().map(|e| e.to_string_lossy().to_string());
         let pid = prc.pid().as_u32();
-        let ports = self
-            .process_ports
-            .get(&pid)
-            .map(|ports| ports.join(","))
-            .unwrap_or_default();
+        let ports = self.process_ports.get(&pid).map(|ports| ports.join(","));
+
         Process {
             pid,
             args: get_process_args(prc, &exe_path, &cmd),
             cmd,
-            exe_path,
+            cmd_path: exe_path,
             user_name,
             ports,
+            memory: prc.memory(),
+            start_time: format_as_epoch_time(prc.start_time()),
+            run_time: format_as_hh_mm_ss(prc.run_time()),
         }
     }
 
@@ -89,23 +89,22 @@ impl ProcessManager {
     }
 }
 
-// NOTE: Some processes have path to binary as first argument, but also some processes has different name than cmd (for exmaple firefox)
-fn get_process_args(prc: &sysinfo::Process, exe_path: &str, cmd: &str) -> String {
-    let args = prc.cmd();
-    if args
-        .first()
-        .is_some_and(|arg1| arg1 == exe_path || arg1.ends_with(cmd))
-    {
-        return args[1..].join(", ");
-    }
-    args.join(", ")
-}
-
 pub struct Process {
     pub pid: u32,
     pub user_name: String,
     pub cmd: String,
-    pub exe_path: String,
+    pub cmd_path: Option<String>,
     pub args: String,
-    pub ports: String,
+    pub ports: Option<String>,
+    pub memory: u64,
+    //FIXME: cpu rquires refresh twice!
+    // pub cpu_usage: f32,
+    pub start_time: String,
+    pub run_time: String,
+}
+
+impl Process {
+    pub fn exe(&self) -> &str {
+        self.cmd_path.as_ref().unwrap_or(&self.cmd)
+    }
 }

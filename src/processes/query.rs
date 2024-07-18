@@ -32,9 +32,18 @@ impl ProcessFilter {
     pub(super) fn apply(&self, prc: &Process) -> bool {
         match self.filter_by {
             FilterBy::Cmd => prc.cmd.to_lowercase().contains(&self.query),
-            FilterBy::Path => prc.exe_path.to_lowercase().contains(&self.query),
+            FilterBy::Path => prc
+                .cmd_path
+                .as_deref()
+                .unwrap_or("")
+                .to_lowercase()
+                .contains(&self.query),
             FilterBy::Args => prc.args.to_lowercase().contains(&self.query),
-            FilterBy::Port => prc.ports.contains(&self.query),
+            FilterBy::Port => prc
+                .ports
+                .as_ref()
+                .map(|p| p.contains(&self.query))
+                .unwrap_or(false),
             FilterBy::None => true,
         }
     }
@@ -97,22 +106,22 @@ mod tests {
         let filter = ProcessFilter::new("/test");
         let mut process = some_process();
 
-        process.exe_path = "/TeSt".to_string();
+        process.cmd_path = Some("/TeSt".to_string());
         assert!(filter.apply(&process));
 
-        process.exe_path = "/test".to_string();
+        process.cmd_path = Some("/test".to_string());
         assert!(filter.apply(&process));
 
-        process.exe_path = "/TEST".to_string();
+        process.cmd_path = Some("/TEST".to_string());
         assert!(filter.apply(&process));
 
-        process.exe_path = "/testing_dir".to_string();
+        process.cmd_path = Some("/testing_dir".to_string());
         assert!(filter.apply(&process));
 
-        process.exe_path = "/cargo/tests".to_string();
+        process.cmd_path = Some("/cargo/tests".to_string());
         assert!(filter.apply(&process));
 
-        process.exe_path = "/xxx".to_string();
+        process.cmd_path = Some("/xxx".to_string());
         assert!(!filter.apply(&process));
     }
 
@@ -145,19 +154,19 @@ mod tests {
         let filter = ProcessFilter::new(":12");
         let mut process = some_process();
 
-        process.ports = "1234".to_string();
+        process.ports = Some("1234".to_string());
         assert!(filter.apply(&process));
 
-        process.ports = "3312".to_string();
+        process.ports = Some("3312".to_string());
         assert!(filter.apply(&process));
 
-        process.ports = "5125".to_string();
+        process.ports = Some("5125".to_string());
         assert!(filter.apply(&process));
 
-        process.ports = "1111, 2222, 1234".to_string();
+        process.ports = Some("1111, 2222, 1234".to_string());
         assert!(filter.apply(&process));
 
-        process.ports = "7777".to_string();
+        process.ports = Some("7777".to_string());
         assert!(!filter.apply(&process));
     }
 
@@ -170,13 +179,13 @@ mod tests {
         process.cmd = "TeSt".to_string();
         assert!(filter.apply(&process));
 
-        process.exe_path = "/TeSt".to_string();
+        process.cmd_path = Some("/TeSt".to_string());
         assert!(filter.apply(&process));
 
         process.args = "-TeSt".to_string();
         assert!(filter.apply(&process));
 
-        process.ports = "1234".to_string();
+        process.ports = Some("1234".to_string());
         assert!(filter.apply(&process));
     }
 
@@ -185,9 +194,12 @@ mod tests {
             pid: 1,
             user_name: "xxx".to_string(),
             cmd: "xxx".to_string(),
-            exe_path: "xxx".to_string(),
+            cmd_path: Some("xxx".to_string()),
             args: "xxx, xxx2, --xxx3".to_string(),
-            ports: "0000".to_string(),
+            ports: Some("0000".to_string()),
+            memory: 0,
+            start_time: "00:00:00".to_string(),
+            run_time: "00:00:00".to_string(),
         }
     }
 }
