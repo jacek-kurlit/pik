@@ -1,4 +1,4 @@
-use std::io::{self};
+use std::io;
 
 use anyhow::Result;
 use crossterm::{
@@ -14,8 +14,7 @@ use style::palette::tailwind;
 
 use crate::processes::{Process, ProcessManager};
 
-const INFO_TEXT: &str =
-    "(ESC) quit | (SHIFT + TAB) move up | (TAB) move down | (Ctrl + d) kill selected process";
+const INFO_TEXT: &str = "ESC quit | CTRL + D kill process";
 
 struct TableColors {
     row_fg: Color,
@@ -164,6 +163,10 @@ impl App {
         self.search_for_processess();
     }
 
+    fn get_selected_process(&self) -> Option<&Process> {
+        self.state.selected().map(|i| &self.processes[i])
+    }
+
     fn kill_selected_process(&mut self) {
         if self.state.selected().is_none() {
             return;
@@ -235,8 +238,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
 fn ui(f: &mut Frame, app: &mut App) {
     let rects = Layout::vertical([
         Constraint::Length(1),
-        Constraint::Min(5),
-        Constraint::Length(3),
+        Constraint::Min(10),
+        Constraint::Max(7),
+        Constraint::Length(1),
     ])
     .split(f.size());
 
@@ -246,8 +250,9 @@ fn ui(f: &mut Frame, app: &mut App) {
 
     render_scrollbar(f, app, rects[1]);
 
-    //TODO: footer should contain details about process
-    render_footer(f, rects[2]);
+    render_details(f, app, rects[2]);
+
+    render_help(f, rects[3]);
 }
 
 fn render_input(f: &mut Frame, app: &mut App, area: Rect) {
@@ -270,8 +275,10 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         .add_modifier(Modifier::REVERSED)
         .fg(app.colors.selected_style_fg);
 
-    let header =
-        Row::new(vec!["USER", "PID", "CMD", "EXE PATH", "PORTS", "ARGS"]).style(header_style);
+    let header = Row::new(vec![
+        "USER", "PID", "STARTED", "TIME", "CMD", "CMD_PATH", "ARGS",
+    ])
+    .style(header_style);
     let rows = app.processes.iter().enumerate().map(|(i, data)| {
         let color = match i % 2 {
             0 => app.colors.normal_row_color,
@@ -281,9 +288,10 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
         Row::new(vec![
             format!("{}", data.user_name),
             format!("{}", data.pid),
+            format!("{}", data.start_time),
+            format!("{}", data.run_time),
             format!("{}", data.cmd),
-            format!("{}", data.exe_path),
-            format!("{}", data.ports),
+            format!("{}", data.cmd_path.as_deref().unwrap_or("")),
             format!("{}", data.args),
         ])
         .style(Style::new().fg(app.colors.row_fg).bg(color))
@@ -291,12 +299,13 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
     let table = Table::new(
         rows,
         [
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
+            Constraint::Percentage(5),
+            Constraint::Percentage(5),
+            Constraint::Percentage(5),
+            Constraint::Percentage(5),
             Constraint::Percentage(10),
             Constraint::Percentage(30),
-            Constraint::Percentage(10),
-            Constraint::Percentage(30),
+            Constraint::Percentage(40),
         ],
     )
     .header(header)
@@ -336,12 +345,56 @@ fn render_scrollbar(f: &mut Frame, app: &mut App, area: Rect) {
     );
 }
 
-fn render_footer(f: &mut Frame, area: Rect) {
-    let info_footer = Paragraph::new(Line::from(INFO_TEXT)).centered().block(
-        Block::default()
-            .borders(Borders::ALL)
-            // .border_style(Style::new().fg(app.colors.footer_border_color))
-            .border_type(BorderType::Double),
-    );
+fn render_details(f: &mut Frame, app: &mut App, area: Rect) {
+    let lines = footer_lines(app);
+    let info_footer = Paragraph::new(lines)
+        //TODO: i'm wrapping text but it still migt be too long to fit in details area
+        .wrap(Wrap { trim: false })
+        .left_aligned()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(
+                    Title::from(" Process Details ")
+                        .alignment(Alignment::Left)
+                        .position(block::Position::Top),
+                )
+                // .border_style(Style::new().fg(app.colors.footer_border_color))
+                .border_type(BorderType::Rounded),
+        );
     f.render_widget(info_footer, area);
+}
+
+fn footer_lines(app: &App) -> Vec<Line> {
+    match app.get_selected_process() {
+        Some(prc) => {
+            let ports = prc
+                .ports
+                .as_deref()
+                .map(|p| format!(" PORTS: {}", p))
+                .unwrap_or("".to_string());
+            vec![
+                Line::from(format!(
+                    "USER: {} PID: {} START_TIME: {}, RUN_TIME: {} MEMORY: {}MB{}",
+                    prc.user_name,
+                    prc.pid,
+                    prc.start_time,
+                    prc.run_time,
+                    prc.memory / 1024 / 1024,
+                    ports,
+                )),
+                Line::from(format!("CMD: {}", prc.exe())),
+                //FIXME: Sometimes args are too long and don't fit in details area
+                Line::from(format!("ARGS: {}", prc.args)),
+            ]
+        }
+        None => vec![Line::from("No process selected")],
+    }
+}
+
+fn render_help(f: &mut Frame, area: Rect) {
+    let help = Paragraph::new(Line::from(INFO_TEXT))
+        .right_aligned()
+        .block(Block::default().borders(Borders::NONE));
+    f.render_widget(help, area);
 }
