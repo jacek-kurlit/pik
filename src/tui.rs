@@ -48,16 +48,11 @@ impl App {
     }
 
     fn kill_selected_process(&mut self) {
-        let selected_row_index = self.tui.get_selected_row_index();
-        if selected_row_index.is_none() {
-            return;
-        }
-        let selected_row = selected_row_index.unwrap();
-        if let Some(prc) = self.search_results.nth(selected_row) {
-            self.process_manager.kill_process(prc.pid);
-            self.search_results.remove(selected_row);
-            //FIXME: this is not refereshing I think there maybe issue with cache / process kill still being executed
-            // self.processes = self.process_query.find_processes(&self.search_criteria);
+        if let Some(prc) = self.search_results.nth(self.tui.get_selected_row_index()) {
+            self.search_results = self
+                .process_manager
+                .kill_and_refresh(prc.pid, self.tui.search_input_text());
+            self.tui.update_number_of_items(self.search_results.len());
         }
     }
 }

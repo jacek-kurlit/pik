@@ -37,12 +37,9 @@ impl ProcessSearchResults {
         self.items.len()
     }
 
-    pub fn nth(&self, index: usize) -> Option<&Process> {
+    pub fn nth(&self, index: Option<usize>) -> Option<&Process> {
+        let index = index?;
         self.items.get(index)
-    }
-
-    pub fn remove(&mut self, index: usize) -> Process {
-        self.items.remove(index)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Process> {
@@ -52,22 +49,34 @@ impl ProcessSearchResults {
 
 impl ProcessManager {
     pub fn new() -> Result<Self> {
-        let sys = System::new_all();
-        let users = Users::new_with_refreshed_list();
-        let process_ports = listeners::get_all()
-            .map_err(|e| anyhow::anyhow!("Failed to get listeners: {e}"))?
-            .into_iter()
-            .fold(HashMap::new(), |mut acc: ProcessPorts, l| {
-                acc.entry(l.process.pid)
-                    .or_default()
-                    .push(l.socket.port().to_string());
-                acc
-            });
-        Ok(Self {
+        let sys = System::new();
+        let users = Users::new();
+        let process_ports = HashMap::new();
+        let mut manager = Self {
             sys,
             users,
             process_ports,
-        })
+        };
+        manager.refresh();
+        Ok(manager)
+    }
+
+    pub fn kill_and_refresh(&mut self, pid: u32, query: &str) -> ProcessSearchResults {
+        self.kill_process(pid);
+        self.refresh();
+        let mut search_results = self.find_processes(query);
+        //FIXME: on linux t takes time for the process to be killed and refresh may still find it!
+        //this should be fixed if we implement autorefresh
+        search_results.items.retain(|prc| prc.pid != pid);
+        search_results
+    }
+
+    fn refresh(&mut self) {
+        //TODO: maybe we should not refresh all informaton since they are not needed, just the one
+        //we need
+        self.sys.refresh_all();
+        self.users.refresh_list();
+        self.process_ports = refresh_ports();
     }
 
     pub fn find_processes(&mut self, query: &str) -> ProcessSearchResults {
@@ -116,15 +125,29 @@ impl ProcessManager {
         }
     }
 
-    pub fn kill_process(&self, pid: u32) {
+    fn kill_process(&self, pid: u32) {
         if let Some(prc) = self.sys.process(Pid::from_u32(pid)) {
             if sysinfo::SUPPORTED_SIGNALS.contains(&sysinfo::Signal::Term) {
+                //FIXME: add handling for success / failure!
                 prc.kill_with(sysinfo::Signal::Term);
             } else {
                 prc.kill();
             }
         }
     }
+}
+
+fn refresh_ports() -> HashMap<u32, Vec<String>> {
+    listeners::get_all()
+        //NOTE: we ignore errors comming from listeners
+        .unwrap_or_default()
+        .into_iter()
+        .fold(HashMap::new(), |mut acc: ProcessPorts, l| {
+            acc.entry(l.process.pid)
+                .or_default()
+                .push(l.socket.port().to_string());
+            acc
+        })
 }
 
 pub struct Process {

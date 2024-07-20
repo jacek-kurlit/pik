@@ -148,14 +148,6 @@ impl Tui {
         &self.search_text
     }
 
-    fn get_selected_process<'b>(
-        &self,
-        search_results: &'b ProcessSearchResults,
-    ) -> Option<&'b Process> {
-        let selected_index = self.get_selected_row_index()?;
-        search_results.nth(selected_index)
-    }
-
     /// Returns the byte index based on the character position.
     ///
     /// Since each character in a string can be contain multiple bytes, it's necessary to calculate
@@ -292,7 +284,7 @@ impl Tui {
         search_results: &ProcessSearchResults,
         area: Rect,
     ) {
-        let selected_process = self.get_selected_process(search_results);
+        let selected_process = search_results.nth(self.get_selected_row_index());
         let lines = footer_lines(selected_process);
         let info_footer = Paragraph::new(lines)
             //TODO: i'm wrapping text but it still migt be too long to fit in details area
