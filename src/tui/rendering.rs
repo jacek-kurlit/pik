@@ -209,6 +209,7 @@ impl Tui {
             Row::new(vec![
                 format!("{}", data.user_name),
                 format!("{}", data.pid),
+                format!("{}", data.parent_as_string()),
                 format!("{}", data.start_time),
                 format!("{}", data.run_time),
                 format!("{}", data.cmd),
@@ -224,14 +225,16 @@ impl Tui {
                 Constraint::Percentage(5),
                 Constraint::Percentage(5),
                 Constraint::Percentage(5),
+                Constraint::Percentage(5),
                 Constraint::Percentage(10),
-                Constraint::Percentage(30),
+                Constraint::Percentage(25),
                 Constraint::Percentage(40),
             ],
         )
         .header(Row::new(vec![
             "USER",
             "PID",
+            "PARENT",
             "STARTED",
             "TIME",
             "CMD",
@@ -285,7 +288,7 @@ impl Tui {
         area: Rect,
     ) {
         let selected_process = search_results.nth(self.get_selected_row_index());
-        let lines = footer_lines(selected_process);
+        let lines = process_details_lines(selected_process);
         let info_footer = Paragraph::new(lines)
             //TODO: i'm wrapping text but it still migt be too long to fit in details area
             .wrap(Wrap { trim: false })
@@ -313,7 +316,7 @@ fn dynamic_search_column(search_result: &ProcessSearchResults) -> (&str, fn(&Pro
     }
 }
 
-fn footer_lines(selected_process: Option<&Process>) -> Vec<Line> {
+fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
     match selected_process {
         Some(prc) => {
             let ports = prc
@@ -321,11 +324,16 @@ fn footer_lines(selected_process: Option<&Process>) -> Vec<Line> {
                 .as_deref()
                 .map(|p| format!(" PORTS: {}", p))
                 .unwrap_or("".to_string());
+            let parent = prc
+                .parent_pid
+                .map(|p| format!(" PARENT: {}", p))
+                .unwrap_or("".to_string());
             vec![
                 Line::from(format!(
-                    "USER: {} PID: {} START_TIME: {}, RUN_TIME: {} MEMORY: {}MB{}",
+                    "USER: {} PID: {}{} START_TIME: {}, RUN_TIME: {} MEMORY: {}MB{}",
                     prc.user_name,
                     prc.pid,
+                    parent,
                     prc.start_time,
                     prc.run_time,
                     prc.memory / 1024 / 1024,

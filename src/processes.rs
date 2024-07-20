@@ -114,6 +114,7 @@ impl ProcessManager {
 
         Process {
             pid,
+            parent_pid: prc.parent().map(|p| p.as_u32()),
             args: get_process_args(prc, &exe_path, &cmd),
             cmd,
             cmd_path: exe_path,
@@ -152,6 +153,7 @@ fn refresh_ports() -> HashMap<u32, Vec<String>> {
 
 pub struct Process {
     pub pid: u32,
+    pub parent_pid: Option<u32>,
     pub user_name: String,
     pub cmd: String,
     pub cmd_path: Option<String>,
@@ -167,5 +169,11 @@ pub struct Process {
 impl Process {
     pub fn exe(&self) -> &str {
         self.cmd_path.as_ref().unwrap_or(&self.cmd)
+    }
+
+    pub fn parent_as_string(&self) -> String {
+        self.parent_pid
+            .map(|pid| pid.to_string())
+            .unwrap_or_default()
     }
 }
