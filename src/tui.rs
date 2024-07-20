@@ -12,7 +12,7 @@ use ratatui::{
 };
 use style::palette::tailwind;
 
-use crate::processes::{Process, ProcessManager};
+use crate::processes::{FilterBy, Process, ProcessManager, ProcessSearchResults};
 
 const INFO_TEXT: &str = "ESC quit | CTRL + D kill process";
 
@@ -39,7 +39,7 @@ impl TableColors {
 struct App {
     state: TableState,
     process_manager: ProcessManager,
-    processes: Vec<Process>,
+    search_results: ProcessSearchResults,
     scroll_state: ScrollbarState,
     colors: TableColors,
     search_criteria: String,
@@ -51,7 +51,7 @@ impl App {
         let mut app = App {
             state: TableState::default(),
             process_manager: ProcessManager::new()?,
-            processes: vec![],
+            search_results: ProcessSearchResults::empty(),
             scroll_state: ScrollbarState::new(0),
             colors: TableColors::new(),
             search_criteria,
@@ -64,7 +64,7 @@ impl App {
     pub fn next(&mut self) {
         let i = self.state.selected().map(|i| {
             let mut i = i + 1;
-            if i >= self.processes.len() {
+            if i >= self.search_results.len() {
                 i = 0
             }
             i
@@ -76,7 +76,7 @@ impl App {
     pub fn previous(&mut self) {
         let previous_index = self.state.selected().map(|i| {
             let i = i.wrapping_sub(1);
-            i.clamp(0, self.processes.len().saturating_sub(1))
+            i.clamp(0, self.search_results.len().saturating_sub(1))
         });
         self.state.select(previous_index);
         self.scroll_state = self.scroll_state.position(previous_index.unwrap_or(0));
@@ -111,11 +111,11 @@ impl App {
     }
 
     fn search_for_processess(&mut self) {
-        self.processes = self.process_manager.find_processes(&self.search_criteria);
+        self.search_results = self.process_manager.find_processes(&self.search_criteria);
         self.scroll_state = self
             .scroll_state
-            .content_length(self.processes.len().saturating_sub(1));
-        if self.processes.is_empty() {
+            .content_length(self.search_results.len().saturating_sub(1));
+        if self.search_results.is_empty() {
             self.state.select(None);
         } else {
             self.state.select(Some(0));
@@ -164,7 +164,8 @@ impl App {
     }
 
     fn get_selected_process(&self) -> Option<&Process> {
-        self.state.selected().map(|i| &self.processes[i])
+        let selected_index = self.state.selected()?;
+        self.search_results.nth(selected_index)
     }
 
     fn kill_selected_process(&mut self) {
@@ -172,9 +173,9 @@ impl App {
             return;
         }
         let selected_row = self.state.selected().unwrap();
-        if let Some(prc) = self.processes.get(selected_row) {
+        if let Some(prc) = self.search_results.nth(selected_row) {
             self.process_manager.kill_process(prc.pid);
-            self.processes.remove(selected_row);
+            self.search_results.remove(selected_row);
             //FIXME: this is not refereshing I think there maybe issue with cache / process kill still being executed
             // self.processes = self.process_query.find_processes(&self.search_criteria);
         }
@@ -244,19 +245,16 @@ fn ui(f: &mut Frame, app: &mut App) {
     ])
     .split(f.size());
 
-    render_input(f, app, rects[0]);
+    render_search_input(f, app, rects[0]);
 
-    render_table(f, app, rects[1]);
-
-    render_scrollbar(f, app, rects[1]);
+    render_process_table(f, app, rects[1]);
 
     render_details(f, app, rects[2]);
 
     render_help(f, rects[3]);
 }
 
-fn render_input(f: &mut Frame, app: &mut App, area: Rect) {
-    //TODO: use loop icon instead of '>'
+fn render_search_input(f: &mut Frame, app: &mut App, area: Rect) {
     let prompt = "> ";
     let current_input = format!("{}{}", prompt, app.search_criteria);
     let input = Paragraph::new(current_input.as_str());
@@ -267,19 +265,9 @@ fn render_input(f: &mut Frame, app: &mut App, area: Rect) {
     );
 }
 
-fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
-    let header_style = Style::default();
-    // .fg(app.colors.header_fg)
-    // .bg(app.colors.header_bg);
-    let selected_style = Style::default()
-        .add_modifier(Modifier::REVERSED)
-        .fg(app.colors.selected_style_fg);
-
-    let header = Row::new(vec![
-        "USER", "PID", "STARTED", "TIME", "CMD", "CMD_PATH", "ARGS",
-    ])
-    .style(header_style);
-    let rows = app.processes.iter().enumerate().map(|(i, data)| {
+fn render_process_table(f: &mut Frame, app: &mut App, area: Rect) {
+    let (dynamic_header, value_getter) = dynamic_search_column(&app.search_results);
+    let rows = app.search_results.iter().enumerate().map(|(i, data)| {
         let color = match i % 2 {
             0 => app.colors.normal_row_color,
             _ => app.colors.alt_row_color,
@@ -292,7 +280,7 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
             format!("{}", data.run_time),
             format!("{}", data.cmd),
             format!("{}", data.cmd_path.as_deref().unwrap_or("")),
-            format!("{}", data.args),
+            format!("{}", value_getter(data)),
         ])
         .style(Style::new().fg(app.colors.row_fg).bg(color))
     });
@@ -308,14 +296,22 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
             Constraint::Percentage(40),
         ],
     )
-    .header(header)
+    .header(Row::new(vec![
+        "USER",
+        "PID",
+        "STARTED",
+        "TIME",
+        "CMD",
+        "CMD_PATH",
+        dynamic_header,
+    ]))
     .block(
         Block::default()
             .title(
                 Title::from(format!(
                     " {} / {} ",
                     app.state.selected().map(|i| i + 1).unwrap_or(0),
-                    app.processes.len()
+                    app.search_results.len()
                 ))
                 .position(block::Position::Top)
                 .alignment(Alignment::Left),
@@ -324,14 +320,26 @@ fn render_table(f: &mut Frame, app: &mut App, area: Rect) {
             .border_style(Style::new().fg(app.colors.footer_border_color))
             .border_type(BorderType::Plain),
     )
-    .highlight_style(selected_style)
+    .highlight_style(
+        Style::default()
+            .add_modifier(Modifier::REVERSED)
+            .fg(app.colors.selected_style_fg),
+    )
     .highlight_symbol(Text::from(vec![" ".into()]))
-    // .bg(app.colors.buffer_bg)
     .highlight_spacing(HighlightSpacing::Always);
     f.render_stateful_widget(table, area, &mut app.state);
+    render_procss_table_scrollbar(f, app, area);
 }
 
-fn render_scrollbar(f: &mut Frame, app: &mut App, area: Rect) {
+fn dynamic_search_column(search_result: &ProcessSearchResults) -> (&str, fn(&Process) -> &str) {
+    match search_result.filter_by {
+        FilterBy::Port => ("PORT", |prc| prc.ports.as_deref().unwrap_or("")),
+        FilterBy::Args => ("ARGS", |prc| prc.args.as_str()),
+        _ => ("", |_| ""),
+    }
+}
+
+fn render_procss_table_scrollbar(f: &mut Frame, app: &mut App, area: Rect) {
     f.render_stateful_widget(
         Scrollbar::default()
             .orientation(ScrollbarOrientation::VerticalRight)

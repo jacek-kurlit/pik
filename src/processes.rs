@@ -6,6 +6,8 @@ use sysinfo::{Pid, System, Users};
 mod query;
 mod utils;
 
+pub use query::FilterBy;
+
 type ProcessPorts = HashMap<u32, Vec<String>>;
 
 pub struct ProcessManager {
@@ -17,6 +19,40 @@ pub struct ProcessManager {
 use query::ProcessFilter;
 
 use self::utils::{format_as_epoch_time, format_as_hh_mm_ss, get_process_args};
+
+pub struct ProcessSearchResults {
+    pub filter_by: FilterBy,
+    items: Vec<Process>,
+}
+
+impl ProcessSearchResults {
+    pub fn empty() -> Self {
+        Self {
+            filter_by: FilterBy::None,
+            items: vec![],
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    pub fn nth(&self, index: usize) -> Option<&Process> {
+        self.items.get(index)
+    }
+
+    pub fn remove(&mut self, index: usize) -> Process {
+        self.items.remove(index)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Process> {
+        self.items.iter()
+    }
+}
 
 impl ProcessManager {
     pub fn new() -> Result<Self> {
@@ -38,17 +74,23 @@ impl ProcessManager {
         })
     }
 
-    pub fn find_processes(&mut self, query: &str) -> Vec<Process> {
+    pub fn find_processes(&mut self, query: &str) -> ProcessSearchResults {
         let process_filter = ProcessFilter::new(query);
 
-        self.sys
+        let items = self
+            .sys
             .processes()
             .values()
             //NOTE: On linux threads can be listed as processes and thus needs filtering
             .filter(|prc| prc.thread_kind().is_none())
             .map(|prc| self.create_process_info(prc))
             .filter(|prc| process_filter.apply(prc))
-            .collect()
+            .collect();
+
+        ProcessSearchResults {
+            filter_by: process_filter.filter_by,
+            items,
+        }
     }
 
     fn create_process_info(&self, prc: &sysinfo::Process) -> Process {

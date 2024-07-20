@@ -2,11 +2,11 @@ use super::Process;
 
 pub(super) struct ProcessFilter {
     query: String,
-    filter_by: FilterBy,
+    pub(super) filter_by: FilterBy,
 }
 
 #[derive(PartialEq, Eq, Debug)]
-enum FilterBy {
+pub enum FilterBy {
     Cmd,
     Port,
     Path,
