@@ -6,7 +6,7 @@ use sysinfo::{Pid, System, Users};
 mod query;
 mod utils;
 
-pub use query::FilterBy;
+pub use query::SearchBy;
 
 type ProcessPorts = HashMap<u32, Vec<String>>;
 
@@ -21,20 +21,16 @@ use query::ProcessFilter;
 use self::utils::{format_as_epoch_time, format_as_hh_mm_ss, get_process_args};
 
 pub struct ProcessSearchResults {
-    pub filter_by: FilterBy,
+    pub search_by: SearchBy,
     items: Vec<Process>,
 }
 
 impl ProcessSearchResults {
     pub fn empty() -> Self {
         Self {
-            filter_by: FilterBy::None,
+            search_by: SearchBy::None,
             items: vec![],
         }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.items.is_empty()
     }
 
     pub fn len(&self) -> usize {
@@ -88,7 +84,7 @@ impl ProcessManager {
             .collect();
 
         ProcessSearchResults {
-            filter_by: process_filter.filter_by,
+            search_by: process_filter.search_by,
             items,
         }
     }
