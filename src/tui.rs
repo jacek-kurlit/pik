@@ -48,11 +48,12 @@ impl App {
     }
 
     fn kill_selected_process(&mut self) {
-        if let Some(prc) = self.search_results.nth(self.tui.get_selected_row_index()) {
-            self.search_results = self
-                .process_manager
-                .kill_and_refresh(prc.pid, self.tui.search_input_text());
-            self.tui.update_number_of_items(self.search_results.len());
+        let prc_index = self.tui.get_selected_row_index();
+        if let Some(prc) = self.search_results.nth(prc_index) {
+            if self.process_manager.kill_process(prc.pid) {
+                self.search_results.remove(prc_index);
+                self.tui.update_number_of_items(self.search_results.len());
+            }
         }
     }
 }
@@ -101,6 +102,12 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Right => app.tui.move_search_cursor_right(),
                     Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.kill_selected_process()
+                    }
+                    Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.tui.process_details_down()
+                    }
+                    Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.tui.process_details_up()
                     }
                     Char(to_insert) => app.enter_char(to_insert),
                     Backspace => app.delete_char(),

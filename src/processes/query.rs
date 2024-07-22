@@ -192,6 +192,7 @@ mod tests {
     fn some_process() -> Process {
         Process {
             pid: 1,
+            parent_pid: None,
             user_name: "xxx".to_string(),
             cmd: "xxx".to_string(),
             cmd_path: Some("xxx".to_string()),

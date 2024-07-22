@@ -42,6 +42,11 @@ impl ProcessSearchResults {
         self.items.get(index)
     }
 
+    pub fn remove(&mut self, index: Option<usize>) -> Option<Process> {
+        let index = index?;
+        Some(self.items.remove(index))
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Process> {
         self.items.iter()
     }
@@ -59,16 +64,6 @@ impl ProcessManager {
         };
         manager.refresh();
         Ok(manager)
-    }
-
-    pub fn kill_and_refresh(&mut self, pid: u32, query: &str) -> ProcessSearchResults {
-        self.kill_process(pid);
-        self.refresh();
-        let mut search_results = self.find_processes(query);
-        //FIXME: on linux t takes time for the process to be killed and refresh may still find it!
-        //this should be fixed if we implement autorefresh
-        search_results.items.retain(|prc| prc.pid != pid);
-        search_results
     }
 
     fn refresh(&mut self) {
@@ -108,16 +103,16 @@ impl ProcessManager {
             })
             .unwrap_or("".to_string());
         let cmd = prc.name().to_string();
-        let exe_path = prc.exe().map(|e| e.to_string_lossy().to_string());
+        let cmd_path = prc.exe().map(|e| e.to_string_lossy().to_string());
         let pid = prc.pid().as_u32();
         let ports = self.process_ports.get(&pid).map(|ports| ports.join(","));
 
         Process {
             pid,
             parent_pid: prc.parent().map(|p| p.as_u32()),
-            args: get_process_args(prc, &exe_path, &cmd),
+            args: get_process_args(prc, &cmd_path, &cmd),
             cmd,
-            cmd_path: exe_path,
+            cmd_path,
             user_name,
             ports,
             memory: prc.memory(),
@@ -126,15 +121,17 @@ impl ProcessManager {
         }
     }
 
-    fn kill_process(&self, pid: u32) {
-        if let Some(prc) = self.sys.process(Pid::from_u32(pid)) {
-            if sysinfo::SUPPORTED_SIGNALS.contains(&sysinfo::Signal::Term) {
-                //FIXME: add handling for success / failure!
-                prc.kill_with(sysinfo::Signal::Term);
-            } else {
-                prc.kill();
+    pub fn kill_process(&self, pid: u32) -> bool {
+        return match self.sys.process(Pid::from_u32(pid)) {
+            Some(prc) => {
+                if sysinfo::SUPPORTED_SIGNALS.contains(&sysinfo::Signal::Term) {
+                    prc.kill_with(sysinfo::Signal::Term).unwrap_or(false)
+                } else {
+                    prc.kill()
+                }
             }
-        }
+            None => false,
+        };
     }
 }
 

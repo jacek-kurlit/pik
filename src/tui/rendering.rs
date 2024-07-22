@@ -39,6 +39,8 @@ pub struct Tui {
     character_index: usize,
     search_text: String,
     number_of_items: usize,
+    details_scroll_state: ScrollbarState,
+    process_details_scroll: u16,
 }
 
 impl Tui {
@@ -50,6 +52,9 @@ impl Tui {
             character_index: 0,
             search_text,
             number_of_items: 0,
+            process_details_scroll: 0,
+            //NOTE: we don't update this, value 1 means that this should be rendered
+            details_scroll_state: ScrollbarState::new(1),
         };
         ui.move_search_cursor_to_end();
         ui
@@ -67,6 +72,7 @@ impl Tui {
         self.process_table_scroll = self
             .process_table_scroll
             .position(next_row_index.unwrap_or(0));
+        self.reset_process_detals_scroll();
     }
 
     pub fn select_previous_row(&mut self) {
@@ -78,6 +84,7 @@ impl Tui {
         self.process_table_scroll = self
             .process_table_scroll
             .position(previous_index.unwrap_or(0));
+        self.reset_process_detals_scroll();
     }
 
     pub fn move_search_cursor_left(&mut self) {
@@ -101,6 +108,18 @@ impl Tui {
         let index = self.byte_index();
         self.search_text.insert(index, new_char);
         self.move_search_cursor_right();
+    }
+
+    pub fn process_details_down(&mut self) {
+        self.process_details_scroll = self.process_details_scroll.saturating_add(1);
+    }
+
+    pub fn process_details_up(&mut self) {
+        self.process_details_scroll = self.process_details_scroll.saturating_sub(1);
+    }
+
+    fn reset_process_detals_scroll(&mut self) {
+        self.process_details_scroll = 0;
     }
 
     pub fn delete_char(&mut self) {
@@ -264,25 +283,11 @@ impl Tui {
         .highlight_symbol(Text::from(vec![" ".into()]))
         .highlight_spacing(HighlightSpacing::Always);
         f.render_stateful_widget(table, area, &mut self.process_table);
-        self.render_procss_table_scrollbar(f, area);
-    }
-
-    fn render_procss_table_scrollbar(&mut self, f: &mut Frame, area: Rect) {
-        f.render_stateful_widget(
-            Scrollbar::default()
-                .orientation(ScrollbarOrientation::VerticalRight)
-                .begin_symbol(None)
-                .end_symbol(None),
-            area.inner(Margin {
-                vertical: 1,
-                horizontal: 1,
-            }),
-            &mut self.process_table_scroll,
-        );
+        render_scrollbar(&mut self.process_table_scroll, f, area);
     }
 
     fn render_process_details(
-        &self,
+        &mut self,
         f: &mut Frame,
         search_results: &ProcessSearchResults,
         area: Rect,
@@ -290,7 +295,6 @@ impl Tui {
         let selected_process = search_results.nth(self.get_selected_row_index());
         let lines = process_details_lines(selected_process);
         let info_footer = Paragraph::new(lines)
-            //TODO: i'm wrapping text but it still migt be too long to fit in details area
             .wrap(Wrap { trim: false })
             .left_aligned()
             .block(
@@ -303,8 +307,22 @@ impl Tui {
                     )
                     // .border_style(Style::new().fg(app.colors.footer_border_color))
                     .border_type(BorderType::Rounded),
-            );
+            )
+            .scroll((self.process_details_scroll, 0));
         f.render_widget(info_footer, area);
+        f.render_stateful_widget(
+            Scrollbar::default()
+                .orientation(ScrollbarOrientation::VerticalRight)
+                .thumb_symbol("")
+                .track_symbol(None)
+                .begin_symbol(Some("↑"))
+                .end_symbol(Some("↓")),
+            area.inner(Margin {
+                vertical: 1,
+                horizontal: 1,
+            }),
+            &mut self.details_scroll_state,
+        );
     }
 }
 
@@ -314,6 +332,20 @@ fn dynamic_search_column(search_result: &ProcessSearchResults) -> (&str, fn(&Pro
         SearchBy::Args => ("ARGS", |prc| prc.args.as_str()),
         _ => ("", |_| ""),
     }
+}
+
+fn render_scrollbar(scroll_state: &mut ScrollbarState, f: &mut Frame, area: Rect) {
+    f.render_stateful_widget(
+        Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None),
+        area.inner(Margin {
+            vertical: 1,
+            horizontal: 1,
+        }),
+        scroll_state,
+    );
 }
 
 fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
@@ -348,7 +380,8 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
     }
 }
 
-const HELP_TEXT: &str = "ESC quit | CTRL + D kill process";
+const HELP_TEXT: &str =
+    "ESC quit | CTRL + D kill process | CTRL + F details forward | CTRL + B details backward ";
 
 fn render_help(f: &mut Frame, area: Rect) {
     let help = Paragraph::new(Line::from(HELP_TEXT))
