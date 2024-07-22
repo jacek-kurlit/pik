@@ -283,7 +283,17 @@ impl Tui {
         .highlight_symbol(Text::from(vec![" ".into()]))
         .highlight_spacing(HighlightSpacing::Always);
         f.render_stateful_widget(table, area, &mut self.process_table);
-        render_scrollbar(&mut self.process_table_scroll, f, area);
+        f.render_stateful_widget(
+            Scrollbar::default()
+                .orientation(ScrollbarOrientation::VerticalRight)
+                .begin_symbol(None)
+                .end_symbol(None),
+            area.inner(Margin {
+                vertical: 1,
+                horizontal: 1,
+            }),
+            &mut self.process_table_scroll,
+        );
     }
 
     fn render_process_details(
@@ -317,10 +327,7 @@ impl Tui {
                 .track_symbol(None)
                 .begin_symbol(Some("↑"))
                 .end_symbol(Some("↓")),
-            area.inner(Margin {
-                vertical: 1,
-                horizontal: 1,
-            }),
+            area,
             &mut self.details_scroll_state,
         );
     }
