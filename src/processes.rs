@@ -6,7 +6,10 @@ use sysinfo::{Pid, System, Uid, Users};
 mod filters;
 mod utils;
 
+pub use filters::FilterOptions;
 pub use filters::SearchBy;
+
+use filters::QueryFilter;
 
 type ProcessPorts = HashMap<u32, Vec<String>>;
 
@@ -17,20 +20,9 @@ pub struct ProcessManager {
     current_user_id: Uid,
 }
 
-#[derive(Copy, Clone)]
-pub struct FilterOptions {
-    //NOTE: On linux threads can be listed as processes and thus needs filtering
-    pub ignore_threads: bool,
-    pub user_processes_only: bool,
-}
-
-use filters::QueryFilter;
-
-use self::{
-    filters::OptionsFilter,
-    utils::{
-        find_current_process_user, format_as_epoch_time, format_as_hh_mm_ss, get_process_args,
-    },
+use self::filters::OptionsFilter;
+use self::utils::{
+    find_current_process_user, format_as_epoch_time, format_as_hh_mm_ss, get_process_args,
 };
 
 pub struct ProcessSearchResults {

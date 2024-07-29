@@ -1,6 +1,6 @@
 use sysinfo::Uid;
 
-use super::{FilterOptions, Process};
+use super::Process;
 
 pub(super) struct QueryFilter {
     query: String,
@@ -49,6 +49,13 @@ impl QueryFilter {
             SearchBy::None => true,
         }
     }
+}
+
+#[derive(Copy, Clone)]
+pub struct FilterOptions {
+    //NOTE: On linux threads can be listed as processes and thus needs filtering
+    pub ignore_threads: bool,
+    pub user_processes_only: bool,
 }
 
 pub(super) struct OptionsFilter<'a> {
