@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use anyhow::Result;
 use sysinfo::{Pid, System, Uid, Users};
 
-mod query;
+mod filters;
 mod utils;
 
-pub use query::SearchBy;
+pub use filters::SearchBy;
 
 type ProcessPorts = HashMap<u32, Vec<String>>;
 
@@ -24,10 +24,13 @@ pub struct FilterOptions {
     pub user_processes_only: bool,
 }
 
-use query::ProcessFilter;
+use filters::QueryFilter;
 
-use self::utils::{
-    find_current_process_user, format_as_epoch_time, format_as_hh_mm_ss, get_process_args,
+use self::{
+    filters::OptionsFilter,
+    utils::{
+        find_current_process_user, format_as_epoch_time, format_as_hh_mm_ss, get_process_args,
+    },
 };
 
 pub struct ProcessSearchResults {
@@ -79,18 +82,14 @@ impl ProcessManager {
     }
 
     pub fn find_processes(&mut self, query: &str, options: FilterOptions) -> ProcessSearchResults {
-        let process_filter = ProcessFilter::new(query);
+        let process_filter = QueryFilter::new(query);
+        let options_filter = OptionsFilter::new(options, &self.current_user_id);
 
         let items = self
             .sys
             .processes()
             .values()
-            .filter(|prc| {
-                if options.ignore_threads && prc.thread_kind().is_some() {
-                    return false;
-                }
-                !options.user_processes_only || prc.user_id() == Some(&self.current_user_id)
-            })
+            .filter(|prc| options_filter.apply(prc))
             .map(|prc| self.create_process_info(prc))
             .filter(|prc| process_filter.apply(prc))
             .collect();

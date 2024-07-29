@@ -341,20 +341,6 @@ fn dynamic_search_column(search_result: &ProcessSearchResults) -> (&str, fn(&Pro
     }
 }
 
-fn render_scrollbar(scroll_state: &mut ScrollbarState, f: &mut Frame, area: Rect) {
-    f.render_stateful_widget(
-        Scrollbar::default()
-            .orientation(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(None)
-            .end_symbol(None),
-        area.inner(Margin {
-            vertical: 1,
-            horizontal: 1,
-        }),
-        scroll_state,
-    );
-}
-
 fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
     match selected_process {
         Some(prc) => {

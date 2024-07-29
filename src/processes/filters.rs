@@ -1,6 +1,8 @@
-use super::Process;
+use sysinfo::Uid;
 
-pub(super) struct ProcessFilter {
+use super::{FilterOptions, Process};
+
+pub(super) struct QueryFilter {
     query: String,
     pub(super) search_by: SearchBy,
 }
@@ -14,7 +16,7 @@ pub enum SearchBy {
     None,
 }
 
-impl ProcessFilter {
+impl QueryFilter {
     pub fn new(query: &str) -> Self {
         let (search_by, query) = match query.chars().next() {
             Some(':') => (SearchBy::Port, &query[1..]),
@@ -49,6 +51,28 @@ impl ProcessFilter {
     }
 }
 
+pub(super) struct OptionsFilter<'a> {
+    options: FilterOptions,
+    current_user_id: &'a Uid,
+}
+
+impl<'a> OptionsFilter<'a> {
+    pub fn new(options: FilterOptions, current_user_id: &'a Uid) -> Self {
+        Self {
+            options,
+            current_user_id,
+        }
+    }
+    pub fn apply(&self, prc: &sysinfo::Process) -> bool {
+        {
+            if self.options.ignore_threads && prc.thread_kind().is_some() {
+                return false;
+            }
+            !self.options.user_processes_only || prc.user_id() == Some(self.current_user_id)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -56,30 +80,30 @@ mod tests {
 
     #[test]
     fn should_create_proper_filter() {
-        let filter = ProcessFilter::new("FOO");
+        let filter = QueryFilter::new("FOO");
         assert_eq!(filter.search_by, SearchBy::Cmd);
         assert_eq!(filter.query, "foo");
 
-        let filter = ProcessFilter::new("/Foo");
+        let filter = QueryFilter::new("/Foo");
         assert_eq!(filter.search_by, SearchBy::Path);
         assert_eq!(filter.query, "/foo");
 
-        let filter = ProcessFilter::new("-fOo");
+        let filter = QueryFilter::new("-fOo");
         assert_eq!(filter.search_by, SearchBy::Args);
         assert_eq!(filter.query, "foo");
 
-        let filter = ProcessFilter::new(":foo");
+        let filter = QueryFilter::new(":foo");
         assert_eq!(filter.search_by, SearchBy::Port);
         assert_eq!(filter.query, "foo");
 
-        let filter = ProcessFilter::new("");
+        let filter = QueryFilter::new("");
         assert_eq!(filter.search_by, SearchBy::None);
         assert_eq!(filter.query, "");
     }
 
     #[test]
     fn test_apply_search_by_cmd() {
-        let filter = ProcessFilter::new("test");
+        let filter = QueryFilter::new("test");
         let mut process = some_process();
 
         process.cmd = "TeSt".to_string();
@@ -103,7 +127,7 @@ mod tests {
 
     #[test]
     fn test_apply_search_by_path() {
-        let filter = ProcessFilter::new("/test");
+        let filter = QueryFilter::new("/test");
         let mut process = some_process();
 
         process.cmd_path = Some("/TeSt".to_string());
@@ -127,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_apply_search_by_args() {
-        let filter = ProcessFilter::new("-test");
+        let filter = QueryFilter::new("-test");
         let mut process = some_process();
 
         process.args = "-TeSt".to_string();
@@ -151,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_apply_search_by_port() {
-        let filter = ProcessFilter::new(":12");
+        let filter = QueryFilter::new(":12");
         let mut process = some_process();
 
         process.ports = Some("1234".to_string());
@@ -172,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_apply_search_by_none() {
-        let filter = ProcessFilter::new("");
+        let filter = QueryFilter::new("");
         let mut process = some_process();
         assert!(filter.apply(&process));
 

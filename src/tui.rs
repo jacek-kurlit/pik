@@ -27,7 +27,7 @@ impl App {
             search_results: ProcessSearchResults::empty(),
             filter_options: FilterOptions {
                 ignore_threads: true,
-                user_processes_only: false,
+                user_processes_only: true,
             },
             tui: Tui::new(search_criteria),
         };
