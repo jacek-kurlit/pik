@@ -9,13 +9,14 @@ use ratatui::{prelude::*, TerminalOptions, Viewport};
 
 mod rendering;
 
-use crate::processes::{ProcessManager, ProcessSearchResults};
+use crate::processes::{FilterOptions, ProcessManager, ProcessSearchResults};
 
 use self::rendering::Tui;
 
 struct App {
     process_manager: ProcessManager,
     search_results: ProcessSearchResults,
+    filter_options: FilterOptions,
     tui: Tui,
 }
 
@@ -24,6 +25,10 @@ impl App {
         let mut app = App {
             process_manager: ProcessManager::new()?,
             search_results: ProcessSearchResults::empty(),
+            filter_options: FilterOptions {
+                ignore_threads: true,
+                user_processes_only: false,
+            },
             tui: Tui::new(search_criteria),
         };
         app.search_for_processess();
@@ -38,7 +43,7 @@ impl App {
     fn search_for_processess(&mut self) {
         self.search_results = self
             .process_manager
-            .find_processes(self.tui.search_input_text());
+            .find_processes(self.tui.search_input_text(), self.filter_options);
         self.tui.update_number_of_items(self.search_results.len());
     }
 

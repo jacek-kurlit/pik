@@ -15,9 +15,9 @@ pub struct ProcessManager {
     users: Users,
     process_ports: ProcessPorts,
     current_user_id: Uid,
-    filter_options: FilterOptions,
 }
 
+#[derive(Copy, Clone)]
 pub struct FilterOptions {
     //NOTE: On linux threads can be listed as processes and thus needs filtering
     pub ignore_threads: bool,
@@ -75,14 +75,10 @@ impl ProcessManager {
             users,
             process_ports,
             current_user_id,
-            filter_options: FilterOptions {
-                ignore_threads: true,
-                user_processes_only: false,
-            },
         })
     }
 
-    pub fn find_processes(&mut self, query: &str) -> ProcessSearchResults {
+    pub fn find_processes(&mut self, query: &str, options: FilterOptions) -> ProcessSearchResults {
         let process_filter = ProcessFilter::new(query);
 
         let items = self
@@ -90,14 +86,10 @@ impl ProcessManager {
             .processes()
             .values()
             .filter(|prc| {
-                let FilterOptions {
-                    ignore_threads,
-                    user_processes_only,
-                } = self.filter_options;
-                if ignore_threads && prc.thread_kind().is_some() {
+                if options.ignore_threads && prc.thread_kind().is_some() {
                     return false;
                 }
-                !user_processes_only || prc.user_id() == Some(&self.current_user_id)
+                !options.user_processes_only || prc.user_id() == Some(&self.current_user_id)
             })
             .map(|prc| self.create_process_info(prc))
             .filter(|prc| process_filter.apply(prc))
