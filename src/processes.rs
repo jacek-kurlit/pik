@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use sysinfo::{Pid, System, Users};
+use sysinfo::{Pid, System, Uid, Users};
 
 mod query;
 mod utils;
@@ -14,11 +14,21 @@ pub struct ProcessManager {
     sys: System,
     users: Users,
     process_ports: ProcessPorts,
+    current_user_id: Uid,
+    filter_options: FilterOptions,
+}
+
+pub struct FilterOptions {
+    //NOTE: On linux threads can be listed as processes and thus needs filtering
+    pub ignore_threads: bool,
+    pub user_processes_only: bool,
 }
 
 use query::ProcessFilter;
 
-use self::utils::{format_as_epoch_time, format_as_hh_mm_ss, get_process_args};
+use self::utils::{
+    find_current_process_user, format_as_epoch_time, format_as_hh_mm_ss, get_process_args,
+};
 
 pub struct ProcessSearchResults {
     pub search_by: SearchBy,
@@ -54,24 +64,22 @@ impl ProcessSearchResults {
 
 impl ProcessManager {
     pub fn new() -> Result<Self> {
-        let sys = System::new();
-        let users = Users::new();
-        let process_ports = HashMap::new();
-        let mut manager = Self {
+        //TODO: maybe we should not refresh all informaton since they are not needed, just the one
+        //we need
+        let sys = System::new_all();
+        let users = Users::new_with_refreshed_list();
+        let process_ports = refresh_ports();
+        let current_user_id = find_current_process_user(&sys)?;
+        Ok(Self {
             sys,
             users,
             process_ports,
-        };
-        manager.refresh();
-        Ok(manager)
-    }
-
-    fn refresh(&mut self) {
-        //TODO: maybe we should not refresh all informaton since they are not needed, just the one
-        //we need
-        self.sys.refresh_all();
-        self.users.refresh_list();
-        self.process_ports = refresh_ports();
+            current_user_id,
+            filter_options: FilterOptions {
+                ignore_threads: true,
+                user_processes_only: false,
+            },
+        })
     }
 
     pub fn find_processes(&mut self, query: &str) -> ProcessSearchResults {
@@ -81,8 +89,16 @@ impl ProcessManager {
             .sys
             .processes()
             .values()
-            //NOTE: On linux threads can be listed as processes and thus needs filtering
-            .filter(|prc| prc.thread_kind().is_none())
+            .filter(|prc| {
+                let FilterOptions {
+                    ignore_threads,
+                    user_processes_only,
+                } = self.filter_options;
+                if ignore_threads && prc.thread_kind().is_some() {
+                    return false;
+                }
+                !user_processes_only || prc.user_id() == Some(&self.current_user_id)
+            })
             .map(|prc| self.create_process_info(prc))
             .filter(|prc| process_filter.apply(prc))
             .collect();
@@ -96,12 +112,13 @@ impl ProcessManager {
     fn create_process_info(&self, prc: &sysinfo::Process) -> Process {
         let user_name = prc
             .user_id()
-            .and_then(|user_id| {
+            .map(|user_id| {
                 self.users
                     .get_user_by_id(user_id)
                     .map(|u| u.name().to_string())
+                    .unwrap_or(format!("{}?", **user_id))
             })
-            .unwrap_or("".to_string());
+            .unwrap_or("unknown".to_string());
         let cmd = prc.name().to_string();
         let cmd_path = prc.exe().map(|e| e.to_string_lossy().to_string());
         let pid = prc.pid().as_u32();

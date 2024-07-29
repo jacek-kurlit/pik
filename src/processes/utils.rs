@@ -1,6 +1,8 @@
 use std::time::{Duration, UNIX_EPOCH};
 
+use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Local};
+use sysinfo::{System, Uid};
 
 // NOTE: Some processes have path to binary as first argument, but also some processes has different name than cmd (for exmaple firefox)
 pub(super) fn get_process_args(
@@ -30,4 +32,12 @@ pub(super) fn format_as_epoch_time(time: u64) -> String {
     let system_time = UNIX_EPOCH + Duration::from_secs(time);
     let datetime_utc: DateTime<Local> = system_time.into();
     datetime_utc.format("%H:%M:%S").to_string()
+}
+
+pub(super) fn find_current_process_user(sys: &System) -> Result<Uid> {
+    let current_process_pid =
+        sysinfo::get_current_pid().map_err(|e| anyhow!("Unsupported platform! {}", e))?;
+    sys.process(current_process_pid)
+        .and_then(|cp| cp.user_id().cloned())
+        .context("Current process not found!")
 }
