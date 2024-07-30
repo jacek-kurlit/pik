@@ -1,6 +1,6 @@
 use sysinfo::Uid;
 
-use super::Process;
+use super::{Process, ProcessInfo};
 
 pub(super) struct QueryFilter {
     query: String,
@@ -70,9 +70,11 @@ impl<'a> OptionsFilter<'a> {
             current_user_id,
         }
     }
-    pub fn apply(&self, prc: &sysinfo::Process) -> bool {
+
+    //TODO: add tests
+    pub fn apply(&self, prc: &impl ProcessInfo) -> bool {
         {
-            if self.options.ignore_threads && prc.thread_kind().is_some() {
+            if self.options.ignore_threads && prc.is_thread() {
                 return false;
             }
             !self.options.user_processes_only || prc.user_id() == Some(self.current_user_id)
@@ -81,7 +83,7 @@ impl<'a> OptionsFilter<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 
     use super::*;
 

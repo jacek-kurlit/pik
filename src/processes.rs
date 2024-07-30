@@ -22,8 +22,72 @@ pub struct ProcessManager {
 
 use self::filters::OptionsFilter;
 use self::utils::{
-    find_current_process_user, format_as_epoch_time, format_as_hh_mm_ss, get_process_args,
+    find_current_process_user, format_as_epoch_time, format_seconds_as_hh_mm_ss, get_process_args,
 };
+
+pub trait ProcessInfo {
+    fn is_thread(&self) -> bool;
+
+    fn user_id(&self) -> Option<&Uid>;
+
+    fn cmd(&self) -> &str;
+
+    fn cmd_path(&self) -> Option<&str>;
+
+    fn pid(&self) -> u32;
+
+    fn parent_id(&self) -> Option<u32>;
+
+    fn memory(&self) -> u64;
+
+    fn start_time(&self) -> u64;
+
+    fn run_time(&self) -> u64;
+
+    fn args(&self) -> &[String];
+}
+
+impl ProcessInfo for sysinfo::Process {
+    fn is_thread(&self) -> bool {
+        self.thread_kind().is_some()
+    }
+
+    fn user_id(&self) -> Option<&Uid> {
+        self.user_id()
+    }
+
+    fn cmd(&self) -> &str {
+        self.name()
+    }
+
+    fn cmd_path(&self) -> Option<&str> {
+        self.exe().map(|e| e.to_str()).unwrap_or_default()
+    }
+
+    fn pid(&self) -> u32 {
+        self.pid().as_u32()
+    }
+
+    fn parent_id(&self) -> Option<u32> {
+        self.parent().map(|p| p.as_u32())
+    }
+
+    fn memory(&self) -> u64 {
+        self.memory()
+    }
+
+    fn start_time(&self) -> u64 {
+        self.start_time()
+    }
+
+    fn run_time(&self) -> u64 {
+        self.start_time()
+    }
+
+    fn args(&self) -> &[String] {
+        self.cmd()
+    }
+}
 
 pub struct ProcessSearchResults {
     pub search_by: SearchBy,
@@ -81,7 +145,7 @@ impl ProcessManager {
             .sys
             .processes()
             .values()
-            .filter(|prc| options_filter.apply(prc))
+            .filter(|prc| options_filter.apply(*prc))
             .map(|prc| self.create_process_info(prc))
             .filter(|prc| process_filter.apply(prc))
             .collect();
@@ -117,7 +181,7 @@ impl ProcessManager {
             ports,
             memory: prc.memory(),
             start_time: format_as_epoch_time(prc.start_time()),
-            run_time: format_as_hh_mm_ss(prc.run_time()),
+            run_time: format_seconds_as_hh_mm_ss(prc.run_time()),
         }
     }
 
