@@ -1,24 +1,93 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
-use sysinfo::{Pid, System, Users};
+use sysinfo::{Pid, System, Uid, Users};
 
-mod query;
+mod filters;
 mod utils;
 
-pub use query::SearchBy;
+pub use filters::FilterOptions;
+pub use filters::SearchBy;
 
-type ProcessPorts = HashMap<u32, Vec<String>>;
+use filters::QueryFilter;
+
+pub type ProcessPorts = HashMap<u32, String>;
 
 pub struct ProcessManager {
     sys: System,
     users: Users,
     process_ports: ProcessPorts,
+    current_user_id: Uid,
 }
 
-use query::ProcessFilter;
+use self::filters::OptionsFilter;
+use self::utils::{
+    find_current_process_user, format_as_epoch_time, format_seconds_as_hh_mm_ss, get_process_args,
+};
 
-use self::utils::{format_as_epoch_time, format_as_hh_mm_ss, get_process_args};
+pub trait ProcessInfo {
+    fn is_thread(&self) -> bool;
+
+    fn user_id(&self) -> Option<&Uid>;
+
+    fn cmd(&self) -> &str;
+
+    fn cmd_path(&self) -> Option<&str>;
+
+    fn pid(&self) -> u32;
+
+    fn parent_id(&self) -> Option<u32>;
+
+    fn memory(&self) -> u64;
+
+    fn start_time(&self) -> u64;
+
+    fn run_time(&self) -> u64;
+
+    fn args(&self) -> &[String];
+}
+
+impl ProcessInfo for sysinfo::Process {
+    fn is_thread(&self) -> bool {
+        self.thread_kind().is_some()
+    }
+
+    fn user_id(&self) -> Option<&Uid> {
+        self.user_id()
+    }
+
+    fn cmd(&self) -> &str {
+        self.name()
+    }
+
+    fn cmd_path(&self) -> Option<&str> {
+        self.exe().map(|e| e.to_str()).unwrap_or_default()
+    }
+
+    fn pid(&self) -> u32 {
+        self.pid().as_u32()
+    }
+
+    fn parent_id(&self) -> Option<u32> {
+        self.parent().map(|p| p.as_u32())
+    }
+
+    fn memory(&self) -> u64 {
+        self.memory()
+    }
+
+    fn start_time(&self) -> u64 {
+        self.start_time()
+    }
+
+    fn run_time(&self) -> u64 {
+        self.start_time()
+    }
+
+    fn args(&self) -> &[String] {
+        self.cmd()
+    }
+}
 
 pub struct ProcessSearchResults {
     pub search_by: SearchBy,
@@ -54,37 +123,37 @@ impl ProcessSearchResults {
 
 impl ProcessManager {
     pub fn new() -> Result<Self> {
-        let sys = System::new();
-        let users = Users::new();
-        let process_ports = HashMap::new();
-        let mut manager = Self {
+        //TODO: maybe we should not refresh all informaton since they are not needed, just the one
+        //we need
+        let sys = System::new_all();
+        let users = Users::new_with_refreshed_list();
+        let process_ports = refresh_ports();
+        let current_user_id = find_current_process_user(&sys)?;
+        Ok(Self {
             sys,
             users,
             process_ports,
-        };
-        manager.refresh();
-        Ok(manager)
+            current_user_id,
+        })
     }
 
-    fn refresh(&mut self) {
-        //TODO: maybe we should not refresh all informaton since they are not needed, just the one
-        //we need
-        self.sys.refresh_all();
-        self.users.refresh_list();
-        self.process_ports = refresh_ports();
-    }
-
-    pub fn find_processes(&mut self, query: &str) -> ProcessSearchResults {
-        let process_filter = ProcessFilter::new(query);
+    pub fn find_processes(&mut self, query: &str, options: FilterOptions) -> ProcessSearchResults {
+        let process_filter = QueryFilter::new(query);
+        let options_filter = OptionsFilter::new(options, &self.current_user_id);
 
         let items = self
             .sys
             .processes()
             .values()
-            //NOTE: On linux threads can be listed as processes and thus needs filtering
-            .filter(|prc| prc.thread_kind().is_none())
-            .map(|prc| self.create_process_info(prc))
-            .filter(|prc| process_filter.apply(prc))
+            .filter_map(|prc| {
+                let ports = self.process_ports.get(&prc.pid().as_u32());
+                if !options_filter.accept(prc)
+                    || !process_filter.accept(prc, ports.map(|p| p.as_str()))
+                {
+                    return None;
+                }
+                Some(self.create_process_info(prc, ports))
+            })
             .collect();
 
         ProcessSearchResults {
@@ -93,31 +162,31 @@ impl ProcessManager {
         }
     }
 
-    fn create_process_info(&self, prc: &sysinfo::Process) -> Process {
+    fn create_process_info(&self, prc: &impl ProcessInfo, ports: Option<&String>) -> Process {
         let user_name = prc
             .user_id()
-            .and_then(|user_id| {
+            .map(|user_id| {
                 self.users
                     .get_user_by_id(user_id)
                     .map(|u| u.name().to_string())
+                    .unwrap_or(format!("{}?", **user_id))
             })
-            .unwrap_or("".to_string());
-        let cmd = prc.name().to_string();
-        let cmd_path = prc.exe().map(|e| e.to_string_lossy().to_string());
-        let pid = prc.pid().as_u32();
-        let ports = self.process_ports.get(&pid).map(|ports| ports.join(","));
+            .unwrap_or("unknown".to_string());
+        let cmd = prc.cmd().to_string();
+        let cmd_path = prc.cmd_path().map(|p| p.to_string());
+        let pid = prc.pid();
 
         Process {
             pid,
-            parent_pid: prc.parent().map(|p| p.as_u32()),
+            parent_pid: prc.parent_id(),
             args: get_process_args(prc, &cmd_path, &cmd),
             cmd,
             cmd_path,
             user_name,
-            ports,
+            ports: ports.cloned(),
             memory: prc.memory(),
             start_time: format_as_epoch_time(prc.start_time()),
-            run_time: format_as_hh_mm_ss(prc.run_time()),
+            run_time: format_seconds_as_hh_mm_ss(prc.run_time()),
         }
     }
 
@@ -135,7 +204,7 @@ impl ProcessManager {
     }
 }
 
-fn refresh_ports() -> HashMap<u32, Vec<String>> {
+fn refresh_ports() -> HashMap<u32, String> {
     listeners::get_all()
         //NOTE: we ignore errors comming from listeners
         .unwrap_or_default()
@@ -143,7 +212,7 @@ fn refresh_ports() -> HashMap<u32, Vec<String>> {
         .fold(HashMap::new(), |mut acc: ProcessPorts, l| {
             acc.entry(l.process.pid)
                 .or_default()
-                .push(l.socket.port().to_string());
+                .push_str(&format!("{}, ", l.socket.port()));
             acc
         })
 }
