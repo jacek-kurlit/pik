@@ -11,8 +11,7 @@ pub use filters::SearchBy;
 
 use filters::QueryFilter;
 
-//TODO change to <u32, String>
-pub type ProcessPorts = HashMap<u32, Vec<String>>;
+pub type ProcessPorts = HashMap<u32, String>;
 
 pub struct ProcessManager {
     sys: System,
@@ -147,11 +146,10 @@ impl ProcessManager {
             .processes()
             .values()
             .filter_map(|prc| {
-                let ports = self
-                    .process_ports
-                    .get(&prc.pid().as_u32())
-                    .map(|p| p.join(", "));
-                if !options_filter.accept(prc) || !process_filter.accept(prc, ports.as_deref()) {
+                let ports = self.process_ports.get(&prc.pid().as_u32());
+                if !options_filter.accept(prc)
+                    || !process_filter.accept(prc, ports.map(|p| p.as_str()))
+                {
                     return None;
                 }
                 Some(self.create_process_info(prc, ports))
@@ -164,7 +162,7 @@ impl ProcessManager {
         }
     }
 
-    fn create_process_info(&self, prc: &impl ProcessInfo, ports: Option<String>) -> Process {
+    fn create_process_info(&self, prc: &impl ProcessInfo, ports: Option<&String>) -> Process {
         let user_name = prc
             .user_id()
             .map(|user_id| {
@@ -185,7 +183,7 @@ impl ProcessManager {
             cmd,
             cmd_path,
             user_name,
-            ports,
+            ports: ports.cloned(),
             memory: prc.memory(),
             start_time: format_as_epoch_time(prc.start_time()),
             run_time: format_seconds_as_hh_mm_ss(prc.run_time()),
@@ -206,7 +204,7 @@ impl ProcessManager {
     }
 }
 
-fn refresh_ports() -> HashMap<u32, Vec<String>> {
+fn refresh_ports() -> HashMap<u32, String> {
     listeners::get_all()
         //NOTE: we ignore errors comming from listeners
         .unwrap_or_default()
@@ -214,7 +212,7 @@ fn refresh_ports() -> HashMap<u32, Vec<String>> {
         .fold(HashMap::new(), |mut acc: ProcessPorts, l| {
             acc.entry(l.process.pid)
                 .or_default()
-                .push(l.socket.port().to_string());
+                .push_str(&format!("{}, ", l.socket.port()));
             acc
         })
 }
