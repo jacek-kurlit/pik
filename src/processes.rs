@@ -11,7 +11,8 @@ pub use filters::SearchBy;
 
 use filters::QueryFilter;
 
-type ProcessPorts = HashMap<u32, Vec<String>>;
+//TODO change to <u32, String>
+pub type ProcessPorts = HashMap<u32, Vec<String>>;
 
 pub struct ProcessManager {
     sys: System,
@@ -145,9 +146,16 @@ impl ProcessManager {
             .sys
             .processes()
             .values()
-            .filter(|prc| options_filter.accept(*prc))
-            .map(|prc| self.create_process_info(prc))
-            .filter(|prc| process_filter.apply(prc))
+            .filter_map(|prc| {
+                let ports = self
+                    .process_ports
+                    .get(&prc.pid().as_u32())
+                    .map(|p| p.join(", "));
+                if !options_filter.accept(prc) || !process_filter.accept(prc, ports.as_deref()) {
+                    return None;
+                }
+                Some(self.create_process_info(prc, ports))
+            })
             .collect();
 
         ProcessSearchResults {
@@ -156,7 +164,7 @@ impl ProcessManager {
         }
     }
 
-    fn create_process_info(&self, prc: &sysinfo::Process) -> Process {
+    fn create_process_info(&self, prc: &impl ProcessInfo, ports: Option<String>) -> Process {
         let user_name = prc
             .user_id()
             .map(|user_id| {
@@ -166,14 +174,13 @@ impl ProcessManager {
                     .unwrap_or(format!("{}?", **user_id))
             })
             .unwrap_or("unknown".to_string());
-        let cmd = prc.name().to_string();
-        let cmd_path = prc.exe().map(|e| e.to_string_lossy().to_string());
-        let pid = prc.pid().as_u32();
-        let ports = self.process_ports.get(&pid).map(|ports| ports.join(","));
+        let cmd = prc.cmd().to_string();
+        let cmd_path = prc.cmd_path().map(|p| p.to_string());
+        let pid = prc.pid();
 
         Process {
             pid,
-            parent_pid: prc.parent().map(|p| p.as_u32()),
+            parent_pid: prc.parent_id(),
             args: get_process_args(prc, &cmd_path, &cmd),
             cmd,
             cmd_path,

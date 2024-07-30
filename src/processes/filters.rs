@@ -1,6 +1,6 @@
 use sysinfo::Uid;
 
-use super::{Process, ProcessInfo};
+use super::ProcessInfo;
 
 pub(super) struct QueryFilter {
     query: String,
@@ -31,18 +31,20 @@ impl QueryFilter {
         }
     }
 
-    pub(super) fn apply(&self, prc: &Process) -> bool {
+    pub(super) fn accept(&self, prc: &impl ProcessInfo, ports: Option<&str>) -> bool {
         match self.search_by {
-            SearchBy::Cmd => prc.cmd.to_lowercase().contains(&self.query),
+            SearchBy::Cmd => prc.cmd().to_lowercase().contains(&self.query),
             SearchBy::Path => prc
-                .cmd_path
-                .as_deref()
+                .cmd_path()
                 .unwrap_or("")
                 .to_lowercase()
                 .contains(&self.query),
-            SearchBy::Args => prc.args.to_lowercase().contains(&self.query),
-            SearchBy::Port => prc
-                .ports
+            SearchBy::Args => prc
+                .args()
+                .iter()
+                .map(|a| a.to_lowercase())
+                .any(|a| a.contains(&self.query)),
+            SearchBy::Port => ports
                 .as_ref()
                 .map(|p| p.contains(&self.query))
                 .unwrap_or(false),
@@ -117,115 +119,111 @@ pub mod tests {
     }
 
     #[test]
-    fn test_query_filter_search_by_cmd() {
+    fn query_filter_search_by_cmd() {
         let filter = QueryFilter::new("test");
-        let mut process = some_process();
-
-        process.cmd = "TeSt".to_string();
-        assert!(filter.apply(&process));
+        let mut process = MockProcessInfo {
+            cmd: "TeSt".to_string(),
+            ..Default::default()
+        };
+        assert!(filter.accept(&process, None));
 
         process.cmd = "test".to_string();
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
         process.cmd = "TEST".to_string();
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
         process.cmd = "Testificator".to_string();
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
         process.cmd = "online_TESTER".to_string();
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
         process.cmd = "xxx".to_string();
-        assert!(!filter.apply(&process));
+        assert!(!filter.accept(&process, None));
     }
 
     #[test]
-    fn test_query_filter_search_by_path() {
+    fn query_filter_search_by_path() {
         let filter = QueryFilter::new("/test");
-        let mut process = some_process();
-
-        process.cmd_path = Some("/TeSt".to_string());
-        assert!(filter.apply(&process));
+        let mut process = MockProcessInfo {
+            cmd_path: Some("/TeSt".to_string()),
+            ..Default::default()
+        };
+        assert!(filter.accept(&process, None));
 
         process.cmd_path = Some("/test".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
         process.cmd_path = Some("/TEST".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
         process.cmd_path = Some("/testing_dir".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
         process.cmd_path = Some("/cargo/tests".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
         process.cmd_path = Some("/xxx".to_string());
-        assert!(!filter.apply(&process));
+        assert!(!filter.accept(&process, None));
     }
 
     #[test]
-    fn test_query_filter_search_by_args() {
+    fn query_filter_search_by_args() {
         let filter = QueryFilter::new("-test");
-        let mut process = some_process();
+        let mut process = MockProcessInfo::default();
 
-        process.args = "-TeSt".to_string();
-        assert!(filter.apply(&process));
+        process = process.with_args(&["-TeSt"]);
+        assert!(filter.accept(&process, None));
 
-        process.args = "-test".to_string();
-        assert!(filter.apply(&process));
+        process = process.with_args(&["-test"]);
+        assert!(filter.accept(&process, None));
 
-        process.args = "-TEST".to_string();
-        assert!(filter.apply(&process));
+        process = process.with_args(&["-TEST"]);
+        assert!(filter.accept(&process, None));
 
-        process.args = "arg1, arg2, --testifier".to_string();
-        assert!(filter.apply(&process));
+        process = process.with_args(&["arg1, arg2, --testifier"]);
+        assert!(filter.accept(&process, None));
 
-        process.args = "testimony".to_string();
-        assert!(filter.apply(&process));
+        process = process.with_args(&["testimony"]);
+        assert!(filter.accept(&process, None));
 
-        process.args = "-xxx".to_string();
-        assert!(!filter.apply(&process));
+        process = process.with_args(&["-xxx"]);
+        assert!(!filter.accept(&process, None));
     }
 
     #[test]
-    fn test_query_filter_search_by_port() {
+    fn query_filter_search_by_port() {
         let filter = QueryFilter::new(":12");
-        let mut process = some_process();
+        let process = MockProcessInfo::default();
 
-        process.ports = Some("1234".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, Some("1234")));
 
-        process.ports = Some("3312".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, Some("3312")));
 
-        process.ports = Some("5125".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, Some("5125")));
 
-        process.ports = Some("1111, 2222, 1234".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, Some("1111, 2222, 1234")));
 
-        process.ports = Some("7777".to_string());
-        assert!(!filter.apply(&process));
+        assert!(!filter.accept(&process, Some("7777")));
     }
 
     #[test]
-    fn test_query_filter_search_by_none() {
+    fn query_filter_search_by_none() {
         let filter = QueryFilter::new("");
-        let mut process = some_process();
-        assert!(filter.apply(&process));
+        let mut process = MockProcessInfo::default();
+        assert!(filter.accept(&process, None));
 
         process.cmd = "TeSt".to_string();
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
         process.cmd_path = Some("/TeSt".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, None));
 
-        process.args = "-TeSt".to_string();
-        assert!(filter.apply(&process));
+        process = process.with_args(&["-TeSt"]);
+        assert!(filter.accept(&process, None));
 
-        process.ports = Some("1234".to_string());
-        assert!(filter.apply(&process));
+        assert!(filter.accept(&process, Some("1234")));
     }
 
     #[test]
@@ -302,20 +300,5 @@ pub mod tests {
 
         prc.user_id = Uid::from_str("1001").unwrap();
         assert!(filter.accept(&prc));
-    }
-
-    fn some_process() -> Process {
-        Process {
-            pid: 1,
-            parent_pid: None,
-            user_name: "xxx".to_string(),
-            cmd: "xxx".to_string(),
-            cmd_path: Some("xxx".to_string()),
-            args: "xxx, xxx2, --xxx3".to_string(),
-            ports: Some("0000".to_string()),
-            memory: 0,
-            start_time: "00:00:00".to_string(),
-            run_time: "00:00:00".to_string(),
-        }
     }
 }
