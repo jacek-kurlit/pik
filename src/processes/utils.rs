@@ -52,16 +52,16 @@ pub mod tests {
     use super::*;
 
     pub struct MockProcessInfo {
-        pid: u32,
-        parent_pid: Option<u32>,
-        user_id: Uid,
-        is_thread: bool,
-        cmd: String,
-        cmd_path: Option<String>,
-        args: Vec<String>,
-        memory: u64,
-        start_time: u64,
-        run_time: u64,
+        pub pid: u32,
+        pub parent_pid: Option<u32>,
+        pub user_id: Uid,
+        pub is_thread: bool,
+        pub cmd: String,
+        pub cmd_path: Option<String>,
+        pub args: Vec<String>,
+        pub memory: u64,
+        pub start_time: u64,
+        pub run_time: u64,
     }
 
     impl ProcessInfo for MockProcessInfo {
@@ -106,8 +106,8 @@ pub mod tests {
         }
     }
 
-    impl MockProcessInfo {
-        pub fn new() -> MockProcessInfo {
+    impl Default for MockProcessInfo {
+        fn default() -> MockProcessInfo {
             MockProcessInfo {
                 pid: 1,
                 parent_pid: None,
@@ -121,7 +121,9 @@ pub mod tests {
                 run_time: 0,
             }
         }
+    }
 
+    impl MockProcessInfo {
         pub fn with_args(mut self, args: &[&str]) -> MockProcessInfo {
             self.args = args.iter().map(|s| s.to_string()).collect();
             self
@@ -130,7 +132,7 @@ pub mod tests {
 
     #[test]
     fn test_get_process_args() {
-        let mut prc = MockProcessInfo::new();
+        let mut prc = MockProcessInfo::default();
 
         prc = prc.with_args(&["cmd", "a1", "a2"]);
         assert_eq!(get_process_args(&prc, &None, "cmd"), "a1, a2");

@@ -145,7 +145,7 @@ impl ProcessManager {
             .sys
             .processes()
             .values()
-            .filter(|prc| options_filter.apply(*prc))
+            .filter(|prc| options_filter.accept(*prc))
             .map(|prc| self.create_process_info(prc))
             .filter(|prc| process_filter.apply(prc))
             .collect();

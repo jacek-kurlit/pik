@@ -51,7 +51,7 @@ impl QueryFilter {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 pub struct FilterOptions {
     //NOTE: On linux threads can be listed as processes and thus needs filtering
     pub ignore_threads: bool,
@@ -59,25 +59,27 @@ pub struct FilterOptions {
 }
 
 pub(super) struct OptionsFilter<'a> {
-    options: FilterOptions,
+    opt: FilterOptions,
     current_user_id: &'a Uid,
 }
 
 impl<'a> OptionsFilter<'a> {
-    pub fn new(options: FilterOptions, current_user_id: &'a Uid) -> Self {
+    pub fn new(opt: FilterOptions, current_user_id: &'a Uid) -> Self {
         Self {
-            options,
+            opt,
             current_user_id,
         }
     }
 
-    //TODO: add tests
-    pub fn apply(&self, prc: &impl ProcessInfo) -> bool {
+    pub fn accept(&self, prc: &impl ProcessInfo) -> bool {
         {
-            if self.options.ignore_threads && prc.is_thread() {
+            if self.opt.ignore_threads && prc.is_thread() {
                 return false;
             }
-            !self.options.user_processes_only || prc.user_id() == Some(self.current_user_id)
+            if !self.opt.user_processes_only {
+                return true;
+            }
+            prc.user_id() == Some(self.current_user_id)
         }
     }
 }
@@ -85,10 +87,14 @@ impl<'a> OptionsFilter<'a> {
 #[cfg(test)]
 pub mod tests {
 
+    use std::str::FromStr;
+
+    use crate::processes::utils::tests::MockProcessInfo;
+
     use super::*;
 
     #[test]
-    fn should_create_proper_filter() {
+    fn should_create_proper_query_filter() {
         let filter = QueryFilter::new("FOO");
         assert_eq!(filter.search_by, SearchBy::Cmd);
         assert_eq!(filter.query, "foo");
@@ -111,7 +117,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_apply_search_by_cmd() {
+    fn test_query_filter_search_by_cmd() {
         let filter = QueryFilter::new("test");
         let mut process = some_process();
 
@@ -135,7 +141,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_apply_search_by_path() {
+    fn test_query_filter_search_by_path() {
         let filter = QueryFilter::new("/test");
         let mut process = some_process();
 
@@ -159,7 +165,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_apply_search_by_args() {
+    fn test_query_filter_search_by_args() {
         let filter = QueryFilter::new("-test");
         let mut process = some_process();
 
@@ -183,7 +189,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_apply_search_by_port() {
+    fn test_query_filter_search_by_port() {
         let filter = QueryFilter::new(":12");
         let mut process = some_process();
 
@@ -204,7 +210,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_apply_search_by_none() {
+    fn test_query_filter_search_by_none() {
         let filter = QueryFilter::new("");
         let mut process = some_process();
         assert!(filter.apply(&process));
@@ -220,6 +226,82 @@ pub mod tests {
 
         process.ports = Some("1234".to_string());
         assert!(filter.apply(&process));
+    }
+
+    #[test]
+    fn options_filter_should_ignore_thread_processes() {
+        let current_user_id = Uid::from_str("1").unwrap();
+        let filter = OptionsFilter::new(
+            FilterOptions {
+                ignore_threads: true,
+                ..Default::default()
+            },
+            &current_user_id,
+        );
+        let prc = MockProcessInfo {
+            is_thread: true,
+            ..Default::default()
+        };
+
+        assert!(!filter.accept(&prc));
+    }
+
+    #[test]
+    fn options_filter_should_accept_all_threads_processes() {
+        let current_user_id = Uid::from_str("1").unwrap();
+        let filter = OptionsFilter::new(
+            FilterOptions {
+                ignore_threads: false,
+                ..Default::default()
+            },
+            &current_user_id,
+        );
+        let prc = MockProcessInfo {
+            is_thread: true,
+            ..Default::default()
+        };
+
+        assert!(filter.accept(&prc));
+    }
+
+    #[test]
+    fn options_filter_should_accept_only_current_user_processes() {
+        let current_user_id = Uid::from_str("1000").unwrap();
+        let filter = OptionsFilter::new(
+            FilterOptions {
+                user_processes_only: true,
+                ..Default::default()
+            },
+            &current_user_id,
+        );
+        let mut prc = MockProcessInfo {
+            user_id: current_user_id.clone(),
+            ..Default::default()
+        };
+        assert!(filter.accept(&prc));
+
+        prc.user_id = Uid::from_str("1001").unwrap();
+        assert!(!filter.accept(&prc));
+    }
+
+    #[test]
+    fn options_filter_should_accept_all_processes() {
+        let current_user_id = Uid::from_str("1000").unwrap();
+        let filter = OptionsFilter::new(
+            FilterOptions {
+                user_processes_only: false,
+                ..Default::default()
+            },
+            &current_user_id,
+        );
+        let mut prc = MockProcessInfo {
+            user_id: current_user_id.clone(),
+            ..Default::default()
+        };
+        assert!(filter.accept(&prc));
+
+        prc.user_id = Uid::from_str("1001").unwrap();
+        assert!(filter.accept(&prc));
     }
 
     fn some_process() -> Process {
