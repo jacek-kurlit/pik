@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use anyhow::Result;
+use sysinfo::ProcessRefreshKind;
 use sysinfo::{Pid, System, Uid, Users};
 
 mod filters;
@@ -111,9 +112,8 @@ impl ProcessSearchResults {
         self.items.get(index)
     }
 
-    pub fn remove(&mut self, index: Option<usize>) -> Option<Process> {
-        let index = index?;
-        Some(self.items.remove(index))
+    pub fn remove(&mut self, pid: u32) {
+        self.items.retain(|prc| prc.pid != pid)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Process> {
@@ -160,6 +160,14 @@ impl ProcessManager {
             search_by: process_filter.search_by,
             items,
         }
+    }
+
+    pub fn refresh(&mut self) {
+        self.sys
+            .refresh_processes_specifics(ProcessRefreshKind::everything());
+        //TODO: do we really need to refresh users?
+        self.users.refresh_list();
+        self.process_ports = refresh_ports();
     }
 
     fn create_process_info(&self, prc: &impl ProcessInfo, ports: Option<&String>) -> Process {

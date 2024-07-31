@@ -20,7 +20,7 @@ impl QueryFilter {
     pub fn new(query: &str) -> Self {
         let (search_by, query) = match query.chars().next() {
             Some(':') => (SearchBy::Port, &query[1..]),
-            Some('/') => (SearchBy::Path, query),
+            Some('/') => (SearchBy::Path, &query[1..]),
             Some('-') => (SearchBy::Args, &query[1..]),
             Some(_) => (SearchBy::Cmd, query),
             None => (SearchBy::None, query),
@@ -103,7 +103,7 @@ pub mod tests {
 
         let filter = QueryFilter::new("/Foo");
         assert_eq!(filter.search_by, SearchBy::Path);
-        assert_eq!(filter.query, "/foo");
+        assert_eq!(filter.query, "foo");
 
         let filter = QueryFilter::new("-fOo");
         assert_eq!(filter.search_by, SearchBy::Args);

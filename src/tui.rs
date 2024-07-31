@@ -41,6 +41,9 @@ impl App {
     }
 
     fn search_for_processess(&mut self) {
+        self.tui.reset_error_message();
+        //TODO: maybe refresh and search should be inside process manager?
+        self.process_manager.refresh();
         self.search_results = self
             .process_manager
             .find_processes(self.tui.search_input_text(), self.filter_options);
@@ -53,11 +56,20 @@ impl App {
     }
 
     fn kill_selected_process(&mut self) {
+        self.tui.reset_error_message();
         let prc_index = self.tui.get_selected_row_index();
         if let Some(prc) = self.search_results.nth(prc_index) {
-            if self.process_manager.kill_process(prc.pid) {
-                self.search_results.remove(prc_index);
+            let pid = prc.pid;
+            if self.process_manager.kill_process(pid) {
+                self.search_for_processess();
+                //NOTE: cache refresh takes time and process may reappear in list!
+                self.search_results.remove(pid);
+                //TODO: this must be here because details will show 1/0 when removed!
+                // seems like this can only be fixed by autorefresh!
                 self.tui.update_number_of_items(self.search_results.len());
+            } else {
+                self.tui
+                    .set_error_message("Failed to kill process, check permissions");
             }
         }
     }
