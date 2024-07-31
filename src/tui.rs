@@ -44,6 +44,7 @@ impl App {
         self.search_results = self
             .process_manager
             .find_processes(self.tui.search_input_text(), self.filter_options);
+        self.tui.reset_error_message();
         self.tui.update_number_of_items(self.search_results.len());
     }
 
@@ -54,10 +55,14 @@ impl App {
 
     fn kill_selected_process(&mut self) {
         let prc_index = self.tui.get_selected_row_index();
+        self.tui.reset_error_message();
         if let Some(prc) = self.search_results.nth(prc_index) {
             if self.process_manager.kill_process(prc.pid) {
                 self.search_results.remove(prc_index);
                 self.tui.update_number_of_items(self.search_results.len());
+            } else {
+                self.tui
+                    .set_error_message("Failed to kill process, check permissions");
             }
         }
     }

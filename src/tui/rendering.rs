@@ -1,7 +1,7 @@
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Margin, Rect},
-    style::{palette::tailwind, Color, Modifier, Style},
-    text::{Line, Text},
+    style::{palette::tailwind, Color, Modifier, Style, Stylize},
+    text::{Line, Span, Text},
     widgets::{
         block::{Position, Title},
         Block, BorderType, Borders, HighlightSpacing, Paragraph, Row, Scrollbar,
@@ -41,6 +41,7 @@ pub struct Tui {
     number_of_items: usize,
     details_scroll_state: ScrollbarState,
     process_details_scroll: u16,
+    error_message: Option<&'static str>,
 }
 
 impl Tui {
@@ -55,6 +56,7 @@ impl Tui {
             process_details_scroll: 0,
             //NOTE: we don't update this, value 1 means that this should be rendered
             details_scroll_state: ScrollbarState::new(1),
+            error_message: None,
         };
         ui.move_search_cursor_to_end();
         ui
@@ -120,6 +122,14 @@ impl Tui {
 
     fn reset_process_detals_scroll(&mut self) {
         self.process_details_scroll = 0;
+    }
+
+    pub fn set_error_message(&mut self, message: &'static str) {
+        self.error_message = Some(message);
+    }
+
+    pub fn reset_error_message(&mut self) {
+        self.error_message = None;
     }
 
     pub fn delete_char(&mut self) {
@@ -198,7 +208,7 @@ impl Tui {
 
         self.render_process_details(frame, search_results, rects[2]);
 
-        render_help(frame, rects[3]);
+        render_help(frame, self.error_message, rects[3]);
     }
 
     fn render_search_input(&self, f: &mut Frame, area: Rect) {
@@ -376,9 +386,14 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
 const HELP_TEXT: &str =
     "ESC quit | CTRL + D kill process | CTRL + F details forward | CTRL + B details backward ";
 
-fn render_help(f: &mut Frame, area: Rect) {
-    let help = Paragraph::new(Line::from(HELP_TEXT))
-        .right_aligned()
+fn render_help(f: &mut Frame, error_message: Option<&str>, area: Rect) {
+    let rects = Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)])
+        .horizontal_margin(1)
+        .split(area);
+    let error = Paragraph::new(Span::from(error_message.unwrap_or("")).fg(Color::Red))
+        .left_aligned()
         .block(Block::default().borders(Borders::NONE));
-    f.render_widget(help, area);
+    let help = Paragraph::new(Line::from(HELP_TEXT)).right_aligned();
+    f.render_widget(error, rects[0]);
+    f.render_widget(help, rects[1]);
 }
