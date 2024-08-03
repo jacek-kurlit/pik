@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::SystemTime;
 
 use anyhow::Result;
 use sysinfo::ProcessRefreshKind;
@@ -23,7 +24,7 @@ pub struct ProcessManager {
 
 use self::filters::OptionsFilter;
 use self::utils::{
-    find_current_process_user, format_as_epoch_time, format_seconds_as_hh_mm_ss, get_process_args,
+    find_current_process_user, get_process_args, process_run_time, process_start_time,
 };
 
 pub trait ProcessInfo {
@@ -193,8 +194,8 @@ impl ProcessManager {
             user_name,
             ports: ports.cloned(),
             memory: prc.memory(),
-            start_time: format_as_epoch_time(prc.start_time()),
-            run_time: format_seconds_as_hh_mm_ss(prc.run_time()),
+            start_time: process_start_time(prc.start_time()),
+            run_time: process_run_time(prc.run_time(), SystemTime::now()),
         }
     }
 

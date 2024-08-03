@@ -1,7 +1,7 @@
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Utc};
 use sysinfo::{System, Uid};
 
 use super::ProcessInfo;
@@ -23,17 +23,18 @@ pub(super) fn get_process_args(
     args.join(", ")
 }
 
-pub(super) fn format_seconds_as_hh_mm_ss(seconds: u64) -> String {
-    let hours = seconds / 3600;
-    let minutes = (seconds % 3600) / 60;
-    let seconds = seconds % 60;
+pub(super) fn process_run_time(run_duration_since_epoch: u64, now: SystemTime) -> String {
+    let now_since_epoch = now.duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let seconds_diff = now_since_epoch.saturating_sub(run_duration_since_epoch);
+    let hours = seconds_diff / 3600;
+    let minutes = (seconds_diff % 3600) / 60;
+    let seconds = seconds_diff % 60;
     format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
 }
 
-//TODO: try to create test for this
-pub(super) fn format_as_epoch_time(time: u64) -> String {
-    let system_time = UNIX_EPOCH + Duration::from_secs(time);
-    let datetime: DateTime<Local> = system_time.into();
+pub(super) fn process_start_time(seconds_since_epoch: u64) -> String {
+    let system_time = UNIX_EPOCH + Duration::from_secs(seconds_since_epoch);
+    let datetime: DateTime<Utc> = system_time.into();
     datetime.format("%H:%M:%S").to_string()
 }
 
@@ -48,7 +49,7 @@ pub(super) fn find_current_process_user(sys: &System) -> Result<Uid> {
 #[cfg(test)]
 pub mod tests {
 
-    use std::str::FromStr;
+    use std::{ops::Mul, str::FromStr, time::Duration};
 
     use super::*;
 
@@ -147,21 +148,28 @@ pub mod tests {
     }
 
     #[test]
-    fn test_format_seconds_as_hh_mm_ss() {
-        assert_eq!(format_seconds_as_hh_mm_ss(0), "00:00:00");
-        assert_eq!(format_seconds_as_hh_mm_ss(3600), "01:00:00");
-        assert_eq!(
-            format_seconds_as_hh_mm_ss(3600 * 2 + 60 * 30 + 10),
-            "02:30:10"
-        );
+    fn test_process_run_time() {
+        let run_time = |hours: u64, minutes: u64, seconds: u64| {
+            let duration = as_duration(hours, minutes, seconds);
+            process_run_time(duration.as_secs(), UNIX_EPOCH + duration.mul(2))
+        };
+        assert_eq!(run_time(0, 0, 0), "00:00:00");
+        assert_eq!(run_time(0, 30, 5), "00:30:05");
+        assert_eq!(run_time(2, 45, 15), "02:45:15");
     }
 
-    //FIXME: this fails on github
-    // #[test]
-    // fn test_fromat_as_epoch_time() {
-    //     assert_eq!(format_as_epoch_time(0), "01:00:00");
-    //     assert_eq!(format_as_epoch_time(3600), "02:00:00");
-    //     assert_eq!(format_as_epoch_time(3600 * 2 + 60 * 30 + 10), "03:30:10");
-    // }
-    //
+    #[test]
+    fn test_process_start_time() {
+        let start_time = |hours: u64, minutes: u64, seconds: u64| {
+            let seconds_since_epoch = as_duration(hours, minutes, seconds).as_secs();
+            process_start_time(seconds_since_epoch)
+        };
+        assert_eq!(start_time(0, 0, 0), "00:00:00");
+        assert_eq!(start_time(1, 45, 15), "01:45:15");
+        assert_eq!(start_time(5, 29, 59), "05:29:59");
+    }
+
+    fn as_duration(hours: u64, minutes: u64, seconds: u64) -> Duration {
+        Duration::from_secs(hours * 3600 + minutes * 60 + seconds)
+    }
 }
