@@ -32,23 +32,20 @@ jobs:
             target: aarch64-apple-darwin
 
     steps:
-      - uses: moonrepo/setup-rust@v1
-        with:          
-          targets: ${{ matrix.target }}
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Get the release version from the tag
         shell: bash
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      - name: Checkout
-        uses: actions/checkout@v3
-
+      - uses: moonrepo/setup-rust@v1
+        with:          
+          targets: ${{ matrix.target }}
       - name: Run cargo test
         if: "!matrix.skip_tests"
         run: cargo test --release --locked --target ${{ matrix.target }}
       - name: Build
-        with:
-          use-cross: true
         run: cargo build --verbose --release --locked --target ${{ matrix.target }}
 
       - name: Build archive
