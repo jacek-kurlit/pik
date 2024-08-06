@@ -16,11 +16,11 @@ pub(super) fn get_process_args(
     let cmd_path = cmd_path.as_deref().unwrap_or("");
     if args
         .first()
-        .is_some_and(|arg1| arg1 == cmd_path || arg1.ends_with(cmd))
+        .is_some_and(|arg1| *arg1 == cmd_path || arg1.ends_with(cmd))
     {
-        return args[1..].join(", ");
+        return args[1..].join(", ").to_string();
     }
-    args.join(", ")
+    args.join(", ").to_string()
 }
 
 pub(super) fn process_run_time(run_duration_since_epoch: u64, now: SystemTime) -> String {
@@ -103,8 +103,8 @@ pub mod tests {
             self.run_time
         }
 
-        fn args(&self) -> &[String] {
-            &self.args
+        fn args(&self) -> Vec<&str> {
+            self.args.iter().map(|a| a.as_str()).collect()
         }
     }
 

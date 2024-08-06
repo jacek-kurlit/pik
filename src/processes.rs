@@ -46,7 +46,7 @@ pub trait ProcessInfo {
 
     fn run_time(&self) -> u64;
 
-    fn args(&self) -> &[String];
+    fn args(&self) -> Vec<&str>;
 }
 
 impl ProcessInfo for sysinfo::Process {
@@ -59,7 +59,7 @@ impl ProcessInfo for sysinfo::Process {
     }
 
     fn cmd(&self) -> &str {
-        self.name()
+        self.name().to_str().unwrap_or_default()
     }
 
     fn cmd_path(&self) -> Option<&str> {
@@ -86,8 +86,8 @@ impl ProcessInfo for sysinfo::Process {
         self.start_time()
     }
 
-    fn args(&self) -> &[String] {
-        self.cmd()
+    fn args(&self) -> Vec<&str> {
+        self.cmd().iter().filter_map(|a| a.to_str()).collect()
     }
 }
 
@@ -164,8 +164,10 @@ impl ProcessManager {
     }
 
     pub fn refresh(&mut self) {
-        self.sys
-            .refresh_processes_specifics(ProcessRefreshKind::everything());
+        self.sys.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            ProcessRefreshKind::everything(),
+        );
         //TODO: do we really need to refresh users?
         self.users.refresh_list();
         self.process_ports = refresh_ports();
