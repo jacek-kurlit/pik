@@ -1,6 +1,6 @@
 [package]
 name = "pik"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 authors = ["Jacek Kurlit"]
 keywords = ["terminal", "process", "linux", "system", "kill"]
@@ -13,7 +13,7 @@ repository = "https://github.com/jacek-kurlit/pik"
 
 [dependencies]
 crossterm = "0.28"
-ratatui = "0.27"
+ratatui = "0.28"
 anyhow = "1.0.79"
 sysinfo = "0.31"
 listeners = "0.2.1"
