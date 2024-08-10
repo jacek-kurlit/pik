@@ -1,12 +1,13 @@
-use std::env;
-
 use anyhow::Result;
+use args::Args;
+use clap::Parser;
 use tui::start_app;
 
+mod args;
 mod processes;
 mod tui;
 
 fn main() -> Result<()> {
-    let args: Vec<String> = env::args().skip(1).collect();
-    start_app(args.into_iter().next().unwrap_or("".to_string()))
+    let args = Args::parse();
+    start_app(args.query)
 }
