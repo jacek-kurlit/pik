@@ -1,7 +1,13 @@
 [package]
 name = "pik"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
+authors = ["Jacek Kurlit"]
+keywords = ["terminal", "process", "linux", "system", "kill"]
+categories = ["command-line-utilities"]
+license-file = "LICENSE"
+description = "pik - process interactive kill"
+repository = "https://github.com/jacek-kurlit/pik"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
