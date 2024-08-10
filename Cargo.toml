@@ -1,6 +1,6 @@
 [package]
 name = "pik"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 authors = ["Jacek Kurlit"]
 keywords = ["terminal", "process", "linux", "system", "kill"]
@@ -18,3 +18,4 @@ anyhow = "1.0.79"
 sysinfo = "0.31"
 listeners = "0.2.1"
 chrono = "0.4"
+clap = { version = "4.5", features = ["derive"] }
