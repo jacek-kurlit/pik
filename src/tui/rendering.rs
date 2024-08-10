@@ -200,7 +200,7 @@ impl Tui {
             Constraint::Max(7),
             Constraint::Length(1),
         ])
-        .split(frame.size());
+        .split(frame.area());
 
         self.render_search_input(frame, rects[0]);
 
@@ -216,10 +216,10 @@ impl Tui {
         let current_input = format!("{}{}", prompt, self.search_input_text());
         let input = Paragraph::new(current_input.as_str());
         f.render_widget(input, area);
-        f.set_cursor(
+        f.set_cursor_position((
             area.x + self.character_index as u16 + prompt.len() as u16,
             area.y,
-        );
+        ));
     }
 
     fn render_process_table(
