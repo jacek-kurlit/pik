@@ -117,7 +117,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Home => app.tui.move_search_cursor_to_start(),
                     Left => app.tui.move_search_cursor_left(),
                     Right => app.tui.move_search_cursor_right(),
-                    Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.kill_selected_process()
                     }
                     Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
