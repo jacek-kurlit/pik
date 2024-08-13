@@ -21,14 +21,11 @@ struct App {
 }
 
 impl App {
-    fn new(search_criteria: String) -> Result<App> {
+    fn new(search_criteria: String, filter_options: FilterOptions) -> Result<App> {
         let mut app = App {
             process_manager: ProcessManager::new()?,
             search_results: ProcessSearchResults::empty(),
-            filter_options: FilterOptions {
-                ignore_threads: true,
-                user_processes_only: true,
-            },
+            filter_options,
             tui: Tui::new(search_criteria),
         };
         app.search_for_processess();
@@ -75,7 +72,7 @@ impl App {
     }
 }
 
-pub fn start_app(search_criteria: String) -> Result<()> {
+pub fn start_app(search_criteria: String, filter_options: FilterOptions) -> Result<()> {
     // setup terminal
     enable_raw_mode()?;
     let backend = CrosstermBackend::new(io::stdout());
@@ -87,7 +84,7 @@ pub fn start_app(search_criteria: String) -> Result<()> {
     )?;
 
     // create app and run it
-    let app = App::new(search_criteria)?;
+    let app = App::new(search_criteria, filter_options)?;
     let res = run_app(&mut terminal, app);
 
     // restore terminal
