@@ -13,7 +13,7 @@ fn main() -> Result<()> {
     start_app(
         args.query,
         FilterOptions {
-            ignore_threads: !args.threads_processes,
+            ignore_threads: !args.include_threads_processes,
             include_all_processes: args.all_processes,
         },
     )

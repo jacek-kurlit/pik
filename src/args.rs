@@ -13,10 +13,10 @@ pub struct Args {
         If no prefix is given search will be done by process name"#
     )]
     pub query: String,
-    /// On linux threads can be listed as processes which are ignored by default. This option allows to include them
-    #[arg(short, long, default_value_t = false)]
-    pub threads_processes: bool,
-    /// By default pik shows only proceseses owned by current user. This option allows to show all processes
+    /// On linux threads can be listed as processes which are ignored by default. This flag allows to include them
+    #[arg(short = 't', long, default_value_t = false)]
+    pub include_threads_processes: bool,
+    /// By default pik shows only proceseses owned by current user. This flag allows to show all processes
     #[arg(short, long, default_value_t = false)]
     pub all_processes: bool,
 }
