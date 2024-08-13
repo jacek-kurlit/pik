@@ -14,7 +14,7 @@ fn main() -> Result<()> {
         args.query,
         FilterOptions {
             ignore_threads: !args.threads_processes,
-            user_processes_only: !args.all_processes,
+            include_all_processes: args.all_processes,
         },
     )
 }

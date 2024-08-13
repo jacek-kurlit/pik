@@ -57,7 +57,7 @@ impl QueryFilter {
 pub struct FilterOptions {
     //NOTE: On linux threads can be listed as processes and thus needs filtering
     pub ignore_threads: bool,
-    pub user_processes_only: bool,
+    pub include_all_processes: bool,
 }
 
 pub(super) struct OptionsFilter<'a> {
@@ -78,7 +78,7 @@ impl<'a> OptionsFilter<'a> {
             if self.opt.ignore_threads && prc.is_thread() {
                 return false;
             }
-            if !self.opt.user_processes_only {
+            if self.opt.include_all_processes {
                 return true;
             }
             prc.user_id() == Some(self.current_user_id)
@@ -267,7 +267,7 @@ pub mod tests {
         let current_user_id = Uid::from_str("1000").unwrap();
         let filter = OptionsFilter::new(
             FilterOptions {
-                user_processes_only: true,
+                include_all_processes: false,
                 ..Default::default()
             },
             &current_user_id,
@@ -287,7 +287,7 @@ pub mod tests {
         let current_user_id = Uid::from_str("1000").unwrap();
         let filter = OptionsFilter::new(
             FilterOptions {
-                user_processes_only: false,
+                include_all_processes: true,
                 ..Default::default()
             },
             &current_user_id,
