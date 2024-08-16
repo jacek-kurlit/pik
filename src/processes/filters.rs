@@ -1,6 +1,6 @@
 use sysinfo::Uid;
 
-use super::ProcessInfo;
+use super::{utils::get_process_args, ProcessInfo};
 
 pub(super) struct QueryFilter {
     query: String,
@@ -37,14 +37,13 @@ impl QueryFilter {
         match self.search_by {
             SearchBy::Cmd => self.query_matches_str(prc.cmd()),
             SearchBy::Path => self.query_matches_opt(prc.cmd_path()),
-            SearchBy::Args => self.query_matches_vec(prc.args()),
+            SearchBy::Args => self.query_matches_vec(get_process_args(prc)),
             SearchBy::Port => self.query_matches_opt(ports),
             SearchBy::Everywhere => {
                 self.query_matches_str(prc.cmd())
                     || self.query_matches_opt(prc.cmd_path())
                     || self.query_matches_opt(ports)
-                    //FIXME: wrong, we should filter first arg first!
-                    || self.query_matches_vec(prc.args())
+                    || self.query_matches_vec(get_process_args(prc))
             }
             SearchBy::None => true,
         }
@@ -55,7 +54,7 @@ impl QueryFilter {
     }
 
     fn query_matches_opt(&self, s: Option<&str>) -> bool {
-        self.query_matches_str(s.unwrap_or_default())
+        s.map(|v| self.query_matches_str(v)).unwrap_or(false)
     }
 
     fn query_matches_vec(&self, s: Vec<&str>) -> bool {
@@ -203,6 +202,17 @@ pub mod tests {
         assert!(filter.accept(&process, None));
 
         process = process.with_args(&["-xxx"]);
+        assert!(!filter.accept(&process, None));
+    }
+
+    #[test]
+    fn query_filter_search_by_args_ignores_cmd_in_args() {
+        let filter = QueryFilter::new("-test");
+        let process = MockProcessInfo {
+            cmd: "test".into(),
+            args: vec!["-test".into(), "-xxx".into()],
+            ..Default::default()
+        };
         assert!(!filter.accept(&process, None));
     }
 
