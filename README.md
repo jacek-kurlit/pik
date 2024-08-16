@@ -39,6 +39,8 @@ Pik allows to search processes by:
 ![Example search by argument](docs/search_by_arg.gif)
 - Ports - Prefix search with ':' for example ':8080'
 ![Example search by port](docs/search_by_port.gif)
+- Everywhere - Prefix search with '~' for example '~firefox'
+![Example search everywhere](docs/search_everywhere.gif)
 
 After selecting process you can kill it with Ctrl + X
 

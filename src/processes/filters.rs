@@ -1,6 +1,6 @@
 use sysinfo::Uid;
 
-use super::ProcessInfo;
+use super::{utils::get_process_args, ProcessInfo};
 
 pub(super) struct QueryFilter {
     query: String,
@@ -13,6 +13,7 @@ pub enum SearchBy {
     Port,
     Path,
     Args,
+    Everywhere,
     None,
 }
 
@@ -22,6 +23,7 @@ impl QueryFilter {
             Some(':') => (SearchBy::Port, &query[1..]),
             Some('/') => (SearchBy::Path, &query[1..]),
             Some('-') => (SearchBy::Args, &query[1..]),
+            Some('~') => (SearchBy::Everywhere, &query[1..]),
             Some(_) => (SearchBy::Cmd, query),
             None => (SearchBy::None, query),
         };
@@ -33,23 +35,30 @@ impl QueryFilter {
 
     pub(super) fn accept(&self, prc: &impl ProcessInfo, ports: Option<&str>) -> bool {
         match self.search_by {
-            SearchBy::Cmd => prc.cmd().to_lowercase().contains(&self.query),
-            SearchBy::Path => prc
-                .cmd_path()
-                .unwrap_or("")
-                .to_lowercase()
-                .contains(&self.query),
-            SearchBy::Args => prc
-                .args()
-                .iter()
-                .map(|a| a.to_lowercase())
-                .any(|a| a.contains(&self.query)),
-            SearchBy::Port => ports
-                .as_ref()
-                .map(|p| p.contains(&self.query))
-                .unwrap_or(false),
+            SearchBy::Cmd => self.query_matches_str(prc.cmd()),
+            SearchBy::Path => self.query_matches_opt(prc.cmd_path()),
+            SearchBy::Args => self.query_matches_vec(get_process_args(prc)),
+            SearchBy::Port => self.query_matches_opt(ports),
+            SearchBy::Everywhere => {
+                self.query_matches_str(prc.cmd())
+                    || self.query_matches_opt(prc.cmd_path())
+                    || self.query_matches_opt(ports)
+                    || self.query_matches_vec(get_process_args(prc))
+            }
             SearchBy::None => true,
         }
+    }
+
+    fn query_matches_str(&self, s: &str) -> bool {
+        s.to_lowercase().contains(&self.query)
+    }
+
+    fn query_matches_opt(&self, s: Option<&str>) -> bool {
+        s.map(|v| self.query_matches_str(v)).unwrap_or(false)
+    }
+
+    fn query_matches_vec(&self, s: Vec<&str>) -> bool {
+        s.iter().any(|a| self.query_matches_str(a))
     }
 }
 
@@ -111,6 +120,10 @@ pub mod tests {
 
         let filter = QueryFilter::new(":foo");
         assert_eq!(filter.search_by, SearchBy::Port);
+        assert_eq!(filter.query, "foo");
+
+        let filter = QueryFilter::new("~fOO");
+        assert_eq!(filter.search_by, SearchBy::Everywhere);
         assert_eq!(filter.query, "foo");
 
         let filter = QueryFilter::new("");
@@ -193,6 +206,17 @@ pub mod tests {
     }
 
     #[test]
+    fn query_filter_search_by_args_ignores_cmd_in_args() {
+        let filter = QueryFilter::new("-test");
+        let process = MockProcessInfo {
+            cmd: "test".into(),
+            args: vec!["-test".into(), "-xxx".into()],
+            ..Default::default()
+        };
+        assert!(!filter.accept(&process, None));
+    }
+
+    #[test]
     fn query_filter_search_by_port() {
         let filter = QueryFilter::new(":12");
         let process = MockProcessInfo::default();
@@ -206,6 +230,30 @@ pub mod tests {
         assert!(filter.accept(&process, Some("1111, 2222, 1234")));
 
         assert!(!filter.accept(&process, Some("7777")));
+    }
+
+    #[test]
+    fn query_filter_search_everywhere() {
+        let mut filter = QueryFilter::new("~test");
+        let mut process = MockProcessInfo {
+            cmd: "TEST".into(),
+            ..Default::default()
+        };
+        assert!(filter.accept(&process, None));
+
+        process.cmd_path = Some("/tEsT".into());
+        assert!(filter.accept(&process, None));
+
+        process = process.with_args(&["-TeSt"]);
+        assert!(filter.accept(&process, None));
+
+        filter = QueryFilter::new("~80");
+        assert!(filter.accept(&process, Some("8080")));
+
+        process.cmd = "xxx".into();
+        process.cmd_path = Some("/xxx".into());
+        process = process.with_args(&["-xxx"]);
+        assert!(!filter.accept(&process, Some("1234")));
     }
 
     #[test]

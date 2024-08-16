@@ -190,7 +190,7 @@ impl ProcessManager {
         Process {
             pid,
             parent_pid: prc.parent_id(),
-            args: get_process_args(prc, &cmd_path, &cmd),
+            args: get_process_args(prc).join(",").to_string(),
             cmd,
             cmd_path,
             user_name,

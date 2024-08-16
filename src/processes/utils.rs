@@ -7,20 +7,17 @@ use sysinfo::{System, Uid};
 use super::ProcessInfo;
 
 // NOTE: Some processes have path to binary as first argument, but also some processes has different name than cmd (for exmaple firefox)
-pub(super) fn get_process_args(
-    prc: &impl ProcessInfo,
-    cmd_path: &Option<String>,
-    cmd: &str,
-) -> String {
+pub(super) fn get_process_args(prc: &impl ProcessInfo) -> Vec<&str> {
     let args = prc.args();
-    let cmd_path = cmd_path.as_deref().unwrap_or("");
+    let cmd_path = prc.cmd_path().unwrap_or("");
+    let cmd = prc.cmd();
     if args
         .first()
         .is_some_and(|arg1| *arg1 == cmd_path || arg1.ends_with(cmd))
     {
-        return args[1..].join(", ").to_string();
+        return args.into_iter().skip(1).collect();
     }
-    args.join(", ").to_string()
+    args
 }
 
 pub(super) fn process_run_time(run_duration_since_epoch: u64, now: SystemTime) -> String {
@@ -134,17 +131,20 @@ pub mod tests {
 
     #[test]
     fn test_get_process_args() {
-        let mut prc = MockProcessInfo::default();
+        let mut prc = MockProcessInfo {
+            cmd: "exe".into(),
+            cmd_path: Some("/path/to/cmd".to_string()),
+            ..Default::default()
+        };
 
-        prc = prc.with_args(&["cmd", "a1", "a2"]);
-        assert_eq!(get_process_args(&prc, &None, "cmd"), "a1, a2");
+        prc = prc.with_args(&["exe", "a1", "a2"]);
+        assert_eq!(get_process_args(&prc), ["a1", "a2"]);
+
         prc = prc.with_args(&["/path/to/cmd", "a1"]);
-        assert_eq!(
-            get_process_args(&prc, &Some("/path/to/cmd".to_string()), "exe"),
-            "a1"
-        );
+        assert_eq!(get_process_args(&prc), ["a1"]);
+
         prc = prc.with_args(&["--a1", "-a2"]);
-        assert_eq!(get_process_args(&prc, &None, "cmd"), "--a1, -a2");
+        assert_eq!(get_process_args(&prc), ["--a1", "-a2"]);
     }
 
     #[test]
