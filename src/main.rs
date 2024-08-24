@@ -1,12 +1,8 @@
 use anyhow::Result;
-use args::Args;
 use clap::Parser;
-use processes::FilterOptions;
-use tui::start_app;
-
-mod args;
-mod processes;
-mod tui;
+use pik::args::Args;
+use pik::processes::FilterOptions;
+use pik::tui::start_app;
 
 fn main() -> Result<()> {
     let args = Args::parse();

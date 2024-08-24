@@ -19,3 +19,6 @@ sysinfo = "0.31"
 listeners = "0.2.1"
 chrono = "0.4"
 clap = { version = "4.5", features = ["derive"] }
+
+[dev-dependencies]
+http-test-server = "2.1.1"

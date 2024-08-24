@@ -91,6 +91,7 @@ impl ProcessInfo for sysinfo::Process {
     }
 }
 
+#[derive(Debug)]
 pub struct ProcessSearchResults {
     pub search_by: SearchBy,
     items: Vec<Process>,
@@ -106,6 +107,10 @@ impl ProcessSearchResults {
 
     pub fn len(&self) -> usize {
         self.items.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn nth(&self, index: Option<usize>) -> Option<&Process> {
@@ -221,13 +226,19 @@ fn refresh_ports() -> HashMap<u32, String> {
         .unwrap_or_default()
         .into_iter()
         .fold(HashMap::new(), |mut acc: ProcessPorts, l| {
-            acc.entry(l.process.pid)
-                .or_default()
-                .push_str(&format!("{}, ", l.socket.port()));
+            match acc.get_mut(&l.process.pid) {
+                Some(ports) => {
+                    ports.push_str(&format!(", {}", l.socket.port()));
+                }
+                None => {
+                    acc.insert(l.process.pid, format!("{}", l.socket.port()));
+                }
+            }
             acc
         })
 }
 
+#[derive(Debug)]
 pub struct Process {
     pub pid: u32,
     pub parent_pid: Option<u32>,
