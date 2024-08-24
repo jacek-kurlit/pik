@@ -222,20 +222,20 @@ impl ProcessManager {
 
 fn refresh_ports() -> HashMap<u32, String> {
     listeners::get_all()
-    //NOTE: we ignore errors comming from listeners
-    .unwrap_or_default()
-    .into_iter()
-    .fold(HashMap::new(), |mut acc: ProcessPorts, l| {
-        match acc.get_mut(&l.process.pid) {
-            Some(ports) => {
-                ports.push_str(&format!(", {}", l.socket.port()));
+        //NOTE: we ignore errors comming from listeners
+        .unwrap_or_default()
+        .into_iter()
+        .fold(HashMap::new(), |mut acc: ProcessPorts, l| {
+            match acc.get_mut(&l.process.pid) {
+                Some(ports) => {
+                    ports.push_str(&format!(", {}", l.socket.port()));
+                }
+                None => {
+                    acc.insert(l.process.pid, format!("{}", l.socket.port()));
+                }
             }
-            None => {
-                acc.insert(l.process.pid, format!("{}", l.socket.port()));
-            }
-        }
-        acc
-    })
+            acc
+        })
 }
 
 #[derive(Debug)]
