@@ -14,6 +14,7 @@ repository = "https://github.com/jacek-kurlit/pik"
 [dependencies]
 crossterm = "0.28"
 ratatui = "0.28"
+tui-textarea = "0.6"
 anyhow = "1.0.79"
 sysinfo = "0.31"
 listeners = "0.2.1"

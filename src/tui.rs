@@ -110,10 +110,6 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Esc => return Ok(()),
                     Up | BackTab => app.tui.select_previous_row(),
                     Tab | Down => app.tui.select_next_row(),
-                    End => app.tui.move_search_cursor_to_end(),
-                    Home => app.tui.move_search_cursor_to_start(),
-                    Left => app.tui.move_search_cursor_left(),
-                    Right => app.tui.move_search_cursor_right(),
                     Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.kill_selected_process()
                     }
@@ -125,7 +121,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     }
                     Char(to_insert) => app.enter_char(to_insert),
                     Backspace => app.delete_char(),
-                    _ => {}
+                    _ => app.tui.handle_input(key),
                 }
             }
         }

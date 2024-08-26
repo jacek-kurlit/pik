@@ -1,3 +1,4 @@
+use crossterm::event::KeyEvent;
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Margin, Rect},
     style::{palette::tailwind, Color, Modifier, Style, Stylize},
@@ -9,6 +10,7 @@ use ratatui::{
     },
     Frame,
 };
+use tui_textarea::TextArea;
 
 use crate::processes::{Process, ProcessSearchResults, SearchBy};
 
@@ -36,30 +38,28 @@ pub struct Tui {
     process_table: TableState,
     process_table_scroll: ScrollbarState,
     theme: Theme,
-    character_index: usize,
-    search_text: String,
     number_of_items: usize,
     details_scroll_state: ScrollbarState,
     process_details_scroll: u16,
+    search_area: TextArea<'static>,
     error_message: Option<&'static str>,
 }
 
 impl Tui {
     pub fn new(search_text: String) -> Self {
-        let mut ui = Self {
+        let mut search_area = TextArea::from(search_text.lines());
+        search_area.move_cursor(tui_textarea::CursorMove::End);
+        Self {
             process_table: TableState::default(),
             process_table_scroll: ScrollbarState::new(0),
             theme: Theme::new(),
-            character_index: 0,
-            search_text,
             number_of_items: 0,
             process_details_scroll: 0,
             //NOTE: we don't update this, value 1 means that this should be rendered
             details_scroll_state: ScrollbarState::new(1),
+            search_area,
             error_message: None,
-        };
-        ui.move_search_cursor_to_end();
-        ui
+        }
     }
 
     pub fn select_next_row(&mut self) {
@@ -89,27 +89,12 @@ impl Tui {
         self.reset_process_detals_scroll();
     }
 
-    pub fn move_search_cursor_left(&mut self) {
-        self.character_index = self.character_index.saturating_sub(1);
-    }
-
-    pub fn move_search_cursor_to_start(&mut self) {
-        self.character_index = 0;
-    }
-
-    pub fn move_search_cursor_to_end(&mut self) {
-        self.character_index = self.search_criteria_len();
-    }
-
-    pub fn move_search_cursor_right(&mut self) {
-        let cursor_moved_right = self.character_index.saturating_add(1);
-        self.character_index = cursor_moved_right.clamp(0, self.search_criteria_len())
+    pub fn handle_input(&mut self, input: KeyEvent) {
+        self.search_area.input(input);
     }
 
     pub fn enter_char(&mut self, new_char: char) {
-        let index = self.byte_index();
-        self.search_text.insert(index, new_char);
-        self.move_search_cursor_right();
+        self.search_area.insert_char(new_char);
     }
 
     pub fn process_details_down(&mut self) {
@@ -133,28 +118,7 @@ impl Tui {
     }
 
     pub fn delete_char(&mut self) {
-        if self.character_index == 0 {
-            return;
-        }
-        let is_not_cursor_leftmost = self.character_index != 0;
-        if is_not_cursor_leftmost {
-            // Method "remove" is not used on the saved text for deleting the selected char.
-            // Reason: Using remove on String works on bytes instead of the chars.
-            // Using remove would require special care because of char boundaries.
-
-            let current_index = self.character_index;
-            let from_left_to_current_index = current_index - 1;
-
-            // Getting all characters before the selected character.
-            let before_char_to_delete = self.search_text.chars().take(from_left_to_current_index);
-            // Getting all characters after selected character.
-            let after_char_to_delete = self.search_text.chars().skip(current_index);
-
-            // Put all characters together except the selected one.
-            // By leaving the selected one out, it is forgotten and therefore deleted.
-            self.search_text = before_char_to_delete.chain(after_char_to_delete).collect();
-            self.move_search_cursor_left();
-        }
+        self.search_area.delete_char();
     }
 
     pub fn get_selected_row_index(&self) -> Option<usize> {
@@ -174,23 +138,7 @@ impl Tui {
     }
 
     pub fn search_input_text(&self) -> &str {
-        &self.search_text
-    }
-
-    /// Returns the byte index based on the character position.
-    ///
-    /// Since each character in a string can be contain multiple bytes, it's necessary to calculate
-    /// the byte index based on the index of the character.
-    fn byte_index(&self) -> usize {
-        self.search_text
-            .char_indices()
-            .map(|(i, _)| i)
-            .nth(self.character_index)
-            .unwrap_or(self.search_text.len())
-    }
-
-    fn search_criteria_len(&self) -> usize {
-        self.search_text.chars().count()
+        &self.search_area.lines()[0]
     }
 
     pub fn render_ui(&mut self, search_results: &ProcessSearchResults, frame: &mut Frame) {
@@ -212,14 +160,9 @@ impl Tui {
     }
 
     fn render_search_input(&self, f: &mut Frame, area: Rect) {
-        let prompt = "> ";
-        let current_input = format!("{}{}", prompt, self.search_input_text());
-        let input = Paragraph::new(current_input.as_str());
-        f.render_widget(input, area);
-        f.set_cursor_position((
-            area.x + self.character_index as u16 + prompt.len() as u16,
-            area.y,
-        ));
+        let rects = Layout::horizontal([Constraint::Length(2), Constraint::Min(2)]).split(area);
+        f.render_widget(Paragraph::new("> "), rects[0]);
+        f.render_widget(&self.search_area, rects[1]);
     }
 
     fn render_process_table(
