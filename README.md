@@ -67,6 +67,7 @@ cargo binstall pik
 
 - Esc - Quit
 - Ctrl + X - Kill process
+- Ctrl + R - Refresh processes list
 - Ctrl + F - Details forward
 - Ctrl + B - Details backward
 - Tab | Shift + Tab | Arrow Down | Arrow Up - Select next/previous
