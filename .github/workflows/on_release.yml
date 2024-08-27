@@ -4,7 +4,9 @@ on:
   push:
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
-
+env:
+  # For setup-rust
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 permissions:
   contents: write
 
