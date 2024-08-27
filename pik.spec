@@ -5,7 +5,6 @@ License: MIT
 Summary: Process Interactive Kill is a tool that helps to find and kill process
 Url: https://github.com/jacek-kurlit/%{name}
 Source0: %{url}/archive/refs/tags/%{version}.tar.gz
-BuildArch: x86_64
 BuildRequires: cargo
 BuildRequires: rust
 BuildRequires: gcc
