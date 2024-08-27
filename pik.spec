@@ -128,7 +128,3 @@ It works like pkill command but search is interactive.
 # version. Lines beginning with - after that list the changes contained in the package.
 	
 %changelog
-	
-* Thu Aug 27 2024 Jacek Kurlit <jacek.kurlit@gmail.com> 0.6.0
-	
-- new package built with tito
