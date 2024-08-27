@@ -1,5 +1,5 @@
 Name: pik
-Version: 0.6.0
+Version: 0.6.1
 Release: 1%{?dist}
 License: MIT
 Summary: Process Interactive Kill is a tool that helps to find and kill process
@@ -32,4 +32,7 @@ rm -f %{buildroot}%{_prefix}/.crates.toml \
 %{_bindir}/pik
 	
 %changelog
+* Tue Aug 27 2024 Jacek Kurlit <jacek.kurlit@kitopi.com> 0.6.1-1
+- new package built with tito
+
 %autochangelog
