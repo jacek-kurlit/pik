@@ -39,7 +39,6 @@ impl App {
 
     fn search_for_processess(&mut self) {
         self.tui.reset_error_message();
-        //TODO: maybe refresh and search should be inside process manager?
         self.process_manager.refresh();
         self.search_results = self
             .process_manager

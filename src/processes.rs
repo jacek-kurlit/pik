@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::time::SystemTime;
 
 use anyhow::Result;
-use sysinfo::ProcessRefreshKind;
 use sysinfo::{Pid, System, Uid, Users};
+use sysinfo::{ProcessRefreshKind, RefreshKind};
 
 mod filters;
 mod utils;
@@ -129,9 +129,9 @@ impl ProcessSearchResults {
 
 impl ProcessManager {
     pub fn new() -> Result<Self> {
-        //TODO: maybe we should not refresh all informaton since they are not needed, just the one
-        //we need
-        let sys = System::new_all();
+        let sys = System::new_with_specifics(
+            RefreshKind::default().with_processes(process_refresh_kind()),
+        );
         let users = Users::new_with_refreshed_list();
         let process_ports = refresh_ports();
         let current_user_id = find_current_process_user(&sys)?;
@@ -169,11 +169,9 @@ impl ProcessManager {
     }
 
     pub fn refresh(&mut self) {
-        self.sys.refresh_processes_specifics(
-            sysinfo::ProcessesToUpdate::All,
-            ProcessRefreshKind::everything(),
-        );
-        //TODO: do we really need to refresh users?
+        self.sys
+            .refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, process_refresh_kind());
+        // TODO: do we really need to refresh users?
         self.users.refresh_list();
         self.process_ports = refresh_ports();
     }
@@ -218,6 +216,15 @@ impl ProcessManager {
             None => false,
         };
     }
+}
+
+fn process_refresh_kind() -> ProcessRefreshKind {
+    ProcessRefreshKind::default()
+        .with_cpu()
+        .with_memory()
+        .with_cmd(sysinfo::UpdateKind::OnlyIfNotSet)
+        .with_exe(sysinfo::UpdateKind::OnlyIfNotSet)
+        .with_user(sysinfo::UpdateKind::OnlyIfNotSet)
 }
 
 fn refresh_ports() -> HashMap<u32, String> {
