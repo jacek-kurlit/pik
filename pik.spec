@@ -32,6 +32,10 @@ rm -f %{buildroot}%{_prefix}/.crates.toml \
 %{_bindir}/pik
 	
 %changelog
+* Tue Aug 27 2024 Jacek Kurlit <jacek.kurlit@kitopi.com> 0.6.3-1
+- fixed fedora build (jacek.kurlit@kitopi.com)
+- fix for fedora build (jacek.kurlit@kitopi.com)
+
 * Tue Aug 27 2024 Jacek Kurlit <jacek.kurlit@kitopi.com> 0.6.1-1
 - new package built with tito
 
