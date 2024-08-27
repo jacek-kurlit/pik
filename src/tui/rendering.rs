@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crossterm::event::KeyEvent;
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Margin, Rect},
@@ -177,16 +179,15 @@ impl Tui {
                 0 => self.theme.normal_row_color,
                 _ => self.theme.alt_row_color,
             };
-            //TODO: think about creating this row without allocations
             Row::new(vec![
-                format!("{}", data.user_name),
-                format!("{}", data.pid),
-                format!("{}", data.parent_as_string()),
-                format!("{}", data.start_time),
-                format!("{}", data.run_time),
-                format!("{}", data.cmd),
-                format!("{}", data.cmd_path.as_deref().unwrap_or("")),
-                format!("{}", value_getter(data)),
+                Cow::Borrowed(data.user_name.as_str()),
+                Cow::Owned(format!("{}", data.pid)),
+                Cow::Owned(data.parent_as_string()),
+                Cow::Borrowed(&data.start_time),
+                Cow::Borrowed(&data.run_time),
+                Cow::Borrowed(&data.cmd),
+                Cow::Borrowed(data.cmd_path.as_deref().unwrap_or("")),
+                Cow::Borrowed(value_getter(data)),
             ])
             .style(Style::new().fg(self.theme.row_fg).bg(color))
         });
