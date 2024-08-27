@@ -128,4 +128,4 @@ It works like pkill command but search is interactive.
 # version. Lines beginning with - after that list the changes contained in the package.
 	
 %changelog
-
+%autochangelog
