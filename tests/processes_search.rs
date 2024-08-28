@@ -1,3 +1,5 @@
+use std::{thread, time::Duration};
+
 use pik::processes::{FilterOptions, ProcessManager};
 
 #[test]
@@ -43,6 +45,8 @@ use http_test_server::TestServer;
 fn should_find_cargo_process_by_port() {
     let test_server = TestServer::new().unwrap();
     let port = test_server.port();
+    // NOTE: Someties system needs time to notice the port is in use
+    thread::sleep(Duration::from_millis(250));
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes(&format!(":{}", port), FilterOptions::default());
     assert!(!results.is_empty());
@@ -67,9 +71,9 @@ fn should_find_cargo_process_by_process_family() {
     let results = process_manager.find_processes("cargo", FilterOptions::default());
     let cargo_process_pid = results.nth(Some(0)).map(|r| r.pid).unwrap();
 
-    let restults = process_manager
+    let results = process_manager
         .find_processes(&format!("@{}", cargo_process_pid), FilterOptions::default());
-    assert!(!restults.is_empty());
+    assert!(!results.is_empty());
     assert!(results
         .iter()
         .all(|p| p.pid == cargo_process_pid || p.parent_pid == Some(cargo_process_pid)));
