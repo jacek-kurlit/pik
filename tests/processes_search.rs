@@ -48,3 +48,29 @@ fn should_find_cargo_process_by_port() {
     assert!(!results.is_empty());
     assert!(results.iter().all(|p| p.ports == Some(format!("{}", port))));
 }
+
+#[test]
+fn should_find_cargo_process_by_pid() {
+    let mut process_manager = ProcessManager::new().unwrap();
+    let results = process_manager.find_processes("cargo", FilterOptions::default());
+    let cargo_process_pid = results.nth(Some(0)).map(|r| r.pid).unwrap();
+
+    let restults = process_manager
+        .find_processes(&format!("!{}", cargo_process_pid), FilterOptions::default());
+    assert_eq!(restults.len(), 1);
+    assert_eq!(restults.nth(Some(0)).unwrap().pid, cargo_process_pid);
+}
+
+#[test]
+fn should_find_cargo_process_by_process_family() {
+    let mut process_manager = ProcessManager::new().unwrap();
+    let results = process_manager.find_processes("cargo", FilterOptions::default());
+    let cargo_process_pid = results.nth(Some(0)).map(|r| r.pid).unwrap();
+
+    let restults = process_manager
+        .find_processes(&format!("@{}", cargo_process_pid), FilterOptions::default());
+    assert!(!restults.is_empty());
+    assert!(results
+        .iter()
+        .all(|p| p.pid == cargo_process_pid || p.parent_pid == Some(cargo_process_pid)));
+}
