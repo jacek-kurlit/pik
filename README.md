@@ -49,9 +49,16 @@ After selecting process you can kill it with Ctrl + X
 **[Archives of precompiled binaries for pik are available for Linux and macOS.](https://github.com/jacek-kurlit/pik/releases)**
 
 On **Fedora**
+
 ```sh
 sudo dnf copr enable rusty-jack/pik
 sudo dnf install pik
+```
+
+On **Tumbleweed**
+
+```sh
+sudo zypper install pik
 ```
 
 If you're a **Rust programmer**, pik can be installed with `cargo`.
