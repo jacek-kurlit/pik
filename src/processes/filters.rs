@@ -14,6 +14,8 @@ pub enum SearchBy {
     Path,
     Args,
     Everywhere,
+    Pid,
+    ProcessFamily,
     None,
 }
 
@@ -24,6 +26,8 @@ impl QueryFilter {
             Some('/') => (SearchBy::Path, &query[1..]),
             Some('-') => (SearchBy::Args, &query[1..]),
             Some('~') => (SearchBy::Everywhere, &query[1..]),
+            Some('!') => (SearchBy::Pid, &query[1..]),
+            Some('@') => (SearchBy::ProcessFamily, &query[1..]),
             Some(_) => (SearchBy::Cmd, query),
             None => (SearchBy::None, query),
         };
@@ -39,6 +43,8 @@ impl QueryFilter {
             SearchBy::Path => self.query_matches_opt(prc.cmd_path()),
             SearchBy::Args => self.query_matches_vec(get_process_args(prc)),
             SearchBy::Port => self.query_matches_opt(ports),
+            SearchBy::Pid => self.query_eq_u32(prc.pid()),
+            SearchBy::ProcessFamily => self.query_matches_process_family(prc),
             SearchBy::Everywhere => {
                 self.query_matches_str(prc.cmd())
                     || self.query_matches_opt(prc.cmd_path())
@@ -59,6 +65,18 @@ impl QueryFilter {
 
     fn query_matches_vec(&self, s: Vec<&str>) -> bool {
         s.iter().any(|a| self.query_matches_str(a))
+    }
+
+    fn query_eq_u32(&self, s: u32) -> bool {
+        s.to_string() == self.query
+    }
+
+    fn query_matches_process_family(&self, prc: &impl ProcessInfo) -> bool {
+        self.query_eq_u32(prc.pid())
+            || prc
+                .parent_id()
+                .map(|pid| self.query_eq_u32(pid))
+                .unwrap_or(false)
     }
 }
 
@@ -125,6 +143,14 @@ pub mod tests {
         let filter = QueryFilter::new("~fOO");
         assert_eq!(filter.search_by, SearchBy::Everywhere);
         assert_eq!(filter.query, "foo");
+
+        let filter = QueryFilter::new("!1234");
+        assert_eq!(filter.search_by, SearchBy::Pid);
+        assert_eq!(filter.query, "1234");
+
+        let filter = QueryFilter::new("@1234");
+        assert_eq!(filter.search_by, SearchBy::ProcessFamily);
+        assert_eq!(filter.query, "1234");
 
         let filter = QueryFilter::new("");
         assert_eq!(filter.search_by, SearchBy::None);
@@ -230,6 +256,39 @@ pub mod tests {
         assert!(filter.accept(&process, Some("1111, 2222, 1234")));
 
         assert!(!filter.accept(&process, Some("7777")));
+    }
+
+    #[test]
+    fn query_filter_search_by_pid() {
+        let filter = QueryFilter::new("!1234");
+        let mut process = MockProcessInfo {
+            pid: 1234,
+            ..Default::default()
+        };
+
+        assert!(filter.accept(&process, None));
+        process.pid = 12345;
+        assert!(!filter.accept(&process, None));
+    }
+
+    #[test]
+    fn query_filter_search_by_process_family() {
+        let filter = QueryFilter::new("@1234");
+        let mut process = MockProcessInfo {
+            pid: 1234,
+            ..Default::default()
+        };
+
+        assert!(filter.accept(&process, None));
+        process.pid = 555;
+        assert!(!filter.accept(&process, None));
+
+        process.parent_pid = Some(1234);
+        assert!(filter.accept(&process, None));
+        process.parent_pid = Some(555);
+        assert!(!filter.accept(&process, None));
+        process.parent_pid = None;
+        assert!(!filter.accept(&process, None));
     }
 
     #[test]
