@@ -78,7 +78,7 @@ cargo binstall pik
 
 ### Key maps
 
-- Esc - Quit
+- Esc | Ctrl + C - Quit
 - Ctrl + X - Kill process
 - Ctrl + R - Refresh processes list
 - Ctrl + F - Details forward

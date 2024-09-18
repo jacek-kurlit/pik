@@ -328,7 +328,7 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
 }
 
 const HELP_TEXT: &str =
-    "ESC quit | <C+X> kill process | <C+R> refresh | <C+F> details forward | <C+B> details backward ";
+    "ESC/<C+C> quit | <C+X> kill process | <C+R> refresh | <C+F> details forward | <C+B> details backward ";
 
 fn render_help(f: &mut Frame, error_message: Option<&str>, area: Rect) {
     let rects = Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)])

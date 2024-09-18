@@ -109,6 +109,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Esc => return Ok(()),
                     Up | BackTab => app.tui.select_previous_row(),
                     Tab | Down => app.tui.select_next_row(),
+                    Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(());
+                    }
                     Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.kill_selected_process()
                     }
