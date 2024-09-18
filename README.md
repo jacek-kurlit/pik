@@ -97,6 +97,7 @@ cargo binstall pik
 - Rust 1.79+
 - Cargo make [link](https://github.com/sagiegurari/cargo-make)
 - Cargo nextest [link](https://github.com/nextest-rs/nextest)
+- VHS [link](https://github.com/charmbracelet/vhs)
 
 ### Building
 
