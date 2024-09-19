@@ -61,6 +61,12 @@ On **Tumbleweed**
 sudo zypper install pik
 ```
 
+With **[dra](https://github.com/devmatteini/dra)** 
+
+```sh
+dra download --install jacek-kurlit/pik
+```
+
 If you're a **Rust programmer**, pik can be installed with `cargo`.
 
 ```sh
