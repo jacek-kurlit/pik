@@ -48,6 +48,12 @@ After selecting process you can kill it with Ctrl + X
 
 **[Archives of precompiled binaries for pik are available for Linux and macOS.](https://github.com/jacek-kurlit/pik/releases)**
 
+On **Arch Linux**
+
+```sh
+pacman -S pik
+```
+
 On **Fedora**
 
 ```sh
