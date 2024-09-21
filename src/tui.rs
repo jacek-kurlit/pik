@@ -43,7 +43,7 @@ impl App {
         self.search_results = self
             .process_manager
             .find_processes(self.tui.search_input_text(), self.filter_options);
-        self.tui.update_number_of_items(self.search_results.len());
+        self.tui.update_process_table_number_of_items(self.search_results.len());
     }
 
     fn delete_char(&mut self) {
@@ -62,7 +62,7 @@ impl App {
                 self.search_results.remove(pid);
                 //TODO: this must be here because details will show 1/0 when removed!
                 // seems like this can only be fixed by autorefresh!
-                self.tui.update_number_of_items(self.search_results.len());
+                self.tui.update_process_table_number_of_items(self.search_results.len());
             } else {
                 self.tui
                     .set_error_message("Failed to kill process, check permissions");
@@ -119,7 +119,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                         app.search_for_processess()
                     }
                     Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.process_details_down()
+                        app.tui.process_details_down(&mut terminal.get_frame())
                     }
                     Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.tui.process_details_up()
