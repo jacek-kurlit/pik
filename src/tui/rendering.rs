@@ -38,7 +38,7 @@ impl Theme {
 
 pub struct Tui {
     process_table: TableState,
-    process_table_scroll: ScrollbarState,
+    process_table_scroll_state: ScrollbarState,
     theme: Theme,
     number_of_items: usize,
     details_scroll_state: ScrollbarState,
@@ -53,7 +53,7 @@ impl Tui {
         search_area.move_cursor(tui_textarea::CursorMove::End);
         Self {
             process_table: TableState::default(),
-            process_table_scroll: ScrollbarState::new(0),
+            process_table_scroll_state: ScrollbarState::new(0),
             theme: Theme::new(),
             number_of_items: 0,
             process_details_scroll: 0,
@@ -73,8 +73,8 @@ impl Tui {
             i
         });
         self.process_table.select(next_row_index);
-        self.process_table_scroll = self
-            .process_table_scroll
+        self.process_table_scroll_state = self
+            .process_table_scroll_state
             .position(next_row_index.unwrap_or(0));
         self.reset_process_detals_scroll();
     }
@@ -85,8 +85,8 @@ impl Tui {
             i.clamp(0, self.number_of_items.saturating_sub(1))
         });
         self.process_table.select(previous_index);
-        self.process_table_scroll = self
-            .process_table_scroll
+        self.process_table_scroll_state = self
+            .process_table_scroll_state
             .position(previous_index.unwrap_or(0));
         self.reset_process_detals_scroll();
     }
@@ -129,8 +129,8 @@ impl Tui {
 
     pub fn update_number_of_items(&mut self, number_of_items: usize) {
         self.number_of_items = number_of_items;
-        self.process_table_scroll = self
-            .process_table_scroll
+        self.process_table_scroll_state = self
+            .process_table_scroll_state
             .content_length(number_of_items.saturating_sub(1));
         if number_of_items == 0 {
             self.process_table.select(None);
@@ -246,7 +246,7 @@ impl Tui {
                 vertical: 1,
                 horizontal: 1,
             }),
-            &mut self.process_table_scroll,
+            &mut self.process_table_scroll_state,
         );
     }
 
