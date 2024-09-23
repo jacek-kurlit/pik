@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, rc::Rc};
 
 use crossterm::event::KeyEvent;
 use ratatui::{
@@ -37,12 +37,13 @@ impl Theme {
 }
 
 pub struct Tui {
-    process_table: TableState,
-    process_table_scroll: ScrollbarState,
     theme: Theme,
-    number_of_items: usize,
-    details_scroll_state: ScrollbarState,
-    process_details_scroll: u16,
+    process_table: TableState,
+    process_table_scroll_state: ScrollbarState,
+    process_table_number_of_items: usize,
+    process_details_scroll_state: ScrollbarState,
+    process_details_scroll_offset: u16,
+    process_details_number_of_lines: u16,
     search_area: TextArea<'static>,
     error_message: Option<&'static str>,
 }
@@ -53,12 +54,13 @@ impl Tui {
         search_area.move_cursor(tui_textarea::CursorMove::End);
         Self {
             process_table: TableState::default(),
-            process_table_scroll: ScrollbarState::new(0),
+            process_table_scroll_state: ScrollbarState::new(0),
             theme: Theme::new(),
-            number_of_items: 0,
-            process_details_scroll: 0,
+            process_table_number_of_items: 0,
+            process_details_scroll_offset: 0,
+            process_details_number_of_lines: 0,
             //NOTE: we don't update this, value 1 means that this should be rendered
-            details_scroll_state: ScrollbarState::new(1),
+            process_details_scroll_state: ScrollbarState::new(1),
             search_area,
             error_message: None,
         }
@@ -67,14 +69,14 @@ impl Tui {
     pub fn select_next_row(&mut self) {
         let next_row_index = self.process_table.selected().map(|i| {
             let mut i = i + 1;
-            if i >= self.number_of_items {
+            if i >= self.process_table_number_of_items {
                 i = 0
             }
             i
         });
         self.process_table.select(next_row_index);
-        self.process_table_scroll = self
-            .process_table_scroll
+        self.process_table_scroll_state = self
+            .process_table_scroll_state
             .position(next_row_index.unwrap_or(0));
         self.reset_process_detals_scroll();
     }
@@ -82,11 +84,11 @@ impl Tui {
     pub fn select_previous_row(&mut self) {
         let previous_index = self.process_table.selected().map(|i| {
             let i = i.wrapping_sub(1);
-            i.clamp(0, self.number_of_items.saturating_sub(1))
+            i.clamp(0, self.process_table_number_of_items.saturating_sub(1))
         });
         self.process_table.select(previous_index);
-        self.process_table_scroll = self
-            .process_table_scroll
+        self.process_table_scroll_state = self
+            .process_table_scroll_state
             .position(previous_index.unwrap_or(0));
         self.reset_process_detals_scroll();
     }
@@ -99,16 +101,25 @@ impl Tui {
         self.search_area.insert_char(new_char);
     }
 
-    pub fn process_details_down(&mut self) {
-        self.process_details_scroll = self.process_details_scroll.saturating_add(1);
+    pub fn process_details_down(&mut self, frame: &mut Frame) {
+        let rects = layout_rects(frame);
+        let process_details_area = rects[2];
+        let area_content_height = process_details_area.height - 2;
+        let content_scrolled =
+            self.process_details_number_of_lines - self.process_details_scroll_offset;
+
+        if content_scrolled > area_content_height {
+            self.process_details_scroll_offset =
+                self.process_details_scroll_offset.saturating_add(1);
+        }
     }
 
     pub fn process_details_up(&mut self) {
-        self.process_details_scroll = self.process_details_scroll.saturating_sub(1);
+        self.process_details_scroll_offset = self.process_details_scroll_offset.saturating_sub(1);
     }
 
     fn reset_process_detals_scroll(&mut self) {
-        self.process_details_scroll = 0;
+        self.process_details_scroll_offset = 0;
     }
 
     pub fn set_error_message(&mut self, message: &'static str) {
@@ -127,10 +138,10 @@ impl Tui {
         self.process_table.selected()
     }
 
-    pub fn update_number_of_items(&mut self, number_of_items: usize) {
-        self.number_of_items = number_of_items;
-        self.process_table_scroll = self
-            .process_table_scroll
+    pub fn update_process_table_number_of_items(&mut self, number_of_items: usize) {
+        self.process_table_number_of_items = number_of_items;
+        self.process_table_scroll_state = self
+            .process_table_scroll_state
             .content_length(number_of_items.saturating_sub(1));
         if number_of_items == 0 {
             self.process_table.select(None);
@@ -144,18 +155,10 @@ impl Tui {
     }
 
     pub fn render_ui(&mut self, search_results: &ProcessSearchResults, frame: &mut Frame) {
-        let rects = Layout::vertical([
-            Constraint::Length(1),
-            Constraint::Min(10),
-            Constraint::Max(7),
-            Constraint::Length(1),
-        ])
-        .split(frame.area());
+        let rects = layout_rects(frame);
 
         self.render_search_input(frame, rects[0]);
-
         self.render_process_table(frame, search_results, rects[1]);
-
         self.render_process_details(frame, search_results, rects[2]);
 
         render_help(frame, self.error_message, rects[3]);
@@ -246,7 +249,7 @@ impl Tui {
                 vertical: 1,
                 horizontal: 1,
             }),
-            &mut self.process_table_scroll,
+            &mut self.process_table_scroll_state,
         );
     }
 
@@ -258,6 +261,9 @@ impl Tui {
     ) {
         let selected_process = search_results.nth(self.get_selected_row_index());
         let lines = process_details_lines(selected_process);
+
+        self.update_process_details_number_of_lines(area, selected_process);
+
         let info_footer = Paragraph::new(lines)
             .wrap(Wrap { trim: false })
             .left_aligned()
@@ -272,7 +278,7 @@ impl Tui {
                     // .border_style(Style::new().fg(app.colors.footer_border_color))
                     .border_type(BorderType::Rounded),
             )
-            .scroll((self.process_details_scroll, 0));
+            .scroll((self.process_details_scroll_offset, 0));
         f.render_widget(info_footer, area);
         f.render_stateful_widget(
             Scrollbar::default()
@@ -282,8 +288,27 @@ impl Tui {
                 .begin_symbol(Some("↑"))
                 .end_symbol(Some("↓")),
             area,
-            &mut self.details_scroll_state,
+            &mut self.process_details_scroll_state,
         );
+    }
+
+    fn update_process_details_number_of_lines(
+        &mut self,
+        area: Rect,
+        selected_process: Option<&Process>,
+    ) {
+        let content_width = area.width - 2;
+
+        match selected_process {
+            Some(process) => {
+                let args_number_of_lines =
+                    (process.args.chars().count() as u16 / content_width) + 1;
+                self.process_details_number_of_lines = args_number_of_lines + 2;
+            }
+            None => {
+                self.process_details_number_of_lines = 1;
+            }
+        }
     }
 }
 
@@ -340,4 +365,14 @@ fn render_help(f: &mut Frame, error_message: Option<&str>, area: Rect) {
     let help = Paragraph::new(Line::from(HELP_TEXT)).right_aligned();
     f.render_widget(error, rects[0]);
     f.render_widget(help, rects[1]);
+}
+
+fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
+    Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Min(10),
+        Constraint::Max(7),
+        Constraint::Length(1),
+    ])
+    .split(frame.area())
 }
