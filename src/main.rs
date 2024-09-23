@@ -12,5 +12,7 @@ fn main() -> Result<()> {
             ignore_threads: !args.include_threads_processes,
             include_all_processes: args.all_processes,
         },
+        args.height,
+        args.fullscreen,
     )
 }

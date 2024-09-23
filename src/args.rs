@@ -19,4 +19,8 @@ pub struct Args {
     /// By default pik shows only proceseses owned by current user. This flag allows to show all processes
     #[arg(short, long, default_value_t = false)]
     pub all_processes: bool,
+    #[arg(short = 'F', long, default_value_t = false)]
+    pub fullscreen: bool,
+    #[arg(short = 'H', long, default_value_t = 20)]
+    pub height: u16,
 }
