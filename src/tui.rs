@@ -73,16 +73,20 @@ impl App {
     }
 }
 
-pub fn start_app(search_criteria: String, filter_options: FilterOptions) -> Result<()> {
+pub fn start_app(
+    search_criteria: String,
+    filter_options: FilterOptions,
+    viewport_height: u16,
+    viewport_fullscreen: bool,
+) -> Result<()> {
     // setup terminal
     enable_raw_mode()?;
     let backend = CrosstermBackend::new(io::stdout());
-    let mut terminal = Terminal::with_options(
-        backend,
-        TerminalOptions {
-            viewport: Viewport::Inline(20),
-        },
-    )?;
+    let viewport = match (viewport_height, viewport_fullscreen) {
+        (_, true) => Viewport::Fullscreen,
+        (h, false) => Viewport::Inline(h),
+    };
+    let mut terminal = Terminal::with_options(backend, TerminalOptions { viewport })?;
 
     // create app and run it
     let app = App::new(search_criteria, filter_options)?;
