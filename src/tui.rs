@@ -113,8 +113,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                 use KeyCode::*;
                 match key.code {
                     Esc => return Ok(()),
-                    Up | BackTab => app.tui.select_previous_row(),
-                    Tab | Down => app.tui.select_next_row(),
+                    Up | BackTab => app.tui.select_previous_row(1),
+                    Tab | Down => app.tui.select_next_row(1),
+                    PageUp => app.tui.select_previous_row(10),
+                    PageDown => app.tui.select_next_row(10),
                     Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         return Ok(());
                     }

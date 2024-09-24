@@ -66,9 +66,9 @@ impl Tui {
         }
     }
 
-    pub fn select_next_row(&mut self) {
+    pub fn select_next_row(&mut self, step_size: usize) {
         let next_row_index = self.process_table.selected().map(|i| {
-            let mut i = i + 1;
+            let mut i = i + step_size;
             if i >= self.process_table_number_of_items {
                 i = 0
             }
@@ -81,9 +81,9 @@ impl Tui {
         self.reset_process_detals_scroll();
     }
 
-    pub fn select_previous_row(&mut self) {
+    pub fn select_previous_row(&mut self, step_size: usize) {
         let previous_index = self.process_table.selected().map(|i| {
-            let i = i.wrapping_sub(1);
+            let i = i.wrapping_sub(step_size);
             i.clamp(0, self.process_table_number_of_items.saturating_sub(1))
         });
         self.process_table.select(previous_index);
