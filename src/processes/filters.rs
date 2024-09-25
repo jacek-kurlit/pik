@@ -66,9 +66,7 @@ impl QueryFilter {
     fn query_match_fuzzy_str(&self, s: &str) -> bool {
         let score = self.matcher.fuzzy_match(s, self.query.as_str());
         // TODO: fine-tune the score threshold or make it configurable?
-        score
-            .map(|s| if s > 50 { true } else { false })
-            .unwrap_or(false)
+        score.map(|s| s >= 0).unwrap_or(false)
     }
 
     fn query_matches_fuzzy_opt(&self, s: Option<&str>) -> bool {
