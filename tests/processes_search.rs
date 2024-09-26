@@ -15,9 +15,11 @@ fn should_find_cargo_process_by_cmd_path() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("/cargo", FilterOptions::default());
     assert!(!results.is_empty());
-    assert!(results
-        .iter()
-        .all(|p| p.cmd_path.as_ref().unwrap().contains("cargo")));
+    assert!(results.iter().all(|p| p
+        .cmd_path
+        .as_ref()
+        .expect(format!("failed: {:?}", results).as_str())
+        .contains("cargo")));
 }
 
 #[test]
