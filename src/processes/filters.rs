@@ -205,7 +205,8 @@ pub mod tests {
         };
         assert!(filter.accept(&process, None));
 
-        process.cmd_path = Some("/taefsfdasdsssdast".to_string());
+        // tests that fuzzy search works
+        process.cmd_path = Some("/taest".to_string());
         assert!(filter.accept(&process, None));
 
         process.cmd_path = Some("/test".to_string());
