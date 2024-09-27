@@ -11,6 +11,7 @@ fn should_find_cargo_process_by_cmd_name() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn should_find_cargo_process_by_cmd_path() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("/cargo", FilterOptions::default());

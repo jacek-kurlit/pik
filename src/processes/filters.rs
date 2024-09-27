@@ -1,3 +1,4 @@
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use sysinfo::Uid;
 
 use super::{utils::get_process_args, ProcessInfo};
@@ -5,6 +6,7 @@ use super::{utils::get_process_args, ProcessInfo};
 pub(super) struct QueryFilter {
     query: String,
     pub(super) search_by: SearchBy,
+    matcher: SkimMatcherV2,
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -31,16 +33,18 @@ impl QueryFilter {
             Some(_) => (SearchBy::Cmd, query),
             None => (SearchBy::None, query),
         };
+        let matcher = SkimMatcherV2::default();
         Self {
             query: query.to_lowercase(),
             search_by,
+            matcher,
         }
     }
 
     pub(super) fn accept(&self, prc: &impl ProcessInfo, ports: Option<&str>) -> bool {
         match self.search_by {
             SearchBy::Cmd => self.query_matches_str(prc.cmd()),
-            SearchBy::Path => self.query_matches_opt(prc.cmd_path()),
+            SearchBy::Path => self.query_matches_fuzzy_opt(prc.cmd_path()),
             SearchBy::Args => self.query_matches_vec(get_process_args(prc)),
             SearchBy::Port => self.query_matches_opt(ports),
             SearchBy::Pid => self.query_eq_u32(prc.pid()),
@@ -57,6 +61,16 @@ impl QueryFilter {
 
     fn query_matches_str(&self, s: &str) -> bool {
         s.to_lowercase().contains(&self.query)
+    }
+
+    fn query_match_fuzzy_str(&self, s: &str) -> bool {
+        let score = self.matcher.fuzzy_match(s, self.query.as_str());
+        // TODO: fine-tune the score threshold or make it configurable?
+        score.map(|s| s >= 0).unwrap_or(false)
+    }
+
+    fn query_matches_fuzzy_opt(&self, s: Option<&str>) -> bool {
+        s.map(|s| self.query_match_fuzzy_str(s)).unwrap_or(false)
     }
 
     fn query_matches_opt(&self, s: Option<&str>) -> bool {
@@ -189,6 +203,10 @@ pub mod tests {
             cmd_path: Some("/TeSt".to_string()),
             ..Default::default()
         };
+        assert!(filter.accept(&process, None));
+
+        // tests that fuzzy search works
+        process.cmd_path = Some("/taest".to_string());
         assert!(filter.accept(&process, None));
 
         process.cmd_path = Some("/test".to_string());
