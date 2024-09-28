@@ -9,7 +9,10 @@ use ratatui::{prelude::*, TerminalOptions, Viewport};
 
 mod rendering;
 
-use crate::processes::{FilterOptions, ProcessManager, ProcessSearchResults};
+use crate::{
+    config::{AppConfig, ScreenSize},
+    processes::{FilterOptions, ProcessManager, ProcessSearchResults},
+};
 
 use self::rendering::Tui;
 
@@ -21,11 +24,14 @@ struct App {
 }
 
 impl App {
-    fn new(search_criteria: String, filter_options: FilterOptions) -> Result<App> {
+    fn new(search_criteria: String, app_config: AppConfig) -> Result<App> {
         let mut app = App {
             process_manager: ProcessManager::new()?,
             search_results: ProcessSearchResults::empty(),
-            filter_options,
+            filter_options: FilterOptions {
+                ignore_threads: !app_config.include_threads_processes,
+                include_all_processes: app_config.include_other_users_processes,
+            },
             tui: Tui::new(search_criteria),
         };
         app.search_for_processess();
@@ -73,23 +79,18 @@ impl App {
     }
 }
 
-pub fn start_app(
-    search_criteria: String,
-    filter_options: FilterOptions,
-    viewport_height: u16,
-    viewport_fullscreen: bool,
-) -> Result<()> {
+pub fn start_app(search_criteria: String, app_config: AppConfig) -> Result<()> {
     // setup terminal
     enable_raw_mode()?;
     let backend = CrosstermBackend::new(io::stdout());
-    let viewport = match (viewport_height, viewport_fullscreen) {
-        (_, true) => Viewport::Fullscreen,
-        (h, false) => Viewport::Inline(h),
+    let viewport = match app_config.screen_size {
+        ScreenSize::Fullscreen => Viewport::Fullscreen,
+        ScreenSize::Height(h) => Viewport::Inline(h),
     };
     let mut terminal = Terminal::with_options(backend, TerminalOptions { viewport })?;
 
     // create app and run it
-    let app = App::new(search_criteria, filter_options)?;
+    let app = App::new(search_criteria, app_config)?;
     let res = run_app(&mut terminal, app);
 
     // restore terminal

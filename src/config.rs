@@ -1,21 +1,7 @@
 use anyhow::{Context, Result};
 use config::File;
-use serde::Deserialize;
 
-use crate::args::{CliArgs, ScreenSizeOptions};
-
-#[derive(Debug, Default, Deserialize)]
-pub struct AppConfig {
-    pub include_threads_processes: bool,
-    pub include_other_users_processes: bool,
-    pub screen_size: ScreenSize,
-}
-
-#[derive(Debug, Deserialize, Clone, Copy)]
-pub enum ScreenSize {
-    Fullscreen,
-    Height(u16),
-}
+pub use settings::*;
 
 pub fn load_app_config() -> Result<AppConfig> {
     let config_path = directories::ProjectDirs::from("", "", "pik")
@@ -37,44 +23,58 @@ fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
         .with_context(|| format!("Failed to deserialize config from file: {:?}", path))
 }
 
-pub const DEFAULT_SCREEN_SIZE: u16 = 20;
+mod settings {
 
-impl Default for ScreenSize {
-    fn default() -> Self {
-        ScreenSize::Height(DEFAULT_SCREEN_SIZE)
+    use serde::Deserialize;
+
+    use crate::args::{CliArgs, ScreenSizeOptions};
+
+    #[derive(Debug, Default, Deserialize)]
+    pub struct AppConfig {
+        pub include_threads_processes: bool,
+        pub include_other_users_processes: bool,
+        pub screen_size: ScreenSize,
     }
-}
 
-impl AppConfig {
-    //TODO: add tests
-    pub fn override_with_args(&mut self, args: &CliArgs) {
-        self.include_threads_processes = prefer_override(
-            self.include_threads_processes,
-            args.include_threads_processes,
-        );
-        self.include_other_users_processes = prefer_override(
-            self.include_other_users_processes,
-            args.include_other_users_processes,
-        );
-        self.screen_size = prefer_override(self.screen_size, args.screen_size);
+    #[derive(Debug, Deserialize, Clone, Copy)]
+    pub enum ScreenSize {
+        Fullscreen,
+        Height(u16),
     }
-}
 
-fn prefer_override<C, A>(config_value: C, overidden_value: Option<A>) -> C
-where
-    A: Into<C>,
-{
-    match overidden_value {
-        Some(overidden_value) => overidden_value.into(),
-        None => config_value,
+    pub const DEFAULT_SCREEN_SIZE: u16 = 20;
+
+    impl Default for ScreenSize {
+        fn default() -> Self {
+            ScreenSize::Height(DEFAULT_SCREEN_SIZE)
+        }
     }
-}
 
-impl From<ScreenSizeOptions> for ScreenSize {
-    fn from(ss: ScreenSizeOptions) -> Self {
-        match (ss.fullscreen, ss.height) {
-            (true, _) => ScreenSize::Fullscreen,
-            (_, height) => ScreenSize::Height(height),
+    impl AppConfig {
+        //TODO: add tests
+        pub fn override_with_args(&mut self, args: &CliArgs) {
+            self.include_threads_processes = args.include_threads_processes;
+            self.include_other_users_processes = args.include_other_users_processes;
+            self.screen_size = prefer_override(self.screen_size, args.screen_size);
+        }
+    }
+
+    fn prefer_override<C, A>(config_value: C, overidden_value: Option<A>) -> C
+    where
+        A: Into<C>,
+    {
+        match overidden_value {
+            Some(overidden_value) => overidden_value.into(),
+            None => config_value,
+        }
+    }
+
+    impl From<ScreenSizeOptions> for ScreenSize {
+        fn from(ss: ScreenSizeOptions) -> Self {
+            match (ss.fullscreen, ss.height) {
+                (true, _) => ScreenSize::Fullscreen,
+                (_, height) => ScreenSize::Height(height),
+            }
         }
     }
 }
