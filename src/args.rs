@@ -5,7 +5,7 @@ use clap::Parser;
 pub struct Args {
     #[clap(
         default_value = "",
-        help = r#"Query string for searching processes. By default, all processes are searched.
+        help = r#"Query string for searching processes.
         You may use special prefix for different kind of search:
         - :<port> - search by port, i.e ':8080'
         - /<path> - search by command path, i.e. '/home/user/bin'
