@@ -35,8 +35,10 @@ fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
         .with_context(|| format!("Failed to deserialize config from file: {:?}", path))
 }
 
+pub const DEFAULT_SCREEN_SIZE: u16 = 20;
+
 impl Default for ScreenSize {
     fn default() -> Self {
-        ScreenSize::Height(20)
+        ScreenSize::Height(DEFAULT_SCREEN_SIZE)
     }
 }
