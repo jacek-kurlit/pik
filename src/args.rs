@@ -16,13 +16,13 @@ pub struct CliArgs {
     )]
     pub query: String,
     /// On linux threads can be listed as processes which are ignored by default. This flag allows to include them
-    #[arg(short = 't', long, default_value_t = false)]
-    pub include_threads_processes: bool,
+    #[arg(short = 't', long)]
+    pub include_threads_processes: Option<bool>,
     /// By default pik shows only proceseses owned by current user. This flag allows to show all processes
-    #[arg(short, long, default_value_t = false)]
-    pub all_processes: bool,
+    #[arg(short = 'a', long)]
+    pub include_other_users_processes: Option<bool>,
     #[command(flatten)]
-    pub screen_size: ScreenSize,
+    pub screen_size: Option<ScreenSize>,
 }
 
 #[derive(Args, Debug)]

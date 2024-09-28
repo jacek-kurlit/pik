@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use config::File;
 use serde::Deserialize;
 
+use crate::args::CliArgs;
+
 #[derive(Debug, Default, Deserialize)]
 pub struct AppConfig {
     pub include_threads_processes: bool,
@@ -9,7 +11,7 @@ pub struct AppConfig {
     pub screen_size: ScreenSize,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone, Copy)]
 pub enum ScreenSize {
     Fullscreen,
     Height(u16),
@@ -40,5 +42,24 @@ pub const DEFAULT_SCREEN_SIZE: u16 = 20;
 impl Default for ScreenSize {
     fn default() -> Self {
         ScreenSize::Height(DEFAULT_SCREEN_SIZE)
+    }
+}
+
+impl AppConfig {
+    //TODO: add tests
+    pub fn override_with_args(&mut self, args: &CliArgs) {
+        self.include_threads_processes = args
+            .include_threads_processes
+            .unwrap_or(self.include_threads_processes);
+        self.include_other_users_processes = args
+            .include_other_users_processes
+            .unwrap_or(self.include_other_users_processes);
+        self.screen_size = match &args.screen_size {
+            Some(screen_options) => match (screen_options.fullscreen, screen_options.height) {
+                (true, _) => ScreenSize::Fullscreen,
+                (_, height) => ScreenSize::Height(height),
+            },
+            None => self.screen_size,
+        };
     }
 }
