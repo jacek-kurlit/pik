@@ -22,12 +22,12 @@ pub struct CliArgs {
     #[arg(short = 'a', long)]
     pub include_other_users_processes: Option<bool>,
     #[command(flatten)]
-    pub screen_size: Option<ScreenSize>,
+    pub screen_size: Option<ScreenSizeOptions>,
 }
 
-#[derive(Args, Debug)]
+#[derive(Args, Debug, Clone, Copy)]
 #[group(required = false, multiple = false)]
-pub struct ScreenSize {
+pub struct ScreenSizeOptions {
     /// Start pik in fullscreen mode
     #[arg(short = 'F', long, default_value_t = false)]
     pub fullscreen: bool,

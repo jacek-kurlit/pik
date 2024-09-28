@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use config::File;
 use serde::Deserialize;
 
-use crate::args::CliArgs;
+use crate::args::{CliArgs, ScreenSizeOptions};
 
 #[derive(Debug, Default, Deserialize)]
 pub struct AppConfig {
@@ -48,18 +48,33 @@ impl Default for ScreenSize {
 impl AppConfig {
     //TODO: add tests
     pub fn override_with_args(&mut self, args: &CliArgs) {
-        self.include_threads_processes = args
-            .include_threads_processes
-            .unwrap_or(self.include_threads_processes);
-        self.include_other_users_processes = args
-            .include_other_users_processes
-            .unwrap_or(self.include_other_users_processes);
-        self.screen_size = match &args.screen_size {
-            Some(screen_options) => match (screen_options.fullscreen, screen_options.height) {
-                (true, _) => ScreenSize::Fullscreen,
-                (_, height) => ScreenSize::Height(height),
-            },
-            None => self.screen_size,
-        };
+        self.include_threads_processes = prefer_override(
+            self.include_threads_processes,
+            args.include_threads_processes,
+        );
+        self.include_other_users_processes = prefer_override(
+            self.include_other_users_processes,
+            args.include_other_users_processes,
+        );
+        self.screen_size = prefer_override(self.screen_size, args.screen_size);
+    }
+}
+
+fn prefer_override<C, A>(config_value: C, overidden_value: Option<A>) -> C
+where
+    A: Into<C>,
+{
+    match overidden_value {
+        Some(overidden_value) => overidden_value.into(),
+        None => config_value,
+    }
+}
+
+impl From<ScreenSizeOptions> for ScreenSize {
+    fn from(ss: ScreenSizeOptions) -> Self {
+        match (ss.fullscreen, ss.height) {
+            (true, _) => ScreenSize::Fullscreen,
+            (_, height) => ScreenSize::Height(height),
+        }
     }
 }
