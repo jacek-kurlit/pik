@@ -46,15 +46,6 @@ After selecting process you can kill it with Ctrl + X
 
 ## Installation
 
-### Supported Systems
-
-In theory pik is using coross compliant lib that allows to run it on all major platforms.
-In pratice I'm using linux and development is performed based on this OS.
-Pik will probably work on MacOs and Windows but that must be tested by community since I don't own computers with these OS'es.
-If you are able to test it on windows or macos please create issue to let me know.
-
-### Binaries
-
 **[Archives of precompiled binaries for pik are available for Linux and macOS.](https://github.com/jacek-kurlit/pik/releases)**
 
 On **Arch Linux**
@@ -112,6 +103,14 @@ cargo binstall pik
 - In linux process may appear on list but you are not allowed to get information about ports it uses. In such situations you need to run pik with root privileges
 
 ## Development
+
+### Supported Systems
+
+In theory pik is using coross compliant lib that allows to run it on all major platforms.
+In pratice I'm using linux and development is performed based on this OS.
+Pik will probably work on MacOs and Windows but that must be tested by community since I don't own computers with these OS'es.
+If you are able to test it on windows or macos please create issue to let me know.
+
 
 ### Setup
 
