@@ -1,4 +1,5 @@
 pub mod args;
-pub mod processes;
-pub mod tui;
 pub mod config;
+pub mod processes;
+pub mod settings;
+pub mod tui;

@@ -1,11 +1,8 @@
 use anyhow::{Context, Result};
-use config::File;
-
-pub use settings::*;
 
 pub fn load_app_config() -> Result<AppConfig> {
     let config_path = directories::ProjectDirs::from("", "", "pik")
-        .map(|dirs| dirs.project_path().join("config.toml"))
+        .map(|dirs| dirs.config_dir().join("config.toml"))
         .filter(|path| path.exists());
 
     match config_path {
@@ -15,66 +12,59 @@ pub fn load_app_config() -> Result<AppConfig> {
 }
 
 fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
-    config::Config::builder()
-        .add_source(File::from(path.as_path()))
-        .build()
-        .with_context(|| format!("Failed to load config from file: {:?}", path))?
-        .try_deserialize::<AppConfig>()
+    let raw_toml = std::fs::read_to_string(path)
+        .with_context(|| format!("Failed to load config from file: {:?}", path))?;
+    toml::from_str(&raw_toml)
         .with_context(|| format!("Failed to deserialize config from file: {:?}", path))
 }
 
-mod settings {
+use serde::Deserialize;
 
-    use serde::Deserialize;
+#[derive(Debug, Default, PartialEq, Eq, Deserialize)]
+pub struct AppConfig {
+    #[serde(default)]
+    pub screen_size: ScreenSize,
+}
 
-    use crate::args::{CliArgs, ScreenSizeOptions};
+#[derive(Debug, Eq, PartialEq, Deserialize, Clone, Copy)]
+#[serde(rename_all = "camelCase")]
+pub enum ScreenSize {
+    Fullscreen,
+    Height(u16),
+}
 
-    #[derive(Debug, Default, Deserialize)]
-    pub struct AppConfig {
-        pub include_threads_processes: bool,
-        pub include_other_users_processes: bool,
-        pub screen_size: ScreenSize,
+pub const DEFAULT_SCREEN_SIZE: u16 = 25;
+
+impl Default for ScreenSize {
+    fn default() -> Self {
+        ScreenSize::Height(DEFAULT_SCREEN_SIZE)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn should_deserialize_empty_configuration() {
+        let default_settings = toml::from_str("");
+        assert_eq!(default_settings, Ok(AppConfig::default()));
     }
 
-    #[derive(Debug, Deserialize, Clone, Copy)]
-    pub enum ScreenSize {
-        Fullscreen,
-        Height(u16),
-    }
-
-    pub const DEFAULT_SCREEN_SIZE: u16 = 20;
-
-    impl Default for ScreenSize {
-        fn default() -> Self {
-            ScreenSize::Height(DEFAULT_SCREEN_SIZE)
-        }
-    }
-
-    impl AppConfig {
-        //TODO: add tests
-        pub fn override_with_args(&mut self, args: &CliArgs) {
-            self.include_threads_processes = args.include_threads_processes;
-            self.include_other_users_processes = args.include_other_users_processes;
-            self.screen_size = prefer_override(self.screen_size, args.screen_size);
-        }
-    }
-
-    fn prefer_override<C, A>(config_value: C, overidden_value: Option<A>) -> C
-    where
-        A: Into<C>,
-    {
-        match overidden_value {
-            Some(overidden_value) => overidden_value.into(),
-            None => config_value,
-        }
-    }
-
-    impl From<ScreenSizeOptions> for ScreenSize {
-        fn from(ss: ScreenSizeOptions) -> Self {
-            match (ss.fullscreen, ss.height) {
-                (true, _) => ScreenSize::Fullscreen,
-                (_, height) => ScreenSize::Height(height),
+    #[test]
+    fn should_allow_to_override_defaults() {
+        let default_settings: AppConfig = toml::from_str(
+            r#"
+            screen_size = "fullscreen"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(
+            default_settings,
+            AppConfig {
+                screen_size: ScreenSize::Fullscreen
             }
-        }
+        );
     }
 }

@@ -5,13 +5,13 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{prelude::*, TerminalOptions, Viewport};
+use ratatui::{prelude::*, TerminalOptions};
 
 mod rendering;
 
 use crate::{
-    config::{AppConfig, ScreenSize},
     processes::{FilterOptions, ProcessManager, ProcessSearchResults},
+    settings::AppSettings,
 };
 
 use self::rendering::Tui;
@@ -24,14 +24,11 @@ struct App {
 }
 
 impl App {
-    fn new(search_criteria: String, app_config: AppConfig) -> Result<App> {
+    fn new(search_criteria: String, app_settings: AppSettings) -> Result<App> {
         let mut app = App {
             process_manager: ProcessManager::new()?,
             search_results: ProcessSearchResults::empty(),
-            filter_options: FilterOptions {
-                ignore_threads: !app_config.include_threads_processes,
-                include_all_processes: app_config.include_other_users_processes,
-            },
+            filter_options: app_settings.filter_opions,
             tui: Tui::new(search_criteria),
         };
         app.search_for_processess();
@@ -79,18 +76,15 @@ impl App {
     }
 }
 
-pub fn start_app(search_criteria: String, app_config: AppConfig) -> Result<()> {
+pub fn start_app(search_criteria: String, app_settings: AppSettings) -> Result<()> {
     // setup terminal
     enable_raw_mode()?;
     let backend = CrosstermBackend::new(io::stdout());
-    let viewport = match app_config.screen_size {
-        ScreenSize::Fullscreen => Viewport::Fullscreen,
-        ScreenSize::Height(h) => Viewport::Inline(h),
-    };
+    let viewport = app_settings.viewport.clone();
     let mut terminal = Terminal::with_options(backend, TerminalOptions { viewport })?;
 
     // create app and run it
-    let app = App::new(search_criteria, app_config)?;
+    let app = App::new(search_criteria, app_settings)?;
     let res = run_app(&mut terminal, app);
 
     // restore terminal

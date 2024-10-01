@@ -88,6 +88,12 @@ cargo binstall pik
 
 ## Configuration
 
+### Application configuration
+
+You may set your preferences in `pik.toml` file located in `~/.config/pik` directory.
+All options are optional, if skipped default values will be used.
+Example configuration with default settings can be found at [example config](example_config.toml)
+
 ### Key maps
 
 - Esc | Ctrl + C - Quit
