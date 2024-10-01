@@ -104,6 +104,14 @@ cargo binstall pik
 
 ## Development
 
+### Supported Systems
+
+In theory pik is using coross compliant lib that allows to run it on all major platforms.
+In pratice I'm using linux and development is performed based on this OS.
+Pik will probably work on MacOs and Windows but that must be tested by community since I don't own computers with these OS'es.
+If you are able to test it on windows or macos please create issue to let me know.
+
+
 ### Setup
 
 - Rust 1.79+
