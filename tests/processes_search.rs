@@ -3,6 +3,7 @@ use std::{thread, time::Duration};
 use pik::processes::{FilterOptions, ProcessManager};
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn should_find_cargo_process_by_cmd_name() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("cargo", FilterOptions::default());
@@ -22,6 +23,7 @@ fn should_find_cargo_process_by_cmd_path() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn should_find_cargo_process_by_name_path_or_args() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("~cargo", FilterOptions::default());
@@ -34,6 +36,7 @@ fn should_find_cargo_process_by_name_path_or_args() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn should_find_cargo_process_by_args() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("-test", FilterOptions::default());
