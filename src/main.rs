@@ -1,18 +1,13 @@
 use anyhow::Result;
 use clap::Parser;
-use pik::args::Args;
-use pik::processes::FilterOptions;
+use pik::args::CliArgs;
+use pik::settings::AppSettings;
 use pik::tui::start_app;
 
 fn main() -> Result<()> {
-    let args = Args::parse();
-    start_app(
-        args.query,
-        FilterOptions {
-            ignore_threads: !args.include_threads_processes,
-            include_all_processes: args.all_processes,
-        },
-        args.height,
-        args.fullscreen,
-    )
+    let config = pik::config::load_app_config()?;
+    let args = CliArgs::parse();
+
+    let settings = AppSettings::from(config, &args);
+    start_app(args.query, settings)
 }

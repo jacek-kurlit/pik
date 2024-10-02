@@ -94,7 +94,7 @@ impl QueryFilter {
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
 pub struct FilterOptions {
     //NOTE: On linux threads can be listed as processes and thus needs filtering
     pub ignore_threads: bool,

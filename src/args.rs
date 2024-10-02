@@ -1,11 +1,13 @@
-use clap::Parser;
+use clap::{Args, Parser};
+
+use crate::config;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = Some("Pik is a simple TUI tool for searching and killing processes in interactive way."))]
-pub struct Args {
+pub struct CliArgs {
     #[clap(
         default_value = "",
-        help = r#"Query string for searching processes. By default, all processes are searched.
+        help = r#"Query string for searching processes.
         You may use special prefix for different kind of search:
         - :<port> - search by port, i.e ':8080'
         - /<path> - search by command path, i.e. '/home/user/bin'
@@ -17,10 +19,19 @@ pub struct Args {
     #[arg(short = 't', long, default_value_t = false)]
     pub include_threads_processes: bool,
     /// By default pik shows only proceseses owned by current user. This flag allows to show all processes
-    #[arg(short, long, default_value_t = false)]
-    pub all_processes: bool,
+    #[arg(short = 'a', long, default_value_t = false)]
+    pub include_other_users_processes: bool,
+    #[command(flatten)]
+    pub screen_size: Option<ScreenSizeOptions>,
+}
+
+#[derive(Args, Debug, Clone, Copy)]
+#[group(required = false, multiple = false)]
+pub struct ScreenSizeOptions {
+    /// Start pik in fullscreen mode
     #[arg(short = 'F', long, default_value_t = false)]
     pub fullscreen: bool,
-    #[arg(short = 'H', long, default_value_t = 20)]
+    /// Number of lines of the screen pik will use
+    #[arg(short = 'H', long, default_value_t = config::DEFAULT_SCREEN_SIZE)]
     pub height: u16,
 }
