@@ -45,7 +45,7 @@ impl QueryFilter {
         match self.search_by {
             SearchBy::Cmd => self.query_match_str(prc.cmd()),
             SearchBy::Path => self.query_matches_opt(prc.cmd_path()),
-            SearchBy::Args => self.query_matches_vec(get_process_args(prc)),
+            SearchBy::Args => self.query_contains_vec(get_process_args(prc)),
             SearchBy::Port => self.query_matches_opt(ports),
             SearchBy::Pid => self.query_eq_u32(prc.pid()),
             SearchBy::ProcessFamily => self.query_matches_process_family(prc),
@@ -53,7 +53,7 @@ impl QueryFilter {
                 self.query_match_str(prc.cmd())
                     || self.query_matches_opt(prc.cmd_path())
                     || self.query_matches_opt(ports)
-                    || self.query_matches_vec(get_process_args(prc))
+                    || self.query_contains_vec(get_process_args(prc))
             }
             SearchBy::None => true,
         }
@@ -69,8 +69,8 @@ impl QueryFilter {
         s.map(|s| self.query_match_str(s)).unwrap_or(false)
     }
 
-    fn query_matches_vec(&self, s: Vec<&str>) -> bool {
-        s.iter().any(|a| self.query_match_str(a))
+    fn query_contains_vec(&self, s: Vec<&str>) -> bool {
+        s.iter().any(|a| a.to_lowercase().contains(&self.query))
     }
 
     fn query_eq_u32(&self, s: u32) -> bool {
@@ -86,11 +86,20 @@ impl QueryFilter {
     }
 }
 
-#[derive(Copy, Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct FilterOptions {
     //NOTE: On linux threads can be listed as processes and thus needs filtering
     pub ignore_threads: bool,
     pub include_all_processes: bool,
+}
+
+impl Default for FilterOptions {
+    fn default() -> Self {
+        Self {
+            ignore_threads: true,
+            include_all_processes: false,
+        }
+    }
 }
 
 pub(super) struct OptionsFilter<'a> {

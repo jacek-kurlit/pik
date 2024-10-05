@@ -29,7 +29,7 @@ This tool is still under development
 
 ## Features
 
-Pik allows to search processes by:
+Pik allows to **fuzzy** search processes by:
 
 - Name - No prefix is required, just type process name, for example 'firefox'
 ![Example search by name](docs/search_by_name.gif)
@@ -67,7 +67,7 @@ On **Tumbleweed**
 sudo zypper install pik
 ```
 
-With **[dra](https://github.com/devmatteini/dra)** 
+With **[dra](https://github.com/devmatteini/dra)**
 
 ```sh
 dra download --install jacek-kurlit/pik
@@ -107,6 +107,7 @@ Example configuration with default settings can be found at [example config](exa
 
 - Process name on linux system it is not always exe name also it is limited to 15 chars
 - In linux process may appear on list but you are not allowed to get information about ports it uses. In such situations you need to run pik with root privileges
+- Currently fuzzy search for args is not supported due to weird behavior - some processes pass all arguments as single causing them to always appear on list. Due to this fact args search is done by **contains** method
 
 ## Development
 
@@ -116,7 +117,6 @@ In theory pik is using coross compliant lib that allows to run it on all major p
 In pratice I'm using linux and development is performed based on this OS.
 Pik will probably work on MacOs and Windows but that must be tested by community since I don't own computers with these OS'es.
 If you are able to test it on windows or macos please create issue to let me know.
-
 
 ### Setup
 

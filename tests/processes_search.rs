@@ -2,46 +2,44 @@ use std::{thread, time::Duration};
 
 use pik::processes::{FilterOptions, ProcessManager};
 
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+
 #[test]
-#[cfg(not(target_os = "macos"))]
 fn should_find_cargo_process_by_cmd_name() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("cargo", FilterOptions::default());
     assert!(!results.is_empty());
-    assert!(results.iter().all(|p| p.cmd.contains("cargo")));
+    assert!(results.iter().all(|p| fuzzy_matches(&p.cmd, "cargo")));
 }
 
 #[test]
-#[cfg(not(target_os = "macos"))]
 fn should_find_cargo_process_by_cmd_path() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("/cargo", FilterOptions::default());
     assert!(!results.is_empty());
     assert!(results
         .iter()
-        .all(|p| p.cmd_path.as_ref().unwrap().contains("cargo")));
+        .all(|p| fuzzy_matches(p.cmd_path.as_ref().unwrap(), "cargo")));
 }
 
 #[test]
-#[cfg(not(target_os = "macos"))]
 fn should_find_cargo_process_by_name_path_or_args() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("~cargo", FilterOptions::default());
     assert!(!results.is_empty());
     assert!(results
         .iter()
-        .all(|p| p.cmd_path.as_ref().unwrap().contains("cargo")
+        .all(|p| fuzzy_matches(p.cmd_path.as_ref().unwrap(), "cargo")
             || p.args.contains("cargo")
-            || p.cmd.contains("cargo")));
+            || fuzzy_matches(&p.cmd, "cargo")));
 }
 
 #[test]
-#[cfg(not(target_os = "macos"))]
 fn should_find_cargo_process_by_args() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("-test", FilterOptions::default());
     assert!(!results.is_empty());
-    assert!(results.iter().all(|p| p.args.contains("test")));
+    assert!(results.iter().all(|p| fuzzy_matches(&p.args, "test")));
 }
 
 use http_test_server::TestServer;
@@ -81,4 +79,11 @@ fn should_find_cargo_process_by_process_family() {
     assert!(results
         .iter()
         .all(|p| p.pid == cargo_process_pid || p.parent_pid == Some(cargo_process_pid)));
+}
+
+fn fuzzy_matches(value: &str, pattern: &str) -> bool {
+    SkimMatcherV2::default()
+        .fuzzy_match(value, pattern)
+        .unwrap_or(0)
+        > 0
 }
