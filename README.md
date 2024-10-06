@@ -32,15 +32,15 @@ This tool is still under development
 Pik allows to **fuzzy** search processes by:
 
 - Name - No prefix is required, just type process name, for example 'firefox'
-![Example search by name](docs/search_by_name.gif)
+  ![Example search by name](docs/search_by_name.gif)
 - Cmd Path - Prefix search with '/', for example '/firefox'
-![Example search by path](docs/search_by_path.gif)
+  ![Example search by path](docs/search_by_path.gif)
 - Arguments - Prefix search with '-' for example '-foo'. Please note that if you want to use this feature in cli you must add `--`, for example `pik -- -foo`
-![Example search by argument](docs/search_by_arg.gif)
+  ![Example search by argument](docs/search_by_arg.gif)
 - Ports - Prefix search with ':' for example ':8080'
-![Example search by port](docs/search_by_port.gif)
+  ![Example search by port](docs/search_by_port.gif)
 - Everywhere - Prefix search with '~' for example '~firefox'
-![Example search everywhere](docs/search_everywhere.gif)
+  ![Example search everywhere](docs/search_everywhere.gif)
 
 After selecting process you can kill it with Ctrl + X
 
@@ -96,12 +96,16 @@ Example configuration with default settings can be found at [example config](exa
 
 ### Key maps
 
-- Esc | Ctrl + C - Quit
-- Ctrl + X - Kill process
-- Ctrl + R - Refresh processes list
-- Ctrl + F - Details forward
-- Ctrl + B - Details backward
-- Tab | Shift + Tab | Arrow Down | Arrow Up - Select next/previous
+| Key(s)                     | Action                 |
+| -------------------------- | ---------------------- |
+| `Esc` \| `Ctrl + C`        | Quit                   |
+| `Ctrl + X`                 | Kill process           |
+| `Ctrl + R`                 | Refresh processes list |
+| `Ctrl + F`                 | Details forward        |
+| `Ctrl + B`                 | Details backward       |
+| `Tab` \| `Shift + Tab`     | Select next/previous   |
+| `Arrow Down` \| `Arrow Up` | Select next/previous   |
+| `Ctrl + J` \| `Ctrl + K`   | Select next/previous   |
 
 ## Caveats
 
