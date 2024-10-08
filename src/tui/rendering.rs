@@ -66,6 +66,16 @@ impl Tui {
         }
     }
 
+    pub fn select_first_row(&mut self) {
+        let index = (self.process_table_number_of_items > 0).then_some(0);
+        self.select_row_by_index(index);
+    }
+
+    pub fn select_last_row(&mut self) {
+        let index = self.process_table_number_of_items.checked_sub(1);
+        self.select_row_by_index(index);
+    }
+
     pub fn select_next_row(&mut self, step_size: usize) {
         let next_row_index = self.process_table.selected().map(|i| {
             let mut i = i + step_size;
@@ -74,10 +84,13 @@ impl Tui {
             }
             i
         });
-        self.process_table.select(next_row_index);
-        self.process_table_scroll_state = self
-            .process_table_scroll_state
-            .position(next_row_index.unwrap_or(0));
+        self.select_row_by_index(next_row_index);
+    }
+
+    pub fn select_row_by_index(&mut self, index: Option<usize>) {
+        self.process_table.select(index);
+        self.process_table_scroll_state =
+            self.process_table_scroll_state.position(index.unwrap_or(0));
         self.reset_process_detals_scroll();
     }
 
@@ -86,11 +99,7 @@ impl Tui {
             let i = i.wrapping_sub(step_size);
             i.clamp(0, self.process_table_number_of_items.saturating_sub(1))
         });
-        self.process_table.select(previous_index);
-        self.process_table_scroll_state = self
-            .process_table_scroll_state
-            .position(previous_index.unwrap_or(0));
-        self.reset_process_detals_scroll();
+        self.select_row_by_index(previous_index);
     }
 
     pub fn handle_input(&mut self, input: KeyEvent) {

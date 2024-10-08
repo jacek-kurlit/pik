@@ -106,6 +106,7 @@ Example configuration with default settings can be found at [example config](exa
 | `Tab` \| `Shift + Tab`     | Select next/previous   |
 | `Arrow Down` \| `Arrow Up` | Select next/previous   |
 | `Ctrl + J` \| `Ctrl + K`   | Select next/previous   |
+| `Ctrl + Arrow Down` \| `Ctrl + Arrow Up`   | Select last/first   |
 
 ## Caveats
 
