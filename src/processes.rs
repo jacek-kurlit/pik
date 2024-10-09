@@ -169,8 +169,11 @@ impl ProcessManager {
     }
 
     pub fn refresh(&mut self) {
-        self.sys
-            .refresh_processes_specifics(sysinfo::ProcessesToUpdate::All, process_refresh_kind());
+        self.sys.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            process_refresh_kind(),
+        );
         // TODO: do we really need to refresh users?
         self.users.refresh_list();
         self.process_ports = refresh_ports();
