@@ -592,7 +592,7 @@ checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
 name = "pik"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -860,9 +860,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.31.2"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4115055da5f572fff541dd0c4e61b0262977f453cc9fe04be83aba25a89bdab"
+checksum = "e3b5ae3f4f7d64646c46c4cae4e3f01d1c5d255c7406fdd7c7f999a94e488791"
 dependencies = [
  "core-foundation-sys",
  "libc",
