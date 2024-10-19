@@ -94,7 +94,7 @@ impl ProcessInfo for sysinfo::Process {
 #[derive(Debug)]
 pub struct ProcessSearchResults {
     pub search_by: SearchBy,
-    items: Vec<Process>,
+    pub items: Vec<ResultItem>,
 }
 
 impl ProcessSearchResults {
@@ -115,15 +115,15 @@ impl ProcessSearchResults {
 
     pub fn nth(&self, index: Option<usize>) -> Option<&Process> {
         let index = index?;
-        self.items.get(index)
+        self.items.get(index).map(|item| &item.process)
     }
 
     pub fn remove(&mut self, pid: u32) {
-        self.items.retain(|prc| prc.pid != pid)
+        self.items.retain(|item| item.process.pid != pid)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Process> {
-        self.items.iter()
+        self.items.iter().map(|i| &i.process)
     }
 }
 
@@ -147,20 +147,28 @@ impl ProcessManager {
         let process_filter = QueryFilter::new(query);
         let options_filter = OptionsFilter::new(options, &self.current_user_id);
 
-        let items = self
+        let mut items = self
             .sys
             .processes()
             .values()
             .filter_map(|prc| {
                 let ports = self.process_ports.get(&prc.pid().as_u32());
-                if !options_filter.accept(prc)
-                    || !process_filter.accept(prc, ports.map(|p| p.as_str()))
-                {
+                if !options_filter.accept(prc) {
                     return None;
                 }
-                Some(self.create_process_info(prc, ports))
+
+                let match_data = process_filter.accept(prc, ports.map(|p| p.as_str()));
+                if match_data.negative_match() {
+                    return None;
+                }
+                Some(ResultItem::new(
+                    match_data,
+                    self.create_process_info(prc, ports),
+                ))
             })
-            .collect();
+            .collect::<Vec<ResultItem>>();
+
+        items.sort_by(|a, b| b.match_data.score.cmp(&a.match_data.score));
 
         ProcessSearchResults {
             search_by: process_filter.search_by,
@@ -273,5 +281,47 @@ impl Process {
         self.parent_pid
             .map(|pid| pid.to_string())
             .unwrap_or_default()
+    }
+}
+
+#[derive(Debug)]
+pub struct ResultItem {
+    pub match_data: MatchData,
+    pub process: Process,
+}
+
+impl ResultItem {
+    pub fn new(match_data: MatchData, process: Process) -> Self {
+        Self {
+            match_data,
+            process,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct MatchData {
+    pub score: i64,
+}
+
+impl MatchData {
+    pub fn new(score: i64) -> Self {
+        Self { score }
+    }
+
+    pub fn perfect() -> Self {
+        Self { score: i64::MAX }
+    }
+
+    pub fn none() -> Self {
+        Self { score: -1 }
+    }
+
+    pub fn positive_match(&self) -> bool {
+        self.score > 0
+    }
+
+    pub fn negative_match(&self) -> bool {
+        self.score <= 0
     }
 }
