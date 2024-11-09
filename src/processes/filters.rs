@@ -72,6 +72,9 @@ impl QueryFilter {
     }
 
     fn query_match_str(&self, s: &str) -> MatchData {
+        if self.query.is_empty() {
+            return MatchData::perfect();
+        }
         match self.matcher.fuzzy_match(s, self.query.as_str()) {
             Some(score) => MatchData::new(score),
             None => MatchData::none(),
@@ -83,8 +86,11 @@ impl QueryFilter {
             .unwrap_or(MatchData::none())
     }
 
-    fn query_contains_vec(&self, s: Vec<&str>) -> MatchData {
-        if s.iter().any(|a| a.to_lowercase().contains(&self.query)) {
+    fn query_contains_vec(&self, items: Vec<&str>) -> MatchData {
+        if items
+            .iter()
+            .any(|item| item.to_lowercase().contains(&self.query))
+        {
             MatchData::perfect()
         } else {
             MatchData::none()
@@ -252,6 +258,13 @@ pub mod tests {
 
         process.cmd_path = Some("/xxx".to_string());
         assert!(filter.accept(&process, None).negative_match());
+
+        // '/' accepts all non empty paths
+        let filter = QueryFilter::new("/");
+        process.cmd_path = Some("/xxx".to_string());
+        assert!(filter.accept(&process, None).positive_match());
+        process.cmd_path = None;
+        assert!(filter.accept(&process, None).negative_match());
     }
 
     #[test]
@@ -275,6 +288,13 @@ pub mod tests {
         assert!(filter.accept(&process, None).positive_match());
 
         process = process.with_args(&["-xxx"]);
+        assert!(filter.accept(&process, None).negative_match());
+
+        // '-' accepts all non empty args
+        let filter = QueryFilter::new("-");
+        process = process.with_args(&["-arg"]);
+        assert!(filter.accept(&process, None).positive_match());
+        process = process.with_args(&[]);
         assert!(filter.accept(&process, None).negative_match());
     }
 
@@ -305,6 +325,11 @@ pub mod tests {
             .positive_match());
 
         assert!(filter.accept(&process, Some("7777")).negative_match());
+
+        //':' accepts all non empty ports
+        let filter = QueryFilter::new(":");
+        assert!(filter.accept(&process, Some("5125")).positive_match());
+        assert!(filter.accept(&process, None).negative_match());
     }
 
     #[test]
