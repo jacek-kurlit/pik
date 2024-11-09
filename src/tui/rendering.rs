@@ -2,11 +2,10 @@ use std::{borrow::Cow, rc::Rc};
 
 use crossterm::event::KeyEvent;
 use ratatui::{
-    layout::{Alignment, Constraint, Layout, Margin, Rect},
+    layout::{Constraint, Layout, Margin, Rect},
     style::{palette::tailwind, Color, Modifier, Style, Stylize},
     text::{Line, Span, Text},
     widgets::{
-        block::{Position, Title},
         Block, BorderType, Borders, HighlightSpacing, Paragraph, Row, Scrollbar,
         ScrollbarOrientation, ScrollbarState, Table, TableState, Wrap,
     },
@@ -228,20 +227,19 @@ impl Tui {
         ]))
         .block(
             Block::default()
-                .title(
-                    Title::from(format!(
+                .title_top(
+                    Line::from(format!(
                         " {} / {} ",
                         self.process_table.selected().map(|i| i + 1).unwrap_or(0),
                         search_results.len()
                     ))
-                    .position(Position::Top)
-                    .alignment(Alignment::Left),
+                    .left_aligned(),
                 )
                 .borders(Borders::ALL)
                 .border_style(Style::new().fg(self.theme.process_table_border_color))
                 .border_type(BorderType::Plain),
         )
-        .highlight_style(
+        .row_highlight_style(
             Style::default()
                 .add_modifier(Modifier::REVERSED)
                 .fg(self.theme.selected_style_fg),
@@ -279,11 +277,7 @@ impl Tui {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(
-                        Title::from(" Process Details ")
-                            .alignment(Alignment::Left)
-                            .position(Position::Top),
-                    )
+                    .title_top(Line::from(" Process Details ").left_aligned())
                     // .border_style(Style::new().fg(app.colors.footer_border_color))
                     .border_type(BorderType::Rounded),
             )
