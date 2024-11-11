@@ -151,16 +151,10 @@ impl ProcessManager {
             .sys
             .processes()
             .values()
+            .filter(|prc| options_filter.accept(*prc))
             .filter_map(|prc| {
                 let ports = self.process_ports.get(&prc.pid().as_u32());
-                if !options_filter.accept(prc) {
-                    return None;
-                }
-
-                let match_data = process_filter.accept(prc, ports.map(|p| p.as_str()));
-                if match_data.negative_match() {
-                    return None;
-                }
+                let match_data = process_filter.accept(prc, ports.map(|p| p.as_str()))?;
                 Some(ResultItem::new(
                     match_data,
                     self.create_process_info(prc, ports),
