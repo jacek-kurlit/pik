@@ -1,7 +1,7 @@
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use sysinfo::Uid;
 
-use super::{utils::get_process_args, MatchData, ProcessInfo};
+use super::{utils::get_process_args, MatchData, MatchType, MatchedBy, ProcessInfo};
 
 pub(super) struct QueryFilter {
     query: String,
@@ -40,83 +40,71 @@ impl QueryFilter {
             matcher,
         }
     }
-    pub(super) fn accept(&self, prc: &impl ProcessInfo, ports: Option<&str>) -> MatchData {
+    pub(super) fn accept(&self, prc: &impl ProcessInfo, ports: Option<&str>) -> Option<MatchData> {
         match self.search_by {
-            SearchBy::Cmd => self.query_match_str(prc.cmd()),
-            SearchBy::Path => self.query_matches_opt(prc.cmd_path()),
-            SearchBy::Args => self.query_contains_vec(get_process_args(prc)),
-            SearchBy::Port => self.query_matches_opt(ports),
-            SearchBy::Pid => self.query_eq_u32(prc.pid()),
-            SearchBy::ProcessFamily => self.query_matches_process_family(prc),
-            SearchBy::Everywhere => {
-                let matched = self.query_match_str(prc.cmd());
-                if matched.positive_match() {
-                    return matched;
-                }
-                let matched = self.query_matches_opt(prc.cmd_path());
-                if matched.positive_match() {
-                    return matched;
-                }
-                let matched = self.query_matches_opt(ports);
-                if matched.positive_match() {
-                    return matched;
-                }
-                let matched = self.query_contains_vec(get_process_args(prc));
-                if matched.positive_match() {
-                    return matched;
-                }
-                MatchData::none()
-            }
-            SearchBy::None => MatchData::perfect(),
+            SearchBy::Cmd => self.fuzzy_match(prc.cmd(), MatchedBy::Cmd),
+            SearchBy::Path => self.fuzzy_match_opt(prc.cmd_path(), MatchedBy::Path),
+            SearchBy::Args => self.vec_contains(get_process_args(prc), MatchedBy::Args),
+            SearchBy::Port => self.fuzzy_match_opt(ports, MatchedBy::Port),
+            SearchBy::Pid => self.exact_match_u32(prc.pid(), MatchedBy::Pid),
+            SearchBy::ProcessFamily => self.exact_match_process_family(prc),
+            SearchBy::Everywhere => self
+                .fuzzy_match(prc.cmd(), MatchedBy::Cmd)
+                .or_else(|| self.fuzzy_match_opt(prc.cmd_path(), MatchedBy::Path))
+                .or_else(|| self.fuzzy_match_opt(ports, MatchedBy::Port))
+                .or_else(|| self.vec_contains(get_process_args(prc), MatchedBy::Args)),
+            SearchBy::None => Some(MatchData::new(
+                MatchedBy::ProcessExistence,
+                MatchType::Exists,
+            )),
         }
     }
 
-    fn query_match_str(&self, s: &str) -> MatchData {
+    fn fuzzy_match(&self, s: &str, matched_by: MatchedBy) -> Option<MatchData> {
         if self.query.is_empty() {
-            return MatchData::perfect();
+            return Some(MatchData::new(matched_by, MatchType::Exists));
         }
-        match self.matcher.fuzzy_match(s, self.query.as_str()) {
-            Some(score) => MatchData::new(score),
-            None => MatchData::none(),
-        }
+        self.matcher
+            .fuzzy_indices(s, self.query.as_str())
+            .map(|(score, indicies)| {
+                MatchData::new(matched_by, MatchType::Fuzzy { score, indicies })
+            })
     }
 
-    fn query_matches_opt(&self, s: Option<&str>) -> MatchData {
-        s.map(|s| self.query_match_str(s))
-            .unwrap_or(MatchData::none())
+    fn fuzzy_match_opt(&self, s: Option<&str>, matched_by: MatchedBy) -> Option<MatchData> {
+        s.and_then(|s| self.fuzzy_match(s, matched_by))
     }
 
-    fn query_contains_vec(&self, items: Vec<&str>) -> MatchData {
-        if items
+    fn vec_contains(&self, items: Vec<&str>, matched_by: MatchedBy) -> Option<MatchData> {
+        if self.query.is_empty() && !items.is_empty() {
+            return Some(MatchData::new(matched_by, MatchType::Exists));
+        }
+        items
             .iter()
             .any(|item| item.to_lowercase().contains(&self.query))
-        {
-            MatchData::perfect()
-        } else {
-            MatchData::none()
-        }
+            .then_some(MatchData::new(matched_by, MatchType::Contains))
     }
 
-    fn query_eq_u32(&self, s: u32) -> MatchData {
+    fn exact_match_u32(&self, s: u32, matched_by: MatchedBy) -> Option<MatchData> {
         if s.to_string() == self.query {
-            MatchData::perfect()
+            Some(MatchData::new(matched_by, MatchType::Exact))
         } else {
-            MatchData::none()
+            None
         }
     }
 
-    fn query_matches_process_family(&self, prc: &impl ProcessInfo) -> MatchData {
+    fn exact_match_process_family(&self, prc: &impl ProcessInfo) -> Option<MatchData> {
         if prc.pid().to_string() == self.query {
-            return MatchData::perfect();
+            return Some(MatchData::new(MatchedBy::Pid, MatchType::Exact));
         }
         if prc
             .parent_id()
             .map(|pid| pid.to_string() == self.query)
             .unwrap_or(false)
         {
-            return MatchData::perfect();
+            return Some(MatchData::new(MatchedBy::ParentPid, MatchType::Exact));
         }
-        MatchData::none()
+        None
     }
 }
 
@@ -213,22 +201,21 @@ pub mod tests {
             cmd: "TeSt".to_string(),
             ..Default::default()
         };
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Cmd);
 
         process.cmd = "test".to_string();
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Cmd);
 
         process.cmd = "TEST".to_string();
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Cmd);
 
         process.cmd = "Testificator".to_string();
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Cmd);
 
         process.cmd = "online_TESTER".to_string();
-        assert!(filter.accept(&process, None).positive_match());
-
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Cmd);
         process.cmd = "xxx".to_string();
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
     }
 
     #[test]
@@ -238,33 +225,33 @@ pub mod tests {
             cmd_path: Some("/TeSt".to_string()),
             ..Default::default()
         };
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Path);
 
         // tests that fuzzy search works
         process.cmd_path = Some("/taest".to_string());
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Path);
 
         process.cmd_path = Some("/test".to_string());
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Path);
 
         process.cmd_path = Some("/TEST".to_string());
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Path);
 
         process.cmd_path = Some("/testing_dir".to_string());
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Path);
 
         process.cmd_path = Some("/cargo/tests".to_string());
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Path);
 
         process.cmd_path = Some("/xxx".to_string());
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
 
         // '/' accepts all non empty paths
         let filter = QueryFilter::new("/");
         process.cmd_path = Some("/xxx".to_string());
-        assert!(filter.accept(&process, None).positive_match());
+        assert_existence_match(filter.accept(&process, None), MatchedBy::Path);
         process.cmd_path = None;
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
     }
 
     #[test]
@@ -273,29 +260,29 @@ pub mod tests {
         let mut process = MockProcessInfo::default();
 
         process = process.with_args(&["-TeSt"]);
-        assert!(filter.accept(&process, None).positive_match());
+        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["-test"]);
-        assert!(filter.accept(&process, None).positive_match());
+        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["-TEST"]);
-        assert!(filter.accept(&process, None).positive_match());
+        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["arg1, arg2, --testifier"]);
-        assert!(filter.accept(&process, None).positive_match());
+        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["testimony"]);
-        assert!(filter.accept(&process, None).positive_match());
+        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["-xxx"]);
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
 
         // '-' accepts all non empty args
         let filter = QueryFilter::new("-");
         process = process.with_args(&["-arg"]);
-        assert!(filter.accept(&process, None).positive_match());
+        assert_existence_match(filter.accept(&process, None), MatchedBy::Args);
         process = process.with_args(&[]);
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
     }
 
     #[test]
@@ -306,7 +293,7 @@ pub mod tests {
             args: vec!["-test".into(), "-xxx".into()],
             ..Default::default()
         };
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
     }
 
     #[test]
@@ -314,22 +301,23 @@ pub mod tests {
         let filter = QueryFilter::new(":12");
         let process = MockProcessInfo::default();
 
-        assert!(filter.accept(&process, Some("1234")).positive_match());
+        assert_fuzzy_match(filter.accept(&process, Some("1234")), MatchedBy::Port);
 
-        assert!(filter.accept(&process, Some("3312")).positive_match());
+        assert_fuzzy_match(filter.accept(&process, Some("3312")), MatchedBy::Port);
 
-        assert!(filter.accept(&process, Some("5125")).positive_match());
+        assert_fuzzy_match(filter.accept(&process, Some("5125")), MatchedBy::Port);
 
-        assert!(filter
-            .accept(&process, Some("1111, 2222, 1234"))
-            .positive_match());
+        assert_fuzzy_match(
+            filter.accept(&process, Some("1111, 2222, 1234")),
+            MatchedBy::Port,
+        );
 
-        assert!(filter.accept(&process, Some("7777")).negative_match());
+        assert_eq!(filter.accept(&process, Some("7777")), None);
 
         //':' accepts all non empty ports
         let filter = QueryFilter::new(":");
-        assert!(filter.accept(&process, Some("5125")).positive_match());
-        assert!(filter.accept(&process, None).negative_match());
+        assert_existence_match(filter.accept(&process, Some("5125")), MatchedBy::Port);
+        assert_eq!(filter.accept(&process, None), None);
     }
 
     #[test]
@@ -340,9 +328,9 @@ pub mod tests {
             ..Default::default()
         };
 
-        assert!(filter.accept(&process, None).positive_match());
+        assert_exact_match(filter.accept(&process, None), MatchedBy::Pid);
         process.pid = 12345;
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
     }
 
     #[test]
@@ -352,59 +340,76 @@ pub mod tests {
             pid: 1234,
             ..Default::default()
         };
+        assert_exact_match(filter.accept(&process, None), MatchedBy::Pid);
 
-        assert!(filter.accept(&process, None).positive_match());
         process.pid = 555;
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
 
         process.parent_pid = Some(1234);
-        assert!(filter.accept(&process, None).positive_match());
+        assert_exact_match(filter.accept(&process, None), MatchedBy::ParentPid);
+
         process.parent_pid = Some(555);
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
+
         process.parent_pid = None;
-        assert!(filter.accept(&process, None).negative_match());
+        assert_eq!(filter.accept(&process, None), None);
     }
 
     #[test]
     fn query_filter_search_everywhere() {
-        let mut filter = QueryFilter::new("~test");
-        let mut process = MockProcessInfo {
+        let filter = QueryFilter::new("~test");
+        let process = MockProcessInfo {
             cmd: "TEST".into(),
             ..Default::default()
         };
-        assert!(filter.accept(&process, None).positive_match());
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Cmd);
 
-        process.cmd_path = Some("/tEsT".into());
-        assert!(filter.accept(&process, None).positive_match());
+        let process = MockProcessInfo {
+            cmd_path: Some("/tEsT".into()),
+            ..Default::default()
+        };
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Path);
 
-        process = process.with_args(&["-TeSt"]);
-        assert!(filter.accept(&process, None).positive_match());
+        let process = MockProcessInfo {
+            args: vec!["-TeSt".into()],
+            ..Default::default()
+        };
+        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
 
-        filter = QueryFilter::new("~80");
-        assert!(filter.accept(&process, Some("8080")).positive_match());
+        let process = MockProcessInfo::default();
 
-        process.cmd = "xxx".into();
-        process.cmd_path = Some("/xxx".into());
-        process = process.with_args(&["-xxx"]);
-        assert!(filter.accept(&process, Some("1234")).negative_match());
+        let filter = QueryFilter::new("~80");
+        assert_fuzzy_match(filter.accept(&process, Some("8080")), MatchedBy::Port);
+
+        let filter = QueryFilter::new("~any");
+        let process = MockProcessInfo {
+            cmd: "xxx".into(),
+            cmd_path: Some("/xxx".into()),
+            args: vec!["-xxx".into()],
+            ..Default::default()
+        };
+        assert_eq!(filter.accept(&process, Some("1234")), None);
     }
 
     #[test]
     fn query_filter_search_by_none() {
         let filter = QueryFilter::new("");
         let mut process = MockProcessInfo::default();
-        assert!(filter.accept(&process, None).positive_match());
+        assert_existence_match(filter.accept(&process, None), MatchedBy::ProcessExistence);
 
         process.cmd = "TeSt".to_string();
-        assert!(filter.accept(&process, None).positive_match());
+        assert_existence_match(filter.accept(&process, None), MatchedBy::ProcessExistence);
 
         process.cmd_path = Some("/TeSt".to_string());
-        assert!(filter.accept(&process, None).positive_match());
+        assert_existence_match(filter.accept(&process, None), MatchedBy::ProcessExistence);
 
         process = process.with_args(&["-TeSt"]);
-        assert!(filter.accept(&process, None).positive_match());
+        assert_existence_match(filter.accept(&process, None), MatchedBy::ProcessExistence);
 
-        assert!(filter.accept(&process, Some("1234")).positive_match());
+        assert_existence_match(
+            filter.accept(&process, Some("1234")),
+            MatchedBy::ProcessExistence,
+        );
     }
 
     #[test]
@@ -481,5 +486,35 @@ pub mod tests {
 
         prc.user_id = Uid::from_str("1001").unwrap();
         assert!(filter.accept(&prc));
+    }
+
+    fn assert_fuzzy_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
+        assert!(matches!(matched.match_type, MatchType::Fuzzy { .. }));
+    }
+
+    fn ensure_matched_by(
+        match_data: Option<MatchData>,
+        expected_matched_by: MatchedBy,
+    ) -> MatchData {
+        assert!(match_data.is_some());
+        let match_data = match_data.unwrap();
+        assert_eq!(match_data.matched_by, expected_matched_by);
+        match_data
+    }
+
+    fn assert_contains_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
+        assert!(matches!(matched.match_type, MatchType::Contains));
+    }
+
+    fn assert_exact_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
+        assert!(matches!(matched.match_type, MatchType::Exact));
+    }
+
+    fn assert_existence_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
+        assert!(matches!(matched.match_type, MatchType::Exists));
     }
 }

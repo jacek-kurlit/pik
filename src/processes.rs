@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::time::SystemTime;
 
@@ -151,16 +152,10 @@ impl ProcessManager {
             .sys
             .processes()
             .values()
+            .filter(|prc| options_filter.accept(*prc))
             .filter_map(|prc| {
                 let ports = self.process_ports.get(&prc.pid().as_u32());
-                if !options_filter.accept(prc) {
-                    return None;
-                }
-
-                let match_data = process_filter.accept(prc, ports.map(|p| p.as_str()));
-                if match_data.negative_match() {
-                    return None;
-                }
+                let match_data = process_filter.accept(prc, ports.map(|p| p.as_str()))?;
                 Some(ResultItem::new(
                     match_data,
                     self.create_process_info(prc, ports),
@@ -168,7 +163,7 @@ impl ProcessManager {
             })
             .collect::<Vec<ResultItem>>();
 
-        items.sort_by(|a, b| b.match_data.score.cmp(&a.match_data.score));
+        items.sort_by(|a, b| a.match_data.match_type.cmp(&b.match_data.match_type));
 
         ProcessSearchResults {
             search_by: process_filter.search_by,
@@ -301,27 +296,110 @@ impl ResultItem {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct MatchData {
-    pub score: i64,
+    pub matched_by: MatchedBy,
+    pub match_type: MatchType,
 }
 
 impl MatchData {
-    pub fn new(score: i64) -> Self {
-        Self { score }
+    pub fn new(matched_by: MatchedBy, match_type: MatchType) -> Self {
+        Self {
+            matched_by,
+            match_type,
+        }
     }
+}
 
-    pub fn perfect() -> Self {
-        Self { score: i64::MAX }
+#[derive(PartialEq, Eq, Debug)]
+pub enum MatchedBy {
+    Cmd,
+    Args,
+    Path,
+    Port,
+    Pid,
+    ParentPid,
+    ProcessExistence,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+
+pub enum MatchType {
+    Exact,
+    Contains,
+    Fuzzy { score: i64, indicies: Vec<usize> },
+    Exists,
+}
+
+impl PartialOrd for MatchType {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
+}
 
-    pub fn none() -> Self {
-        Self { score: -1 }
+/// This is needed as we sort by match type. Exact matches should go first, Exists should go last
+/// and fuzzy matches should be sorted by score
+impl Ord for MatchType {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (MatchType::Exact, MatchType::Exact) => Ordering::Equal,
+            (MatchType::Exact, _) => Ordering::Less,
+            (_, MatchType::Exact) => Ordering::Greater,
+
+            (MatchType::Contains, MatchType::Contains) => Ordering::Equal,
+            (MatchType::Contains, _) => Ordering::Less,
+            (_, MatchType::Contains) => Ordering::Greater,
+
+            (MatchType::Fuzzy { score: s1, .. }, MatchType::Fuzzy { score: s2, .. }) => s2.cmp(s1),
+            (MatchType::Fuzzy { .. }, _) => Ordering::Less,
+            (_, MatchType::Fuzzy { .. }) => Ordering::Greater,
+
+            (MatchType::Exists, MatchType::Exists) => Ordering::Equal,
+        }
     }
+}
 
-    pub fn positive_match(&self) -> bool {
-        self.score > 0
-    }
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    pub fn negative_match(&self) -> bool {
-        self.score <= 0
+    #[test]
+    fn match_type_sort_in_correct_order() {
+        let mut vec_to_sort = vec![
+            MatchType::Exists,
+            MatchType::Fuzzy {
+                score: 1,
+                indicies: vec![10, 20],
+            },
+            MatchType::Fuzzy {
+                score: 1,
+                indicies: vec![30, 40],
+            },
+            MatchType::Fuzzy {
+                score: 10,
+                indicies: vec![1, 2],
+            },
+            MatchType::Contains,
+            MatchType::Exact,
+        ];
+        vec_to_sort.sort();
+        assert_eq!(
+            vec_to_sort,
+            vec![
+                MatchType::Exact,
+                MatchType::Contains,
+                MatchType::Fuzzy {
+                    score: 10,
+                    indicies: vec![1, 2]
+                },
+                MatchType::Fuzzy {
+                    score: 1,
+                    indicies: vec![10, 20]
+                },
+                MatchType::Fuzzy {
+                    score: 1,
+                    indicies: vec![30, 40]
+                },
+                MatchType::Exists,
+            ]
+        );
     }
 }
