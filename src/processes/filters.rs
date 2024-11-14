@@ -42,17 +42,17 @@ impl QueryFilter {
     }
     pub(super) fn accept(&self, prc: &impl ProcessInfo, ports: Option<&str>) -> Option<MatchData> {
         match self.search_by {
-            SearchBy::Cmd => self.query_match_str(prc.cmd(), MatchedBy::Cmd),
-            SearchBy::Path => self.query_matches_opt(prc.cmd_path(), MatchedBy::Path),
-            SearchBy::Args => self.query_contains_vec(get_process_args(prc), MatchedBy::Args),
-            SearchBy::Port => self.query_matches_opt(ports, MatchedBy::Port),
-            SearchBy::Pid => self.query_eq_u32(prc.pid(), MatchedBy::Pid),
-            SearchBy::ProcessFamily => self.query_matches_process_family(prc),
+            SearchBy::Cmd => self.fuzzy_match(prc.cmd(), MatchedBy::Cmd),
+            SearchBy::Path => self.fuzzy_match_opt(prc.cmd_path(), MatchedBy::Path),
+            SearchBy::Args => self.vec_contains(get_process_args(prc), MatchedBy::Args),
+            SearchBy::Port => self.fuzzy_match_opt(ports, MatchedBy::Port),
+            SearchBy::Pid => self.exact_match_u32(prc.pid(), MatchedBy::Pid),
+            SearchBy::ProcessFamily => self.exact_match_process_family(prc),
             SearchBy::Everywhere => self
-                .query_match_str(prc.cmd(), MatchedBy::Cmd)
-                .or_else(|| self.query_matches_opt(prc.cmd_path(), MatchedBy::Path))
-                .or_else(|| self.query_matches_opt(ports, MatchedBy::Port))
-                .or_else(|| self.query_contains_vec(get_process_args(prc), MatchedBy::Args)),
+                .fuzzy_match(prc.cmd(), MatchedBy::Cmd)
+                .or_else(|| self.fuzzy_match_opt(prc.cmd_path(), MatchedBy::Path))
+                .or_else(|| self.fuzzy_match_opt(ports, MatchedBy::Port))
+                .or_else(|| self.vec_contains(get_process_args(prc), MatchedBy::Args)),
             SearchBy::None => Some(MatchData::new(
                 MatchedBy::ProcessExistence,
                 MatchType::Exists,
@@ -60,8 +60,7 @@ impl QueryFilter {
         }
     }
 
-    //TODO: rename to fuzzy_match
-    fn query_match_str(&self, s: &str, matched_by: MatchedBy) -> Option<MatchData> {
+    fn fuzzy_match(&self, s: &str, matched_by: MatchedBy) -> Option<MatchData> {
         if self.query.is_empty() {
             return Some(MatchData::new(matched_by, MatchType::Exists));
         }
@@ -72,11 +71,11 @@ impl QueryFilter {
             })
     }
 
-    fn query_matches_opt(&self, s: Option<&str>, matched_by: MatchedBy) -> Option<MatchData> {
-        s.and_then(|s| self.query_match_str(s, matched_by))
+    fn fuzzy_match_opt(&self, s: Option<&str>, matched_by: MatchedBy) -> Option<MatchData> {
+        s.and_then(|s| self.fuzzy_match(s, matched_by))
     }
 
-    fn query_contains_vec(&self, items: Vec<&str>, matched_by: MatchedBy) -> Option<MatchData> {
+    fn vec_contains(&self, items: Vec<&str>, matched_by: MatchedBy) -> Option<MatchData> {
         if self.query.is_empty() && !items.is_empty() {
             return Some(MatchData::new(matched_by, MatchType::Exists));
         }
@@ -86,7 +85,7 @@ impl QueryFilter {
             .then_some(MatchData::new(matched_by, MatchType::Contains))
     }
 
-    fn query_eq_u32(&self, s: u32, matched_by: MatchedBy) -> Option<MatchData> {
+    fn exact_match_u32(&self, s: u32, matched_by: MatchedBy) -> Option<MatchData> {
         if s.to_string() == self.query {
             Some(MatchData::new(matched_by, MatchType::Exact))
         } else {
@@ -94,7 +93,7 @@ impl QueryFilter {
         }
     }
 
-    fn query_matches_process_family(&self, prc: &impl ProcessInfo) -> Option<MatchData> {
+    fn exact_match_process_family(&self, prc: &impl ProcessInfo) -> Option<MatchData> {
         if prc.pid().to_string() == self.query {
             return Some(MatchData::new(MatchedBy::Pid, MatchType::Exact));
         }
