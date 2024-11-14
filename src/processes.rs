@@ -162,7 +162,7 @@ impl ProcessManager {
             })
             .collect::<Vec<ResultItem>>();
 
-        items.sort_by(|a, b| b.match_data.score.cmp(&a.match_data.score));
+        items.sort_by(|a, b| a.match_data.match_type.cmp(&b.match_data.match_type));
 
         ProcessSearchResults {
             search_by: process_filter.search_by,
@@ -295,27 +295,35 @@ impl ResultItem {
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct MatchData {
-    pub score: i64,
+    pub matched_by: MatchedBy,
+    pub match_type: MatchType,
 }
 
 impl MatchData {
-    pub fn new(score: i64) -> Self {
-        Self { score }
+    pub fn new(matched_by: MatchedBy, match_type: MatchType) -> Self {
+        Self {
+            matched_by,
+            match_type,
+        }
     }
+}
 
-    pub fn perfect() -> Self {
-        Self { score: i64::MAX }
-    }
+#[derive(PartialEq, Eq, Debug)]
+pub enum MatchedBy {
+    Cmd,
+    Args,
+    Path,
+    Port,
+    Pid,
+    ParentPid,
+    ProcessExistence,
+}
 
-    pub fn none() -> Self {
-        Self { score: -1 }
-    }
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
 
-    pub fn positive_match(&self) -> bool {
-        self.score > 0
-    }
-
-    pub fn negative_match(&self) -> bool {
-        self.score <= 0
-    }
+pub enum MatchType {
+    Exact,
+    Contains,
+    Fuzzy { score: i64, indicies: Vec<usize> },
+    Exists,
 }
