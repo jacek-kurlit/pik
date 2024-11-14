@@ -488,31 +488,33 @@ pub mod tests {
         assert!(filter.accept(&prc));
     }
 
-    fn assert_fuzzy_match(matched: Option<MatchData>, expected_matched_by: MatchedBy) {
-        assert!(matched.is_some());
-        let matched = matched.unwrap();
-        assert_eq!(matched.matched_by, expected_matched_by);
+    fn assert_fuzzy_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
         assert!(matches!(matched.match_type, MatchType::Fuzzy { .. }));
     }
 
-    fn assert_contains_match(matched: Option<MatchData>, expected_matched_by: MatchedBy) {
-        assert!(matched.is_some());
-        let matched = matched.unwrap();
-        assert_eq!(matched.matched_by, expected_matched_by);
+    fn ensure_matched_by(
+        match_data: Option<MatchData>,
+        expected_matched_by: MatchedBy,
+    ) -> MatchData {
+        assert!(match_data.is_some());
+        let match_data = match_data.unwrap();
+        assert_eq!(match_data.matched_by, expected_matched_by);
+        match_data
+    }
+
+    fn assert_contains_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
         assert!(matches!(matched.match_type, MatchType::Contains));
     }
 
-    fn assert_exact_match(matched: Option<MatchData>, expected_matched_by: MatchedBy) {
-        assert!(matched.is_some());
-        let matched = matched.unwrap();
-        assert_eq!(matched.matched_by, expected_matched_by);
+    fn assert_exact_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
         assert!(matches!(matched.match_type, MatchType::Exact));
     }
 
-    fn assert_existence_match(matched: Option<MatchData>, expected_matched_by: MatchedBy) {
-        assert!(matched.is_some());
-        let matched = matched.unwrap();
-        assert_eq!(matched.matched_by, expected_matched_by);
+    fn assert_existence_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
         assert!(matches!(matched.match_type, MatchType::Exists));
     }
 }

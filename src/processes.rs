@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::time::SystemTime;
 
@@ -319,11 +320,86 @@ pub enum MatchedBy {
     ProcessExistence,
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 
 pub enum MatchType {
     Exact,
     Contains,
     Fuzzy { score: i64, indicies: Vec<usize> },
     Exists,
+}
+
+impl PartialOrd for MatchType {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+/// This is needed as we sort by match type. Exact matches should go first, Exists should go last
+/// and fuzzy matches should be sorted by score
+impl Ord for MatchType {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (MatchType::Exact, MatchType::Exact) => Ordering::Equal,
+            (MatchType::Exact, _) => Ordering::Less,
+            (_, MatchType::Exact) => Ordering::Greater,
+
+            (MatchType::Contains, MatchType::Contains) => Ordering::Equal,
+            (MatchType::Contains, _) => Ordering::Less,
+            (_, MatchType::Contains) => Ordering::Greater,
+
+            (MatchType::Fuzzy { score: s1, .. }, MatchType::Fuzzy { score: s2, .. }) => s2.cmp(s1),
+            (MatchType::Fuzzy { .. }, _) => Ordering::Less,
+            (_, MatchType::Fuzzy { .. }) => Ordering::Greater,
+
+            (MatchType::Exists, MatchType::Exists) => Ordering::Equal,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn match_type_sort_in_correct_order() {
+        let mut vec_to_sort = vec![
+            MatchType::Exists,
+            MatchType::Fuzzy {
+                score: 1,
+                indicies: vec![10, 20],
+            },
+            MatchType::Fuzzy {
+                score: 1,
+                indicies: vec![30, 40],
+            },
+            MatchType::Fuzzy {
+                score: 10,
+                indicies: vec![1, 2],
+            },
+            MatchType::Contains,
+            MatchType::Exact,
+        ];
+        vec_to_sort.sort();
+        assert_eq!(
+            vec_to_sort,
+            vec![
+                MatchType::Exact,
+                MatchType::Contains,
+                MatchType::Fuzzy {
+                    score: 10,
+                    indicies: vec![1, 2]
+                },
+                MatchType::Fuzzy {
+                    score: 1,
+                    indicies: vec![10, 20]
+                },
+                MatchType::Fuzzy {
+                    score: 1,
+                    indicies: vec![30, 40]
+                },
+                MatchType::Exists,
+            ]
+        );
+    }
 }

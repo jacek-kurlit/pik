@@ -100,5 +100,5 @@ fn results_are_sorted_by_match_type(results: ProcessSearchResults) -> bool {
         .items
         .iter()
         .zip(results.items.iter().skip(1))
-        .all(|(a, b)| a.match_data.match_type >= b.match_data.match_type)
+        .all(|(a, b)| a.match_data.match_type <= b.match_data.match_type)
 }
