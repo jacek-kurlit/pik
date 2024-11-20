@@ -248,7 +248,14 @@ impl Tui {
                     MAX_PATH_LEN,
                 ),
                 truncate_from_front(&data.args, MAX_ARGS_LEN),
-                truncate_from_front(data.ports.as_deref().unwrap_or(""), MAX_PORTS_LEN),
+                create_line(
+                    item,
+                    data.ports.as_deref().unwrap_or(""),
+                    MatchedBy::Port,
+                    self.theme.highlight_style,
+                    self.theme.default_style,
+                    MAX_PORTS_LEN,
+                ),
             ])
             .style(Style::new().fg(self.theme.row_fg).bg(color))
         });
