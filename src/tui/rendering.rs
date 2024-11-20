@@ -219,7 +219,7 @@ impl Tui {
             ],
         )
         .header(Row::new(vec![
-            "USER", "PID", "PARENT", "TIME", "CMD", "CMD_PATH", "ARGS", "PORTS",
+            "USER", "PID", "PARENT", "RUN TIME", "CMD", "PATH", "ARGS", "PORTS",
         ]))
         .block(
             Block::default()
@@ -324,7 +324,7 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
                 .unwrap_or("".to_string());
             vec![
                 Line::from(format!(
-                    "USER: {} PID: {}{} START_TIME: {}, RUN_TIME: {} MEMORY: {}MB{}",
+                    "USER: {} PID: {}{} START TIME: {}, RUN TIME: {} MEMORY: {}MB{}",
                     prc.user_name,
                     prc.pid,
                     parent,
