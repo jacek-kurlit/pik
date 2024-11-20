@@ -13,7 +13,7 @@ use ratatui::{
 };
 use tui_textarea::TextArea;
 
-use crate::processes::{Process, ProcessSearchResults, SearchBy};
+use crate::processes::{Process, ProcessSearchResults};
 
 pub struct Theme {
     row_fg: Color,
@@ -46,6 +46,10 @@ pub struct Tui {
     search_area: TextArea<'static>,
     error_message: Option<&'static str>,
 }
+
+const MAX_PATH_LEN: usize = 30;
+const MAX_ARGS_LEN: usize = 35;
+const MAX_PORTS_LEN: usize = 20;
 
 impl Tui {
     pub fn new(search_text: String) -> Self {
@@ -184,7 +188,6 @@ impl Tui {
         search_results: &ProcessSearchResults,
         area: Rect,
     ) {
-        let (dynamic_header, value_getter) = dynamic_search_column(search_results);
         let rows = search_results.iter().enumerate().map(|(i, data)| {
             let color = match i % 2 {
                 0 => self.theme.normal_row_color,
@@ -197,8 +200,9 @@ impl Tui {
                 Cow::Borrowed(&data.start_time),
                 Cow::Borrowed(&data.run_time),
                 Cow::Borrowed(&data.cmd),
-                Cow::Borrowed(data.cmd_path.as_deref().unwrap_or("")),
-                Cow::Borrowed(value_getter(data)),
+                truncate_from_end(data.cmd_path.as_deref().unwrap_or(""), MAX_PATH_LEN),
+                truncate_from_front(&data.args, MAX_ARGS_LEN),
+                truncate_from_front(data.ports.as_deref().unwrap_or(""), MAX_PORTS_LEN),
             ])
             .style(Style::new().fg(self.theme.row_fg).bg(color))
         });
@@ -212,18 +216,12 @@ impl Tui {
                 Constraint::Percentage(5),
                 Constraint::Percentage(10),
                 Constraint::Percentage(25),
-                Constraint::Percentage(40),
+                Constraint::Percentage(25),
+                Constraint::Percentage(15),
             ],
         )
         .header(Row::new(vec![
-            "USER",
-            "PID",
-            "PARENT",
-            "STARTED",
-            "TIME",
-            "CMD",
-            "CMD_PATH",
-            dynamic_header,
+            "USER", "PID", "PARENT", "STARTED", "TIME", "CMD", "CMD_PATH", "ARGS", "PORTS",
         ]))
         .block(
             Block::default()
@@ -315,14 +313,6 @@ impl Tui {
     }
 }
 
-fn dynamic_search_column(search_result: &ProcessSearchResults) -> (&str, fn(&Process) -> &str) {
-    match search_result.search_by {
-        SearchBy::Port => ("PORT", |prc| prc.ports.as_deref().unwrap_or("")),
-        SearchBy::Args => ("ARGS", |prc| prc.args.as_str()),
-        _ => ("", |_| ""),
-    }
-}
-
 fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
     match selected_process {
         Some(prc) => {
@@ -378,4 +368,20 @@ fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
         Constraint::Length(1),
     ])
     .split(frame.area())
+}
+
+fn truncate_from_end(text: &str, max_len: usize) -> Cow<str> {
+    if text.len() > max_len {
+        Cow::Owned(format!("...{}", &text[text.len() - max_len..]))
+    } else {
+        Cow::Borrowed(text)
+    }
+}
+
+fn truncate_from_front(text: &str, max_len: usize) -> Cow<str> {
+    if text.len() > max_len {
+        Cow::Owned(format!("{}...", &text[0..max_len]))
+    } else {
+        Cow::Borrowed(text)
+    }
 }

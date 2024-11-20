@@ -94,6 +94,7 @@ impl ProcessInfo for sysinfo::Process {
 
 #[derive(Debug)]
 pub struct ProcessSearchResults {
+    //TODO: may be not used anymore
     pub search_by: SearchBy,
     pub items: Vec<ResultItem>,
 }
