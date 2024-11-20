@@ -13,7 +13,7 @@ use ratatui::{
 };
 use tui_textarea::TextArea;
 
-use crate::processes::{Process, ProcessSearchResults, SearchBy};
+use crate::processes::{Process, ProcessSearchResults};
 
 pub struct Theme {
     row_fg: Color,
@@ -46,6 +46,25 @@ pub struct Tui {
     search_area: TextArea<'static>,
     error_message: Option<&'static str>,
 }
+
+const MAX_PATH_LEN: usize = 40;
+const MAX_ARGS_LEN: usize = 35;
+const MAX_PORTS_LEN: usize = 20;
+
+const TABLE_HEADERS: [&str; 8] = [
+    "USER", "PID", "PARENT", "RUN TIME", "CMD", "PATH", "ARGS", "PORTS",
+];
+
+const TABLE_WIDTHS: [Constraint; 8] = [
+    Constraint::Percentage(5),
+    Constraint::Percentage(5),
+    Constraint::Percentage(5),
+    Constraint::Percentage(5),
+    Constraint::Percentage(10),
+    Constraint::Percentage(30),
+    Constraint::Percentage(25),
+    Constraint::Percentage(15),
+];
 
 impl Tui {
     pub fn new(search_text: String) -> Self {
@@ -184,68 +203,47 @@ impl Tui {
         search_results: &ProcessSearchResults,
         area: Rect,
     ) {
-        let (dynamic_header, value_getter) = dynamic_search_column(search_results);
-        let rows = search_results.iter().enumerate().map(|(i, data)| {
+        let rows = search_results.iter().enumerate().map(|(i, item)| {
             let color = match i % 2 {
                 0 => self.theme.normal_row_color,
                 _ => self.theme.alt_row_color,
             };
+            let data = &item.process;
             Row::new(vec![
                 Cow::Borrowed(data.user_name.as_str()),
                 Cow::Owned(format!("{}", data.pid)),
                 Cow::Owned(data.parent_as_string()),
-                Cow::Borrowed(&data.start_time),
                 Cow::Borrowed(&data.run_time),
                 Cow::Borrowed(&data.cmd),
-                Cow::Borrowed(data.cmd_path.as_deref().unwrap_or("")),
-                Cow::Borrowed(value_getter(data)),
+                truncate_from_end(data.cmd_path.as_deref().unwrap_or(""), MAX_PATH_LEN),
+                truncate_from_front(&data.args, MAX_ARGS_LEN),
+                truncate_from_front(data.ports.as_deref().unwrap_or(""), MAX_PORTS_LEN),
             ])
             .style(Style::new().fg(self.theme.row_fg).bg(color))
         });
-        let table = Table::new(
-            rows,
-            [
-                Constraint::Percentage(5),
-                Constraint::Percentage(5),
-                Constraint::Percentage(5),
-                Constraint::Percentage(5),
-                Constraint::Percentage(5),
-                Constraint::Percentage(10),
-                Constraint::Percentage(25),
-                Constraint::Percentage(40),
-            ],
-        )
-        .header(Row::new(vec![
-            "USER",
-            "PID",
-            "PARENT",
-            "STARTED",
-            "TIME",
-            "CMD",
-            "CMD_PATH",
-            dynamic_header,
-        ]))
-        .block(
-            Block::default()
-                .title_top(
-                    Line::from(format!(
-                        " {} / {} ",
-                        self.process_table.selected().map(|i| i + 1).unwrap_or(0),
-                        search_results.len()
-                    ))
-                    .left_aligned(),
-                )
-                .borders(Borders::ALL)
-                .border_style(Style::new().fg(self.theme.process_table_border_color))
-                .border_type(BorderType::Plain),
-        )
-        .row_highlight_style(
-            Style::default()
-                .add_modifier(Modifier::REVERSED)
-                .fg(self.theme.selected_style_fg),
-        )
-        .highlight_symbol(Text::from(vec![" ".into()]))
-        .highlight_spacing(HighlightSpacing::Always);
+        let table = Table::new(rows, TABLE_WIDTHS)
+            .header(Row::new(TABLE_HEADERS))
+            .block(
+                Block::default()
+                    .title_top(
+                        Line::from(format!(
+                            " {} / {} ",
+                            self.process_table.selected().map(|i| i + 1).unwrap_or(0),
+                            search_results.len()
+                        ))
+                        .left_aligned(),
+                    )
+                    .borders(Borders::ALL)
+                    .border_style(Style::new().fg(self.theme.process_table_border_color))
+                    .border_type(BorderType::Plain),
+            )
+            .row_highlight_style(
+                Style::default()
+                    .add_modifier(Modifier::REVERSED)
+                    .fg(self.theme.selected_style_fg),
+            )
+            .highlight_symbol(Text::from(vec![" ".into()]))
+            .highlight_spacing(HighlightSpacing::Always);
         f.render_stateful_widget(table, area, &mut self.process_table);
         f.render_stateful_widget(
             Scrollbar::default()
@@ -278,7 +276,6 @@ impl Tui {
                 Block::default()
                     .borders(Borders::ALL)
                     .title_top(Line::from(" Process Details ").left_aligned())
-                    // .border_style(Style::new().fg(app.colors.footer_border_color))
                     .border_type(BorderType::Rounded),
             )
             .scroll((self.process_details_scroll_offset, 0));
@@ -315,14 +312,6 @@ impl Tui {
     }
 }
 
-fn dynamic_search_column(search_result: &ProcessSearchResults) -> (&str, fn(&Process) -> &str) {
-    match search_result.search_by {
-        SearchBy::Port => ("PORT", |prc| prc.ports.as_deref().unwrap_or("")),
-        SearchBy::Args => ("ARGS", |prc| prc.args.as_str()),
-        _ => ("", |_| ""),
-    }
-}
-
 fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
     match selected_process {
         Some(prc) => {
@@ -337,7 +326,7 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
                 .unwrap_or("".to_string());
             vec![
                 Line::from(format!(
-                    "USER: {} PID: {}{} START_TIME: {}, RUN_TIME: {} MEMORY: {}MB{}",
+                    "USER: {} PID: {}{} START TIME: {}, RUN TIME: {} MEMORY: {}MB{}",
                     prc.user_name,
                     prc.pid,
                     parent,
@@ -378,4 +367,20 @@ fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
         Constraint::Length(1),
     ])
     .split(frame.area())
+}
+
+fn truncate_from_end(text: &str, max_len: usize) -> Cow<str> {
+    if text.len() > max_len {
+        Cow::Owned(format!("...{}", &text[text.len() - max_len..]))
+    } else {
+        Cow::Borrowed(text)
+    }
+}
+
+fn truncate_from_front(text: &str, max_len: usize) -> Cow<str> {
+    if text.len() > max_len {
+        Cow::Owned(format!("{}...", &text[0..max_len]))
+    } else {
+        Cow::Borrowed(text)
+    }
 }
