@@ -217,7 +217,6 @@ impl Tui {
             };
             let data = &item.process;
             Row::new(vec![
-                //TODO: instead of raw use with default style?
                 Line::from(Span::styled(
                     data.user_name.as_str(),
                     self.theme.default_style,
