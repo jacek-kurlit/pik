@@ -285,6 +285,10 @@ impl ResultItem {
             process,
         }
     }
+
+    pub fn is_matched_by(&self, matched_by: MatchedBy) -> bool {
+        self.match_data.matched_by == matched_by
+    }
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -302,7 +306,7 @@ impl MatchData {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum MatchedBy {
     Cmd,
     Args,
@@ -318,7 +322,7 @@ pub enum MatchedBy {
 pub enum MatchType {
     Exact,
     Contains,
-    Fuzzy { score: i64, indicies: Vec<usize> },
+    Fuzzy { score: i64, positions: Vec<usize> },
     Exists,
 }
 
@@ -360,15 +364,15 @@ mod tests {
             MatchType::Exists,
             MatchType::Fuzzy {
                 score: 1,
-                indicies: vec![10, 20],
+                positions: vec![10, 20],
             },
             MatchType::Fuzzy {
                 score: 1,
-                indicies: vec![30, 40],
+                positions: vec![30, 40],
             },
             MatchType::Fuzzy {
                 score: 10,
-                indicies: vec![1, 2],
+                positions: vec![1, 2],
             },
             MatchType::Contains,
             MatchType::Exact,
@@ -381,15 +385,15 @@ mod tests {
                 MatchType::Contains,
                 MatchType::Fuzzy {
                     score: 10,
-                    indicies: vec![1, 2]
+                    positions: vec![1, 2]
                 },
                 MatchType::Fuzzy {
                     score: 1,
-                    indicies: vec![10, 20]
+                    positions: vec![10, 20]
                 },
                 MatchType::Fuzzy {
                     score: 1,
-                    indicies: vec![30, 40]
+                    positions: vec![30, 40]
                 },
                 MatchType::Exists,
             ]
