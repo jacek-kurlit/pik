@@ -51,6 +51,21 @@ const MAX_PATH_LEN: usize = 40;
 const MAX_ARGS_LEN: usize = 35;
 const MAX_PORTS_LEN: usize = 20;
 
+const TABLE_HEADERS: [&str; 8] = [
+    "USER", "PID", "PARENT", "RUN TIME", "CMD", "PATH", "ARGS", "PORTS",
+];
+
+const TABLE_WIDTHS: [Constraint; 8] = [
+    Constraint::Percentage(5),
+    Constraint::Percentage(5),
+    Constraint::Percentage(5),
+    Constraint::Percentage(5),
+    Constraint::Percentage(10),
+    Constraint::Percentage(30),
+    Constraint::Percentage(25),
+    Constraint::Percentage(15),
+];
+
 impl Tui {
     pub fn new(search_text: String) -> Self {
         let mut search_area = TextArea::from(search_text.lines());
@@ -188,11 +203,12 @@ impl Tui {
         search_results: &ProcessSearchResults,
         area: Rect,
     ) {
-        let rows = search_results.iter().enumerate().map(|(i, data)| {
+        let rows = search_results.iter().enumerate().map(|(i, item)| {
             let color = match i % 2 {
                 0 => self.theme.normal_row_color,
                 _ => self.theme.alt_row_color,
             };
+            let data = &item.process;
             Row::new(vec![
                 Cow::Borrowed(data.user_name.as_str()),
                 Cow::Owned(format!("{}", data.pid)),
@@ -205,43 +221,29 @@ impl Tui {
             ])
             .style(Style::new().fg(self.theme.row_fg).bg(color))
         });
-        let table = Table::new(
-            rows,
-            [
-                Constraint::Percentage(5),
-                Constraint::Percentage(5),
-                Constraint::Percentage(5),
-                Constraint::Percentage(5),
-                Constraint::Percentage(10),
-                Constraint::Percentage(30),
-                Constraint::Percentage(25),
-                Constraint::Percentage(15),
-            ],
-        )
-        .header(Row::new(vec![
-            "USER", "PID", "PARENT", "RUN TIME", "CMD", "PATH", "ARGS", "PORTS",
-        ]))
-        .block(
-            Block::default()
-                .title_top(
-                    Line::from(format!(
-                        " {} / {} ",
-                        self.process_table.selected().map(|i| i + 1).unwrap_or(0),
-                        search_results.len()
-                    ))
-                    .left_aligned(),
-                )
-                .borders(Borders::ALL)
-                .border_style(Style::new().fg(self.theme.process_table_border_color))
-                .border_type(BorderType::Plain),
-        )
-        .row_highlight_style(
-            Style::default()
-                .add_modifier(Modifier::REVERSED)
-                .fg(self.theme.selected_style_fg),
-        )
-        .highlight_symbol(Text::from(vec![" ".into()]))
-        .highlight_spacing(HighlightSpacing::Always);
+        let table = Table::new(rows, TABLE_WIDTHS)
+            .header(Row::new(TABLE_HEADERS))
+            .block(
+                Block::default()
+                    .title_top(
+                        Line::from(format!(
+                            " {} / {} ",
+                            self.process_table.selected().map(|i| i + 1).unwrap_or(0),
+                            search_results.len()
+                        ))
+                        .left_aligned(),
+                    )
+                    .borders(Borders::ALL)
+                    .border_style(Style::new().fg(self.theme.process_table_border_color))
+                    .border_type(BorderType::Plain),
+            )
+            .row_highlight_style(
+                Style::default()
+                    .add_modifier(Modifier::REVERSED)
+                    .fg(self.theme.selected_style_fg),
+            )
+            .highlight_symbol(Text::from(vec![" ".into()]))
+            .highlight_spacing(HighlightSpacing::Always);
         f.render_stateful_widget(table, area, &mut self.process_table);
         f.render_stateful_widget(
             Scrollbar::default()

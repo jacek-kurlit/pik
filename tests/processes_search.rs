@@ -9,7 +9,9 @@ fn should_find_cargo_process_by_cmd_name() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("cargo", FilterOptions::default());
     assert!(!results.is_empty());
-    assert!(results.iter().all(|p| fuzzy_matches(&p.cmd, "cargo")));
+    assert!(results
+        .iter()
+        .all(|item| fuzzy_matches(&item.process.cmd, "cargo")));
     assert!(results_are_sorted_by_match_type(results));
 }
 
@@ -20,7 +22,7 @@ fn should_find_cargo_process_by_cmd_path() {
     assert!(!results.is_empty());
     assert!(results
         .iter()
-        .all(|p| fuzzy_matches(p.cmd_path.as_ref().unwrap(), "cargo")));
+        .all(|item| fuzzy_matches(item.process.cmd_path.as_ref().unwrap(), "cargo")));
     assert!(results_are_sorted_by_match_type(results));
 }
 
@@ -29,11 +31,11 @@ fn should_find_cargo_process_by_name_path_or_args() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("~cargo", FilterOptions::default());
     assert!(!results.is_empty());
-    assert!(results
-        .iter()
-        .all(|p| fuzzy_matches(p.cmd_path.as_ref().unwrap(), "cargo")
-            || p.args.contains("cargo")
-            || fuzzy_matches(&p.cmd, "cargo")));
+    assert!(results.iter().all(|item| fuzzy_matches(
+        item.process.cmd_path.as_ref().unwrap(),
+        "cargo"
+    ) || item.process.args.contains("cargo")
+        || fuzzy_matches(&item.process.cmd, "cargo")));
     assert!(results_are_sorted_by_match_type(results));
 }
 
@@ -42,7 +44,9 @@ fn should_find_cargo_process_by_args() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes("-test", FilterOptions::default());
     assert!(!results.is_empty());
-    assert!(results.iter().all(|p| fuzzy_matches(&p.args, "test")));
+    assert!(results
+        .iter()
+        .all(|item| fuzzy_matches(&item.process.args, "test")));
     assert!(results_are_sorted_by_match_type(results));
 }
 
@@ -56,7 +60,9 @@ fn should_find_cargo_process_by_port() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes(&format!(":{}", port), FilterOptions::default());
     assert!(!results.is_empty());
-    assert!(results.iter().all(|p| p.ports == Some(format!("{}", port))));
+    assert!(results
+        .iter()
+        .all(|item| item.process.ports == Some(format!("{}", port))));
     assert!(results_are_sorted_by_match_type(results));
 }
 
@@ -84,7 +90,8 @@ fn should_find_cargo_process_by_process_family() {
     assert!(!results.is_empty());
     assert!(results
         .iter()
-        .all(|p| p.pid == cargo_process_pid || p.parent_pid == Some(cargo_process_pid)));
+        .all(|item| item.process.pid == cargo_process_pid
+            || item.process.parent_pid == Some(cargo_process_pid)));
     assert!(results_are_sorted_by_match_type(results));
 }
 

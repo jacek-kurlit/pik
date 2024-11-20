@@ -124,8 +124,8 @@ impl ProcessSearchResults {
         self.items.retain(|item| item.process.pid != pid)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Process> {
-        self.items.iter().map(|i| &i.process)
+    pub fn iter(&self) -> impl Iterator<Item = &ResultItem> {
+        self.items.iter()
     }
 }
 
