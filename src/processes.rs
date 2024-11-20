@@ -94,17 +94,12 @@ impl ProcessInfo for sysinfo::Process {
 
 #[derive(Debug)]
 pub struct ProcessSearchResults {
-    //TODO: may be not used anymore
-    pub search_by: SearchBy,
     pub items: Vec<ResultItem>,
 }
 
 impl ProcessSearchResults {
     pub fn empty() -> Self {
-        Self {
-            search_by: SearchBy::None,
-            items: vec![],
-        }
+        Self { items: vec![] }
     }
 
     pub fn len(&self) -> usize {
@@ -166,10 +161,7 @@ impl ProcessManager {
 
         items.sort_by(|a, b| a.match_data.match_type.cmp(&b.match_data.match_type));
 
-        ProcessSearchResults {
-            search_by: process_filter.search_by,
-            items,
-        }
+        ProcessSearchResults { items }
     }
 
     pub fn refresh(&mut self) {

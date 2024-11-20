@@ -26,10 +26,13 @@ pub(super) fn process_run_time(run_duration_since_epoch: u64, now: SystemTime) -
     let seconds = seconds_diff % 60;
     let hours = seconds_diff / 3600;
     let minutes = (seconds_diff % 3600) / 60;
+    if hours > 0 {
+        return format!("{}h {}m {}s", hours, minutes, seconds);
+    }
     if minutes > 0 {
         return format!("{}m {}s", minutes, seconds);
     }
-    format!("{}h {}m {}s", hours, minutes, seconds)
+    format!("{}s", seconds)
 }
 
 pub(super) fn process_start_time(seconds_since_epoch: u64) -> String {
@@ -156,9 +159,14 @@ pub mod tests {
             let duration = as_duration(hours, minutes, seconds);
             process_run_time(duration.as_secs(), UNIX_EPOCH + duration.mul(2))
         };
-        assert_eq!(run_time(0, 0, 0), "00:00:00");
-        assert_eq!(run_time(0, 30, 5), "00:30:05");
-        assert_eq!(run_time(2, 45, 15), "02:45:15");
+        assert_eq!(run_time(0, 0, 0), "0s");
+        assert_eq!(run_time(0, 0, 5), "5s");
+        assert_eq!(run_time(0, 30, 5), "30m 5s");
+        assert_eq!(run_time(0, 59, 0), "59m 0s");
+        assert_eq!(run_time(3, 0, 0), "3h 0m 0s");
+        assert_eq!(run_time(3, 0, 30), "3h 0m 30s");
+        assert_eq!(run_time(3, 30, 0), "3h 30m 0s");
+        assert_eq!(run_time(3, 45, 15), "3h 45m 15s");
     }
 
     #[test]
