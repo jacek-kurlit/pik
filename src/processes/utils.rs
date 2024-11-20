@@ -23,10 +23,13 @@ pub(super) fn get_process_args(prc: &impl ProcessInfo) -> Vec<&str> {
 pub(super) fn process_run_time(run_duration_since_epoch: u64, now: SystemTime) -> String {
     let now_since_epoch = now.duration_since(UNIX_EPOCH).unwrap().as_secs();
     let seconds_diff = now_since_epoch.saturating_sub(run_duration_since_epoch);
+    let seconds = seconds_diff % 60;
     let hours = seconds_diff / 3600;
     let minutes = (seconds_diff % 3600) / 60;
-    let seconds = seconds_diff % 60;
-    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+    if minutes > 0 {
+        return format!("{}m {}s", minutes, seconds);
+    }
+    format!("{}h {}m {}s", hours, minutes, seconds)
 }
 
 pub(super) fn process_start_time(seconds_since_epoch: u64) -> String {

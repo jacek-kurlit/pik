@@ -47,7 +47,7 @@ pub struct Tui {
     error_message: Option<&'static str>,
 }
 
-const MAX_PATH_LEN: usize = 30;
+const MAX_PATH_LEN: usize = 40;
 const MAX_ARGS_LEN: usize = 35;
 const MAX_PORTS_LEN: usize = 20;
 
@@ -197,7 +197,6 @@ impl Tui {
                 Cow::Borrowed(data.user_name.as_str()),
                 Cow::Owned(format!("{}", data.pid)),
                 Cow::Owned(data.parent_as_string()),
-                Cow::Borrowed(&data.start_time),
                 Cow::Borrowed(&data.run_time),
                 Cow::Borrowed(&data.cmd),
                 truncate_from_end(data.cmd_path.as_deref().unwrap_or(""), MAX_PATH_LEN),
@@ -213,15 +212,14 @@ impl Tui {
                 Constraint::Percentage(5),
                 Constraint::Percentage(5),
                 Constraint::Percentage(5),
-                Constraint::Percentage(5),
                 Constraint::Percentage(10),
-                Constraint::Percentage(25),
+                Constraint::Percentage(30),
                 Constraint::Percentage(25),
                 Constraint::Percentage(15),
             ],
         )
         .header(Row::new(vec![
-            "USER", "PID", "PARENT", "STARTED", "TIME", "CMD", "CMD_PATH", "ARGS", "PORTS",
+            "USER", "PID", "PARENT", "TIME", "CMD", "CMD_PATH", "ARGS", "PORTS",
         ]))
         .block(
             Block::default()
@@ -276,7 +274,6 @@ impl Tui {
                 Block::default()
                     .borders(Borders::ALL)
                     .title_top(Line::from(" Process Details ").left_aligned())
-                    // .border_style(Style::new().fg(app.colors.footer_border_color))
                     .border_type(BorderType::Rounded),
             )
             .scroll((self.process_details_scroll_offset, 0));
