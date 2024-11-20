@@ -66,8 +66,8 @@ impl QueryFilter {
         }
         self.matcher
             .fuzzy_indices(s, self.query.as_str())
-            .map(|(score, indicies)| {
-                MatchData::new(matched_by, MatchType::Fuzzy { score, indicies })
+            .map(|(score, positions)| {
+                MatchData::new(matched_by, MatchType::Fuzzy { score, positions })
             })
     }
 

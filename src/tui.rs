@@ -7,6 +7,7 @@ use crossterm::{
 };
 use ratatui::{prelude::*, TerminalOptions};
 
+mod highlight;
 mod rendering;
 
 use crate::{

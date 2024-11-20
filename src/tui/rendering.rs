@@ -1,4 +1,4 @@
-use std::{borrow::Cow, rc::Rc};
+use std::rc::Rc;
 
 use crossterm::event::KeyEvent;
 use ratatui::{
@@ -13,7 +13,9 @@ use ratatui::{
 };
 use tui_textarea::TextArea;
 
-use crate::processes::{Process, ProcessSearchResults};
+use crate::processes::{MatchedBy, Process, ProcessSearchResults, ResultItem};
+
+use super::highlight::highlight_text;
 
 pub struct Theme {
     row_fg: Color,
@@ -21,6 +23,8 @@ pub struct Theme {
     normal_row_color: Color,
     alt_row_color: Color,
     process_table_border_color: Color,
+    highlight_style: Style,
+    default_style: Style,
 }
 
 impl Theme {
@@ -31,6 +35,8 @@ impl Theme {
             normal_row_color: tailwind::SLATE.c950,
             alt_row_color: tailwind::SLATE.c900,
             process_table_border_color: tailwind::BLUE.c400,
+            highlight_style: Style::new().bg(Color::Yellow).fg(Color::Black),
+            default_style: Style::default(),
         }
     }
 }
@@ -47,7 +53,8 @@ pub struct Tui {
     error_message: Option<&'static str>,
 }
 
-const MAX_PATH_LEN: usize = 40;
+const MAX_CMD_LEN: usize = 20;
+const MAX_PATH_LEN: usize = 38;
 const MAX_ARGS_LEN: usize = 35;
 const MAX_PORTS_LEN: usize = 20;
 
@@ -210,14 +217,44 @@ impl Tui {
             };
             let data = &item.process;
             Row::new(vec![
-                Cow::Borrowed(data.user_name.as_str()),
-                Cow::Owned(format!("{}", data.pid)),
-                Cow::Owned(data.parent_as_string()),
-                Cow::Borrowed(&data.run_time),
-                Cow::Borrowed(&data.cmd),
-                truncate_from_end(data.cmd_path.as_deref().unwrap_or(""), MAX_PATH_LEN),
+                Line::from(Span::styled(
+                    data.user_name.as_str(),
+                    self.theme.default_style,
+                )),
+                Line::from(Span::styled(
+                    format!("{}", data.pid),
+                    self.theme.default_style,
+                )),
+                Line::from(Span::styled(
+                    data.parent_as_string(),
+                    self.theme.default_style,
+                )),
+                Line::from(Span::styled(&data.run_time, self.theme.default_style)),
+                create_line(
+                    item,
+                    &data.cmd,
+                    MatchedBy::Cmd,
+                    self.theme.highlight_style,
+                    self.theme.default_style,
+                    MAX_CMD_LEN,
+                ),
+                create_line(
+                    item,
+                    data.cmd_path.as_deref().unwrap_or(""),
+                    MatchedBy::Path,
+                    self.theme.highlight_style,
+                    self.theme.default_style,
+                    MAX_PATH_LEN,
+                ),
                 truncate_from_front(&data.args, MAX_ARGS_LEN),
-                truncate_from_front(data.ports.as_deref().unwrap_or(""), MAX_PORTS_LEN),
+                create_line(
+                    item,
+                    data.ports.as_deref().unwrap_or(""),
+                    MatchedBy::Port,
+                    self.theme.highlight_style,
+                    self.theme.default_style,
+                    MAX_PORTS_LEN,
+                ),
             ])
             .style(Style::new().fg(self.theme.row_fg).bg(color))
         });
@@ -369,18 +406,31 @@ fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
     .split(frame.area())
 }
 
-fn truncate_from_end(text: &str, max_len: usize) -> Cow<str> {
+fn truncate_from_front(text: &str, max_len: usize) -> Line {
     if text.len() > max_len {
-        Cow::Owned(format!("...{}", &text[text.len() - max_len..]))
+        Line::from(format!("{}..", &text[0..max_len]))
     } else {
-        Cow::Borrowed(text)
+        Line::raw(text)
     }
 }
 
-fn truncate_from_front(text: &str, max_len: usize) -> Cow<str> {
-    if text.len() > max_len {
-        Cow::Owned(format!("{}...", &text[0..max_len]))
+fn create_line<'a>(
+    item: &ResultItem,
+    text: &'a str,
+    matched_by: MatchedBy,
+    highlighted_style: Style,
+    default_style: Style,
+    max_len: usize,
+) -> Line<'a> {
+    if item.is_matched_by(matched_by) {
+        highlight_text(
+            text,
+            &item.match_data.match_type,
+            highlighted_style,
+            default_style,
+            max_len,
+        )
     } else {
-        Cow::Borrowed(text)
+        Line::from(Span::styled(text, default_style))
     }
 }

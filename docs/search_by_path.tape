@@ -1,8 +1,8 @@
 Output docs/search_by_path.gif
 
-Set FontSize 24
-Set Width 1900
-Set Height 700
+Set FontSize 20
+Set Width 1920
+Set Height 1080
 
 Type "pik /usr/bin"
 Enter
