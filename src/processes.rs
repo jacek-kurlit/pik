@@ -27,7 +27,7 @@ pub struct ProcessManager {
 
 use self::filters::OptionsFilter;
 use self::utils::{
-    find_current_process_user, get_process_args, process_run_time, process_start_time,
+    find_current_process_user, get_process_args, process_run_time, to_system_local_time,
 };
 
 pub trait ProcessInfo {
@@ -200,7 +200,9 @@ impl ProcessManager {
             user_name,
             ports: ports.cloned(),
             memory: prc.memory(),
-            start_time: process_start_time(prc.start_time()),
+            start_time: to_system_local_time(prc.start_time())
+                .format("%H:%M:%S")
+                .to_string(),
             run_time: process_run_time(prc.run_time(), SystemTime::now()),
         }
     }
