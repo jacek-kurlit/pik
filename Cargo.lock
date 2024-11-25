@@ -607,6 +607,7 @@ dependencies = [
  "directories",
  "fuzzy-matcher",
  "http-test-server",
+ "itertools",
  "listeners",
  "ratatui",
  "serde",
