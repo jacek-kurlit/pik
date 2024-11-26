@@ -1,7 +1,7 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Local};
 use sysinfo::{System, Uid};
 
 use super::ProcessInfo;
@@ -35,10 +35,9 @@ pub(super) fn process_run_time(run_duration_since_epoch: u64, now: SystemTime) -
     format!("{}s", seconds)
 }
 
-pub(super) fn process_start_time(seconds_since_epoch: u64) -> String {
+pub(super) fn to_system_local_time(seconds_since_epoch: u64) -> DateTime<Local> {
     let system_time = UNIX_EPOCH + Duration::from_secs(seconds_since_epoch);
-    let datetime: DateTime<Utc> = system_time.into();
-    datetime.format("%H:%M:%S").to_string()
+    system_time.into()
 }
 
 pub(super) fn find_current_process_user(sys: &System) -> Result<Uid> {
@@ -170,14 +169,18 @@ pub mod tests {
     }
 
     #[test]
-    fn test_process_start_time() {
-        let start_time = |hours: u64, minutes: u64, seconds: u64| {
+    fn test_to_system_local_time() {
+        let system_time_utc = |hours: u64, minutes: u64, seconds: u64| {
             let seconds_since_epoch = as_duration(hours, minutes, seconds).as_secs();
-            process_start_time(seconds_since_epoch)
+            to_system_local_time(seconds_since_epoch)
+                //NOTE: without this it will fail at CI/CD pipeline where local time is different
+                .to_utc()
+                .format("%H:%M:%S")
+                .to_string()
         };
-        assert_eq!(start_time(0, 0, 0), "00:00:00");
-        assert_eq!(start_time(1, 45, 15), "01:45:15");
-        assert_eq!(start_time(5, 29, 59), "05:29:59");
+        assert_eq!(system_time_utc(0, 0, 0), "00:00:00");
+        assert_eq!(system_time_utc(1, 45, 15), "01:45:15");
+        assert_eq!(system_time_utc(5, 29, 59), "05:29:59");
     }
 
     fn as_duration(hours: u64, minutes: u64, seconds: u64) -> Duration {

@@ -1,8 +1,10 @@
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 
 use anyhow::Result;
+use itertools::Itertools;
+use listeners::Listener;
 use sysinfo::{Pid, System, Uid, Users};
 use sysinfo::{ProcessRefreshKind, RefreshKind};
 
@@ -25,7 +27,7 @@ pub struct ProcessManager {
 
 use self::filters::OptionsFilter;
 use self::utils::{
-    find_current_process_user, get_process_args, process_run_time, process_start_time,
+    find_current_process_user, get_process_args, process_run_time, to_system_local_time,
 };
 
 pub trait ProcessInfo {
@@ -198,7 +200,9 @@ impl ProcessManager {
             user_name,
             ports: ports.cloned(),
             memory: prc.memory(),
-            start_time: process_start_time(prc.start_time()),
+            start_time: to_system_local_time(prc.start_time())
+                .format("%H:%M:%S")
+                .to_string(),
             run_time: process_run_time(prc.run_time(), SystemTime::now()),
         }
     }
@@ -227,21 +231,21 @@ fn process_refresh_kind() -> ProcessRefreshKind {
 }
 
 fn refresh_ports() -> HashMap<u32, String> {
-    listeners::get_all()
+    let ports = listeners::get_all()
         //NOTE: we ignore errors comming from listeners
-        .unwrap_or_default()
+        .unwrap_or_default();
+    create_sorted_process_ports(ports)
+}
+
+//NOTE: we sort this so order of ports is deterministic and doesn't change durig refresh
+fn create_sorted_process_ports(ports: HashSet<Listener>) -> ProcessPorts {
+    ports
         .into_iter()
-        .fold(HashMap::new(), |mut acc: ProcessPorts, l| {
-            match acc.get_mut(&l.process.pid) {
-                Some(ports) => {
-                    ports.push_str(&format!(", {}", l.socket.port()));
-                }
-                None => {
-                    acc.insert(l.process.pid, format!("{}", l.socket.port()));
-                }
-            }
-            acc
-        })
+        .map(|l| (l.process.pid, l.socket.port()))
+        .into_group_map()
+        .into_iter()
+        .map(|(pid, ports)| (pid, ports.into_iter().sorted_by(|a, b| a.cmp(b)).join(", ")))
+        .collect()
 }
 
 #[derive(Debug)]
@@ -356,7 +360,23 @@ impl Ord for MatchType {
 
 #[cfg(test)]
 mod tests {
+    use listeners::{Listener, Process};
+
     use super::*;
+
+    #[test]
+    fn should_create_sorted_process_ports() {
+        let value = [
+            create_listener(1, 8080),
+            create_listener(1, 100),
+            create_listener(1, 50),
+            create_listener(2, 1234),
+        ];
+        let process_ports = create_sorted_process_ports(HashSet::from(value));
+        assert_eq!(process_ports.len(), 2);
+        assert_eq!(process_ports.get(&1).unwrap(), "50, 100, 8080");
+        assert_eq!(process_ports.get(&2).unwrap(), "1234");
+    }
 
     #[test]
     fn match_type_sort_in_correct_order() {
@@ -398,5 +418,15 @@ mod tests {
                 MatchType::Exists,
             ]
         );
+    }
+
+    fn create_listener(pid: u32, port: u16) -> Listener {
+        Listener {
+            process: Process {
+                pid,
+                name: format!("p1{pid}"),
+            },
+            socket: format!("127.0.0.1:{port}").parse().unwrap(),
+        }
     }
 }
