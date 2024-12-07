@@ -67,6 +67,15 @@ On **Tumbleweed**
 sudo zypper install pik
 ```
 
+On **Gentoo**
+
+It is available via `lamdness` overlay
+```sh
+sudo eselect repository enable lamdness
+sudo emaint -r lamdness sync
+sudo emerge -av sys-process/pik
+```
+
 With **[dra](https://github.com/devmatteini/dra)**
 
 ```sh
