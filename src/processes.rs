@@ -208,7 +208,7 @@ impl ProcessManager {
     }
 
     pub fn kill_process(&self, pid: u32) -> bool {
-        return match self.sys.process(Pid::from_u32(pid)) {
+        match self.sys.process(Pid::from_u32(pid)) {
             Some(prc) => {
                 if sysinfo::SUPPORTED_SIGNALS.contains(&sysinfo::Signal::Term) {
                     prc.kill_with(sysinfo::Signal::Term).unwrap_or(false)
@@ -217,7 +217,7 @@ impl ProcessManager {
                 }
             }
             None => false,
-        };
+        }
     }
 }
 
