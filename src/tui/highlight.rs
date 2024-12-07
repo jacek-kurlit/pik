@@ -19,8 +19,6 @@ pub fn highlight_text<'a>(
 ) -> Line<'a> {
     match match_type {
         MatchType::Exact => styled_truncated_line(text, highlighted_style, max_len),
-        //TODO: implement contains match
-        MatchType::Contains => styled_truncated_line(text, default_style, max_len),
         MatchType::Fuzzy {
             score: _,
             positions,

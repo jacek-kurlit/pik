@@ -34,7 +34,7 @@ fn should_find_cargo_process_by_name_path_or_args() {
     assert!(results.iter().all(|item| fuzzy_matches(
         item.process.cmd_path.as_ref().unwrap(),
         "cargo"
-    ) || item.process.args.contains("cargo")
+    ) || fuzzy_matches(&item.process.args, "cargo")
         || fuzzy_matches(&item.process.cmd, "cargo")));
     assert!(results_are_sorted_by_match_type(results));
 }
@@ -96,10 +96,10 @@ fn should_find_cargo_process_by_process_family() {
 }
 
 fn fuzzy_matches(value: &str, pattern: &str) -> bool {
-    SkimMatcherV2::default()
-        .fuzzy_match(value, pattern)
-        .unwrap_or(0)
-        > 0
+    let (_, indicies) = SkimMatcherV2::default()
+        .fuzzy_indices(value, pattern)
+        .unwrap_or((0, vec![]));
+    !indicies.is_empty()
 }
 
 fn results_are_sorted_by_match_type(results: ProcessSearchResults) -> bool {

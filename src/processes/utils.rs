@@ -2,22 +2,24 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Local};
+use itertools::Itertools;
 use sysinfo::{System, Uid};
 
 use super::ProcessInfo;
 
 // NOTE: Some processes have path to binary as first argument, but also some processes has different name than cmd (for exmaple firefox)
-pub(super) fn get_process_args(prc: &impl ProcessInfo) -> Vec<&str> {
+pub(super) fn get_process_args(prc: &impl ProcessInfo) -> Option<String> {
     let args = prc.args();
     let cmd_path = prc.cmd_path().unwrap_or("");
-    let cmd = prc.cmd();
-    if args
-        .first()
-        .is_some_and(|arg1| *arg1 == cmd_path || arg1.ends_with(cmd))
-    {
-        return args.into_iter().skip(1).collect();
+    let skip_first = match args.first() {
+        Some(first_arg) if *first_arg == cmd_path || first_arg.ends_with(prc.cmd()) => 1,
+        _ => 0,
+    };
+    let joined_args = args.into_iter().skip(skip_first).join(" ");
+    match joined_args.trim().is_empty() {
+        true => None,
+        false => Some(joined_args),
     }
-    args
 }
 
 pub(super) fn process_run_time(run_duration_since_epoch: u64, now: SystemTime) -> String {
@@ -143,13 +145,18 @@ pub mod tests {
         };
 
         prc = prc.with_args(&["exe", "a1", "a2"]);
-        assert_eq!(get_process_args(&prc), ["a1", "a2"]);
+        assert_eq!(get_process_args(&prc), Some("a1 a2".to_string()));
 
         prc = prc.with_args(&["/path/to/cmd", "a1"]);
-        assert_eq!(get_process_args(&prc), ["a1"]);
+        assert_eq!(get_process_args(&prc), Some("a1".to_string()));
 
         prc = prc.with_args(&["--a1", "-a2"]);
-        assert_eq!(get_process_args(&prc), ["--a1", "-a2"]);
+        assert_eq!(get_process_args(&prc), Some("--a1 -a2".to_string()));
+
+        prc = prc.with_args(&[]);
+        assert_eq!(get_process_args(&prc), None);
+        prc = prc.with_args(&[" "]);
+        assert_eq!(get_process_args(&prc), None);
     }
 
     #[test]
