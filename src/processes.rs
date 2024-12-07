@@ -194,7 +194,7 @@ impl ProcessManager {
         Process {
             pid,
             parent_pid: prc.parent_id(),
-            args: get_process_args(prc).join(" ").to_string(),
+            args: get_process_args(prc).unwrap_or_default(),
             cmd,
             cmd_path,
             user_name,
@@ -325,7 +325,6 @@ pub enum MatchedBy {
 
 pub enum MatchType {
     Exact,
-    Contains { from: usize, to: usize },
     Fuzzy { score: i64, positions: Vec<usize> },
     Exists,
 }
@@ -344,10 +343,6 @@ impl Ord for MatchType {
             (MatchType::Exact, MatchType::Exact) => Ordering::Equal,
             (MatchType::Exact, _) => Ordering::Less,
             (_, MatchType::Exact) => Ordering::Greater,
-
-            (MatchType::Contains { .. }, MatchType::Contains { .. }) => Ordering::Equal,
-            (MatchType::Contains { .. }, _) => Ordering::Less,
-            (_, MatchType::Contains { .. }) => Ordering::Greater,
 
             (MatchType::Fuzzy { score: s1, .. }, MatchType::Fuzzy { score: s2, .. }) => s2.cmp(s1),
             (MatchType::Fuzzy { .. }, _) => Ordering::Less,
@@ -394,7 +389,6 @@ mod tests {
                 score: 10,
                 positions: vec![1, 2],
             },
-            MatchType::Contains { from: 1, to: 2 },
             MatchType::Exact,
         ];
         vec_to_sort.sort();
@@ -402,7 +396,6 @@ mod tests {
             vec_to_sort,
             vec![
                 MatchType::Exact,
-                MatchType::Contains { from: 1, to: 2 },
                 MatchType::Fuzzy {
                     score: 10,
                     positions: vec![1, 2]

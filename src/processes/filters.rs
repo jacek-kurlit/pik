@@ -44,7 +44,9 @@ impl QueryFilter {
         match self.search_by {
             SearchBy::Cmd => self.fuzzy_match(prc.cmd(), MatchedBy::Cmd),
             SearchBy::Path => self.fuzzy_match_opt(prc.cmd_path(), MatchedBy::Path),
-            SearchBy::Args => self.contains_match(get_process_args(prc).join(" "), MatchedBy::Args),
+            SearchBy::Args => {
+                self.fuzzy_match_opt(get_process_args(prc).as_deref(), MatchedBy::Args)
+            }
             SearchBy::Port => self.fuzzy_match_opt(ports, MatchedBy::Port),
             SearchBy::Pid => self.exact_match_u32(prc.pid(), MatchedBy::Pid),
             SearchBy::ProcessFamily => self.exact_match_process_family(prc),
@@ -52,7 +54,9 @@ impl QueryFilter {
                 .fuzzy_match(prc.cmd(), MatchedBy::Cmd)
                 .or_else(|| self.fuzzy_match_opt(prc.cmd_path(), MatchedBy::Path))
                 .or_else(|| self.fuzzy_match_opt(ports, MatchedBy::Port))
-                .or_else(|| self.contains_match(get_process_args(prc).join(" "), MatchedBy::Args)),
+                .or_else(|| {
+                    self.fuzzy_match_opt(get_process_args(prc).as_deref(), MatchedBy::Args)
+                }),
             SearchBy::None => Some(MatchData::new(
                 MatchedBy::ProcessExistence,
                 MatchType::Exists,
@@ -73,25 +77,6 @@ impl QueryFilter {
 
     fn fuzzy_match_opt(&self, s: Option<&str>, matched_by: MatchedBy) -> Option<MatchData> {
         s.and_then(|s| self.fuzzy_match(s, matched_by))
-    }
-
-    //TODO: replace with fuzzy search
-    fn contains_match(&self, value: String, matched_by: MatchedBy) -> Option<MatchData> {
-        if self.query.is_empty() && !value.trim().is_empty() {
-            return Some(MatchData::new(matched_by, MatchType::Exists));
-        }
-        if self.query.is_empty() {
-            return None;
-        }
-        value.trim().to_lowercase().find(&self.query).map(|pos| {
-            MatchData::new(
-                matched_by,
-                MatchType::Contains {
-                    from: pos,
-                    to: pos + self.query.len(),
-                },
-            )
-        })
     }
 
     fn exact_match_u32(&self, s: u32, matched_by: MatchedBy) -> Option<MatchData> {
@@ -269,19 +254,19 @@ pub mod tests {
         let mut process = MockProcessInfo::default();
 
         process = process.with_args(&["-TeSt"]);
-        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["-test"]);
-        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["-TEST"]);
-        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["arg1, arg2, --testifier"]);
-        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["testimony"]);
-        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Args);
 
         process = process.with_args(&["-xxx"]);
         assert_eq!(filter.accept(&process, None), None);
@@ -383,7 +368,7 @@ pub mod tests {
             args: vec!["-TeSt".into()],
             ..Default::default()
         };
-        assert_contains_match(filter.accept(&process, None), MatchedBy::Args);
+        assert_fuzzy_match(filter.accept(&process, None), MatchedBy::Args);
 
         let process = MockProcessInfo::default();
 
@@ -510,11 +495,6 @@ pub mod tests {
         let match_data = match_data.unwrap();
         assert_eq!(match_data.matched_by, expected_matched_by);
         match_data
-    }
-
-    fn assert_contains_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
-        let matched = ensure_matched_by(match_data, expected_matched_by);
-        assert!(matches!(matched.match_type, MatchType::Contains { .. }));
     }
 
     fn assert_exact_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
