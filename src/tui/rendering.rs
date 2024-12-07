@@ -230,37 +230,18 @@ impl Tui {
                     self.theme.default_style,
                 )),
                 Line::from(Span::styled(&data.run_time, self.theme.default_style)),
-                create_line(
-                    item,
-                    &data.cmd,
-                    MatchedBy::Cmd,
-                    self.theme.highlight_style,
-                    self.theme.default_style,
-                    MAX_CMD_LEN,
-                ),
-                create_line(
+                self.create_line(item, &data.cmd, MatchedBy::Cmd, MAX_CMD_LEN),
+                self.create_line(
                     item,
                     data.cmd_path.as_deref().unwrap_or(""),
                     MatchedBy::Path,
-                    self.theme.highlight_style,
-                    self.theme.default_style,
                     MAX_PATH_LEN,
                 ),
-                //TODO: this can be refactored and moved into Tui impl
-                create_line(
-                    item,
-                    &data.args,
-                    MatchedBy::Args,
-                    self.theme.highlight_style,
-                    self.theme.default_style,
-                    MAX_ARGS_LEN,
-                ),
-                create_line(
+                self.create_line(item, &data.args, MatchedBy::Args, MAX_ARGS_LEN),
+                self.create_line(
                     item,
                     data.ports.as_deref().unwrap_or(""),
                     MatchedBy::Port,
-                    self.theme.highlight_style,
-                    self.theme.default_style,
                     MAX_PORTS_LEN,
                 ),
             ])
@@ -355,6 +336,26 @@ impl Tui {
             }
         }
     }
+
+    fn create_line<'a>(
+        &self,
+        item: &ResultItem,
+        text: &'a str,
+        matched_by: MatchedBy,
+        max_len: usize,
+    ) -> Line<'a> {
+        if item.is_matched_by(matched_by) {
+            highlight_text(
+                text,
+                &item.match_data.match_type,
+                self.theme.highlight_style,
+                self.theme.default_style,
+                max_len,
+            )
+        } else {
+            Line::from(Span::styled(text, self.theme.default_style))
+        }
+    }
 }
 
 fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
@@ -412,25 +413,4 @@ fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
         Constraint::Length(1),
     ])
     .split(frame.area())
-}
-
-fn create_line<'a>(
-    item: &ResultItem,
-    text: &'a str,
-    matched_by: MatchedBy,
-    highlighted_style: Style,
-    default_style: Style,
-    max_len: usize,
-) -> Line<'a> {
-    if item.is_matched_by(matched_by) {
-        highlight_text(
-            text,
-            &item.match_data.match_type,
-            highlighted_style,
-            default_style,
-            max_len,
-        )
-    } else {
-        Line::from(Span::styled(text, default_style))
-    }
 }
