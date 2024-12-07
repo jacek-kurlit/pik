@@ -246,7 +246,15 @@ impl Tui {
                     self.theme.default_style,
                     MAX_PATH_LEN,
                 ),
-                truncate_from_front(&data.args, MAX_ARGS_LEN),
+                //TODO: this can be refactored and moved into Tui impl
+                create_line(
+                    item,
+                    &data.args,
+                    MatchedBy::Args,
+                    self.theme.highlight_style,
+                    self.theme.default_style,
+                    MAX_ARGS_LEN,
+                ),
                 create_line(
                     item,
                     data.ports.as_deref().unwrap_or(""),
@@ -404,14 +412,6 @@ fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
         Constraint::Length(1),
     ])
     .split(frame.area())
-}
-
-fn truncate_from_front(text: &str, max_len: usize) -> Line {
-    if text.len() > max_len {
-        Line::from(format!("{}..", &text[0..max_len]))
-    } else {
-        Line::raw(text)
-    }
 }
 
 fn create_line<'a>(

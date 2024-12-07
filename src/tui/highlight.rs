@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use ratatui::{
     style::Style,
     text::{Line, Span},
@@ -19,8 +20,10 @@ pub fn highlight_text<'a>(
 ) -> Line<'a> {
     match match_type {
         MatchType::Exact => styled_truncated_line(text, highlighted_style, max_len),
-        //TODO: implement contains match
-        MatchType::Contains => styled_truncated_line(text, default_style, max_len),
+        MatchType::Contains { from, to } => {
+            let positions = (*from..*to).collect_vec();
+            highlight_fuzzy(text, &positions, highlighted_style, default_style, max_len)
+        }
         MatchType::Fuzzy {
             score: _,
             positions,

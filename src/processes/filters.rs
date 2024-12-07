@@ -44,7 +44,7 @@ impl QueryFilter {
         match self.search_by {
             SearchBy::Cmd => self.fuzzy_match(prc.cmd(), MatchedBy::Cmd),
             SearchBy::Path => self.fuzzy_match_opt(prc.cmd_path(), MatchedBy::Path),
-            SearchBy::Args => self.vec_contains(get_process_args(prc), MatchedBy::Args),
+            SearchBy::Args => self.contains_match(get_process_args(prc).join(" "), MatchedBy::Args),
             SearchBy::Port => self.fuzzy_match_opt(ports, MatchedBy::Port),
             SearchBy::Pid => self.exact_match_u32(prc.pid(), MatchedBy::Pid),
             SearchBy::ProcessFamily => self.exact_match_process_family(prc),
@@ -52,7 +52,7 @@ impl QueryFilter {
                 .fuzzy_match(prc.cmd(), MatchedBy::Cmd)
                 .or_else(|| self.fuzzy_match_opt(prc.cmd_path(), MatchedBy::Path))
                 .or_else(|| self.fuzzy_match_opt(ports, MatchedBy::Port))
-                .or_else(|| self.vec_contains(get_process_args(prc), MatchedBy::Args)),
+                .or_else(|| self.contains_match(get_process_args(prc).join(" "), MatchedBy::Args)),
             SearchBy::None => Some(MatchData::new(
                 MatchedBy::ProcessExistence,
                 MatchType::Exists,
@@ -75,14 +75,23 @@ impl QueryFilter {
         s.and_then(|s| self.fuzzy_match(s, matched_by))
     }
 
-    fn vec_contains(&self, items: Vec<&str>, matched_by: MatchedBy) -> Option<MatchData> {
-        if self.query.is_empty() && !items.is_empty() {
+    //TODO: replace with fuzzy search
+    fn contains_match(&self, value: String, matched_by: MatchedBy) -> Option<MatchData> {
+        if self.query.is_empty() && !value.trim().is_empty() {
             return Some(MatchData::new(matched_by, MatchType::Exists));
         }
-        items
-            .iter()
-            .any(|item| item.to_lowercase().contains(&self.query))
-            .then_some(MatchData::new(matched_by, MatchType::Contains))
+        if self.query.is_empty() {
+            return None;
+        }
+        value.trim().to_lowercase().find(&self.query).map(|pos| {
+            MatchData::new(
+                matched_by,
+                MatchType::Contains {
+                    from: pos,
+                    to: pos + self.query.len(),
+                },
+            )
+        })
     }
 
     fn exact_match_u32(&self, s: u32, matched_by: MatchedBy) -> Option<MatchData> {
@@ -505,7 +514,7 @@ pub mod tests {
 
     fn assert_contains_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
         let matched = ensure_matched_by(match_data, expected_matched_by);
-        assert!(matches!(matched.match_type, MatchType::Contains));
+        assert!(matches!(matched.match_type, MatchType::Contains { .. }));
     }
 
     fn assert_exact_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
