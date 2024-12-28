@@ -10,6 +10,7 @@ use crate::{
 pub struct AppSettings {
     pub viewport: Viewport,
     pub filter_opions: FilterOptions,
+    pub use_icons: bool,
 }
 
 impl AppSettings {
@@ -20,6 +21,7 @@ impl AppSettings {
                 ignore_threads: !cli_args.include_threads_processes,
                 include_all_processes: cli_args.include_other_users_processes,
             },
+            use_icons: config.use_icons,
         }
     }
 }
@@ -96,6 +98,7 @@ mod tests {
             settings,
             AppSettings {
                 viewport: Viewport::Inline(25),
+                use_icons: false,
                 filter_opions: FilterOptions {
                     ignore_threads: false,
                     include_all_processes: true
@@ -108,6 +111,7 @@ mod tests {
     fn should_prefer_cli_args_screen_size() {
         let config = AppConfig {
             screen_size: ScreenSize::Height(40),
+            ..Default::default()
         };
         let cli_args = CliArgs {
             screen_size: Some(ScreenSizeOptions {

@@ -1,3 +1,0 @@
-# Size of the viewport
-screen_size = { height = 20 } # run pik in 20 lines of the terminal
-# screen_size = "fullscreen" # run pik in fullscreen

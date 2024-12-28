@@ -30,7 +30,7 @@ impl App {
             process_manager: ProcessManager::new()?,
             search_results: ProcessSearchResults::empty(),
             filter_options: app_settings.filter_opions,
-            tui: Tui::new(search_criteria),
+            tui: Tui::new(search_criteria, app_settings.use_icons),
         };
         app.search_for_processess();
         Ok(app)

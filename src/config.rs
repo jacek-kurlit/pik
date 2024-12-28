@@ -24,6 +24,8 @@ use serde::Deserialize;
 pub struct AppConfig {
     #[serde(default)]
     pub screen_size: ScreenSize,
+    #[serde(default)]
+    pub use_icons: bool,
 }
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Clone, Copy)]
@@ -50,6 +52,14 @@ mod tests {
     fn should_deserialize_empty_configuration() {
         let default_settings = toml::from_str("");
         assert_eq!(default_settings, Ok(AppConfig::default()));
+        // ensure what actual defaults are
+        assert_eq!(
+            default_settings,
+            Ok(AppConfig {
+                screen_size: ScreenSize::Height(DEFAULT_SCREEN_SIZE),
+                use_icons: false
+            })
+        );
     }
 
     #[test]
@@ -57,13 +67,15 @@ mod tests {
         let default_settings: AppConfig = toml::from_str(
             r#"
             screen_size = "fullscreen"
+            use_icons = true
             "#,
         )
         .unwrap();
         assert_eq!(
             default_settings,
             AppConfig {
-                screen_size: ScreenSize::Fullscreen
+                screen_size: ScreenSize::Fullscreen,
+                use_icons: true
             }
         );
     }
