@@ -145,14 +145,15 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     }
                     Up | BackTab => app.tui.select_previous_row(1),
                     Tab | Down => app.tui.select_next_row(1),
+                    PageUp => app.tui.select_previous_row(10),
+                    PageDown => app.tui.select_next_row(10),
+                    Backspace => app.delete_char(),
                     Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.tui.select_next_row(1);
                     }
                     Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.tui.select_previous_row(1);
                     }
-                    PageUp => app.tui.select_previous_row(10),
-                    PageDown => app.tui.select_next_row(10),
                     Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         return Ok(());
                     }
@@ -178,7 +179,6 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                         app.enforce_search_by(ProcessRelatedSearch::Siblings);
                     }
                     Char(to_insert) => app.enter_char(to_insert),
-                    Backspace => app.delete_char(),
                     _ => (),
                 }
             }

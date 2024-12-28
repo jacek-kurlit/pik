@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use crossterm::event::KeyEvent;
 use ratatui::{
     layout::{Constraint, Layout, Margin, Rect},
     style::{palette::tailwind, Color, Modifier, Style, Stylize},
