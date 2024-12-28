@@ -36,6 +36,28 @@ impl App {
         Ok(app)
     }
 
+    pub fn enforce_search_by(&mut self, search_by: ProcessRelatedSearch) {
+        let selected_index = self.tui.get_selected_row_index();
+        let selected_process = self.search_results.nth(selected_index);
+        if selected_process.is_none() {
+            return;
+        }
+        let selected_process = selected_process.unwrap();
+        let search_string = match search_by {
+            ProcessRelatedSearch::Parent => {
+                format!("!{}", selected_process.parent_pid.unwrap_or(0))
+            }
+            ProcessRelatedSearch::Family => {
+                format!("@{}", selected_process.pid)
+            }
+            ProcessRelatedSearch::Siblings => {
+                format!("@{}", selected_process.parent_pid.unwrap_or(0))
+            }
+        };
+        self.tui.set_search_text(search_string);
+        self.search_for_processess();
+    }
+
     fn enter_char(&mut self, new_char: char) {
         self.tui.enter_char(new_char);
         self.search_for_processess();
@@ -75,6 +97,12 @@ impl App {
             }
         }
     }
+}
+
+pub enum ProcessRelatedSearch {
+    Family,   // process + process childrens
+    Siblings, // process parent + all his children
+    Parent,   // only parent process
 }
 
 pub fn start_app(search_criteria: String, app_settings: AppSettings) -> Result<()> {
@@ -139,6 +167,15 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     }
                     Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.tui.process_details_up()
+                    }
+                    Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
+                        app.enforce_search_by(ProcessRelatedSearch::Parent);
+                    }
+                    Char('f') if key.modifiers.contains(KeyModifiers::ALT) => {
+                        app.enforce_search_by(ProcessRelatedSearch::Family);
+                    }
+                    Char('s') if key.modifiers.contains(KeyModifiers::ALT) => {
+                        app.enforce_search_by(ProcessRelatedSearch::Siblings);
                     }
                     Char(to_insert) => app.enter_char(to_insert),
                     Backspace => app.delete_char(),

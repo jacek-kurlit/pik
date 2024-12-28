@@ -11,7 +11,7 @@ use ratatui::{
     },
     Frame,
 };
-use tui_textarea::TextArea;
+use tui_textarea::{CursorMove, TextArea};
 
 use crate::processes::{MatchedBy, Process, ProcessSearchResults, ResultItem};
 
@@ -102,6 +102,16 @@ impl Tui {
             search_area,
             error_message: None,
         }
+    }
+
+    pub fn set_search_text(&mut self, text: String) {
+        self.clear_search_area();
+        self.search_area.insert_str(text);
+    }
+
+    fn clear_search_area(&mut self) {
+        self.search_area.move_cursor(CursorMove::Head);
+        self.search_area.delete_line_by_end();
     }
 
     pub fn select_first_row(&mut self) {

@@ -42,6 +42,8 @@ Pik allows to **fuzzy** search processes by:
   ![Example search by port](docs/search_by_port.gif)
 - Everywhere - Prefix search with '~' for example '~firefox'
   ![Example search everywhere](docs/search_everywhere.gif)
+- Select exact process by id - Prefix with '!' for example '!1234'
+- Select process family (process + it's children) - Prefix with '@' for example '@1234'
 
 After selecting process you can kill it with Ctrl + X
 
@@ -128,6 +130,9 @@ use_icons = false
 | `Arrow Down` \| `Arrow Up` | Select next/previous   |
 | `Ctrl + J` \| `Ctrl + K`   | Select next/previous   |
 | `Ctrl + Arrow Down` \| `Ctrl + Arrow Up`   | Select last/first   |
+| `Alt + P`                 | Select parent process |
+| `Alt + F`                 | Select familly processes |
+| `Alt + S`                 | Select siblings processes |
 
 ## Caveats
 
