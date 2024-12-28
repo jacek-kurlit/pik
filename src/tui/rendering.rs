@@ -150,10 +150,6 @@ impl Tui {
         self.select_row_by_index(previous_index);
     }
 
-    pub fn handle_input(&mut self, input: KeyEvent) {
-        self.search_area.input(input);
-    }
-
     pub fn enter_char(&mut self, new_char: char) {
         self.search_area.insert_char(new_char);
     }

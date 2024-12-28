@@ -179,7 +179,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     }
                     Char(to_insert) => app.enter_char(to_insert),
                     Backspace => app.delete_char(),
-                    _ => app.tui.handle_input(key),
+                    _ => (),
                 }
             }
         }
