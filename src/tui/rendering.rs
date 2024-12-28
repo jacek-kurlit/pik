@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use crossterm::event::KeyEvent;
 use ratatui::{
     layout::{Constraint, Layout, Margin, Rect},
     style::{palette::tailwind, Color, Modifier, Style, Stylize},
@@ -11,7 +10,7 @@ use ratatui::{
     },
     Frame,
 };
-use tui_textarea::TextArea;
+use tui_textarea::{CursorMove, TextArea};
 
 use crate::processes::{MatchedBy, Process, ProcessSearchResults, ResultItem};
 
@@ -104,6 +103,16 @@ impl Tui {
         }
     }
 
+    pub fn set_search_text(&mut self, text: String) {
+        self.clear_search_area();
+        self.search_area.insert_str(text);
+    }
+
+    fn clear_search_area(&mut self) {
+        self.search_area.move_cursor(CursorMove::Head);
+        self.search_area.delete_line_by_end();
+    }
+
     pub fn select_first_row(&mut self) {
         let index = (self.process_table_number_of_items > 0).then_some(0);
         self.select_row_by_index(index);
@@ -138,10 +147,6 @@ impl Tui {
             i.clamp(0, self.process_table_number_of_items.saturating_sub(1))
         });
         self.select_row_by_index(previous_index);
-    }
-
-    pub fn handle_input(&mut self, input: KeyEvent) {
-        self.search_area.input(input);
     }
 
     pub fn enter_char(&mut self, new_char: char) {
