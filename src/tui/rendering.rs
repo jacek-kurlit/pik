@@ -17,7 +17,7 @@ use crate::processes::{MatchedBy, Process, ProcessSearchResults, ResultItem};
 
 use super::highlight::highlight_text;
 
-pub struct Theme {
+struct Theme {
     row_fg: Color,
     selected_style_fg: Color,
     normal_row_color: Color,
@@ -28,7 +28,7 @@ pub struct Theme {
 }
 
 impl Theme {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             row_fg: tailwind::SLATE.c200,
             selected_style_fg: tailwind::BLUE.c400,
@@ -43,6 +43,7 @@ impl Theme {
 
 pub struct Tui {
     theme: Theme,
+    use_icons: bool,
     process_table: TableState,
     process_table_scroll_state: ScrollbarState,
     process_table_number_of_items: usize,
@@ -58,7 +59,18 @@ const MAX_PATH_LEN: usize = 38;
 const MAX_ARGS_LEN: usize = 35;
 const MAX_PORTS_LEN: usize = 20;
 
-const TABLE_HEADERS: [&str; 8] = [
+const TABLE_HEADERS_ICONS: [&str; 8] = [
+    "USER 󰋦",
+    "PID ",
+    "PARENT 󱖁",
+    "TIME ",
+    "CMD 󱃸",
+    "PATH ",
+    "ARGS 󱃼",
+    "PORTS ",
+];
+
+const TABLE_HEADERS_PLAIN: [&str; 8] = [
     "USER", "PID", "PARENT", "RUN TIME", "CMD", "PATH", "ARGS", "PORTS",
 ];
 
@@ -74,13 +86,14 @@ const TABLE_WIDTHS: [Constraint; 8] = [
 ];
 
 impl Tui {
-    pub fn new(search_text: String) -> Self {
+    pub fn new(search_text: String, use_icons: bool) -> Self {
         let mut search_area = TextArea::from(search_text.lines());
         search_area.move_cursor(tui_textarea::CursorMove::End);
         Self {
             process_table: TableState::default(),
             process_table_scroll_state: ScrollbarState::new(0),
             theme: Theme::new(),
+            use_icons,
             process_table_number_of_items: 0,
             process_details_scroll_offset: 0,
             process_details_number_of_lines: 0,
@@ -247,8 +260,13 @@ impl Tui {
             ])
             .style(Style::new().fg(self.theme.row_fg).bg(color))
         });
+        let headers = if self.use_icons {
+            TABLE_HEADERS_ICONS
+        } else {
+            TABLE_HEADERS_PLAIN
+        };
         let table = Table::new(rows, TABLE_WIDTHS)
-            .header(Row::new(TABLE_HEADERS))
+            .header(Row::new(headers))
             .block(
                 Block::default()
                     .title_top(

@@ -16,6 +16,7 @@
 
 Process Interactive Kill is a command line tool that helps to find and kill process.
 It works like pkill command but search is interactive.
+![Example pik](docs/pik.png)
 
 This tool is still under development
 
@@ -70,6 +71,7 @@ sudo zypper install pik
 On **Gentoo**
 
 It is available via `lamdness` overlay
+
 ```sh
 sudo eselect repository enable lamdness
 sudo emaint -r lamdness sync
@@ -99,9 +101,19 @@ cargo binstall pik
 
 ### Application configuration
 
-You may set your preferences in `pik.toml` file located in `~/.config/pik` directory.
+You may set your preferences in `config.toml` file located in `~/.config/pik` directory.
 All options are optional, if skipped default values will be used.
-Example configuration with default settings can be found at [example config](example_config.toml)
+
+You can find default values below
+
+``` toml
+# Size of the viewport
+screen_size = { height = 20 } # run pik in 20 lines of the terminal
+# screen_size = "fullscreen" # run pik in fullscreen
+
+# Icons require nerd fonts v3
+use_icons = false
+```
 
 ### Key maps
 
