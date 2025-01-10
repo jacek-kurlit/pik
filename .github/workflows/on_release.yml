@@ -23,6 +23,11 @@ jobs:
             skip_tests: false
             target: x86_64-unknown-linux-gnu
 
+          - build: linux-aarch64
+            os: ubuntu-latest
+            skip_tests: false
+            target: aarch64-unknown-linux-gnu
+
           - build: macos
             os: macos-latest
             skip_tests: false
