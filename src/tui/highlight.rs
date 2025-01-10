@@ -1,14 +1,21 @@
+use itertools::Itertools;
 use ratatui::{
     style::Style,
     text::{Line, Span},
 };
-use spliterator::HighlighSpliterator;
+use regions::chunk_into_limitted_matched_regions;
 
 use crate::processes::MatchType;
 
-mod spliterator;
+mod regions;
 
-const TRUNCATED_STR: &str = "..";
+pub const TRUNCATED_STR: &str = "..";
+
+#[derive(Debug, PartialEq)]
+pub struct Region {
+    matched: bool,
+    text: String,
+}
 
 pub fn highlight_text<'a>(
     text: &'a str,
@@ -28,12 +35,37 @@ pub fn highlight_text<'a>(
 }
 
 fn styled_truncated_line(text: &str, style: Style, max_len: usize) -> Line {
-    let span = if text.len() > max_len {
-        Span::styled(format!("{}{}", &text[0..max_len], TRUNCATED_STR), style)
+    if text.len() > max_len {
+        Line::from(vec![
+            Span::styled(text.chars().take(max_len).join(""), style),
+            Span::raw(TRUNCATED_STR),
+        ])
     } else {
-        Span::styled(text, style)
-    };
-    Line::from(span)
+        Line::from(Span::styled(text, style))
+    }
+}
+
+impl Region {
+    pub fn new<T: Into<String>>(matched: bool, text: T) -> Self {
+        Self {
+            matched,
+            text: text.into(),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn matched<T: Into<String>>(text: T) -> Self {
+        Self::new(true, text)
+    }
+
+    #[allow(dead_code)]
+    pub fn unmatched<T: Into<String>>(text: T) -> Self {
+        Self::new(false, text)
+    }
+
+    pub fn truncated_placeholder() -> Self {
+        Self::new(false, TRUNCATED_STR)
+    }
 }
 
 fn highlight_fuzzy<'a>(
@@ -43,70 +75,32 @@ fn highlight_fuzzy<'a>(
     default_style: Style,
     max_len: usize,
 ) -> Line<'a> {
-    if positions.is_empty() {
-        return Line::raw(text);
-    }
-    let first_matched_pos = positions[0];
-    let mut hightlighted = first_matched_pos == 0;
-    let mut spans = Vec::new();
-    let mut chars_used = 0;
-    let mut spliterator = HighlighSpliterator::new(text, positions);
-    // We truncated front of line to skip unmateched part
-    // bacause we are lack of space to display it anyway
-    let last_matched_pos = *positions.last().unwrap();
-    if !hightlighted && last_matched_pos >= max_len {
-        spans.push(Span::styled(TRUNCATED_STR, default_style));
-        hightlighted = true;
-        let unmatched_head_area = spliterator.next().unwrap_or("");
-        // We want to add unmatched area to line only if we have any space left
-        let matched_area_len = last_matched_pos - first_matched_pos + 1;
-        let unmatched_tail_len = text
-            .len()
-            .saturating_sub(last_matched_pos)
-            .saturating_sub(1);
-        let space_left = max_len
-            .saturating_sub(matched_area_len)
-            .saturating_sub(unmatched_tail_len);
-        if space_left > 0 {
-            let truncated =
-                &unmatched_head_area[unmatched_head_area.len().saturating_sub(space_left)..];
-            spans.push(Span::styled(truncated, default_style));
-            chars_used += truncated.len();
-        }
-    }
-    for area in spliterator {
-        let style = if hightlighted {
-            highlighted_style
-        } else {
-            default_style
-        };
-        chars_used += area.len();
-        if chars_used > max_len {
-            let truncated_len = area.len() - (chars_used - max_len);
-            if truncated_len > 0 {
-                let truncated = &area[0..truncated_len];
-                spans.push(Span::styled(truncated, style));
-            }
-            spans.push(Span::styled(TRUNCATED_STR, default_style));
-            break;
-        }
-        spans.push(Span::styled(area, style));
-        hightlighted = !hightlighted;
-    }
+    let spans = chunk_into_limitted_matched_regions(text, positions, max_len)
+        .into_iter()
+        .map(|region| {
+            let style = match region.matched {
+                true => highlighted_style,
+                false => default_style,
+            };
+            Span::styled(region.text, style)
+        })
+        .collect_vec();
 
     Line::from(spans)
 }
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use ratatui::{
         style::{Color, Style},
         text::Span,
     };
 
-    use crate::tui::highlight::TRUNCATED_STR;
+    use crate::tui::highlight::{highlight_fuzzy, TRUNCATED_STR};
 
-    use super::highlight_fuzzy;
+    use super::styled_truncated_line;
 
     #[test]
     fn no_positions_returns_line() {
@@ -128,6 +122,27 @@ mod tests {
                 Span::styled("b", default_style),
                 Span::styled("c", highlighted_style),
                 Span::styled("def", default_style)
+            ]
+        );
+    }
+
+    #[test]
+    fn highlights_utf16_text() {
+        let highlighted_style = Style::new().bg(Color::Yellow).fg(Color::Black);
+        let default_style = Style::default();
+        let line = highlight_fuzzy(
+            "hello, y̆world",
+            &[5, 6, 7, 8, 9],
+            highlighted_style,
+            default_style,
+            20,
+        );
+        assert_eq!(
+            line.spans,
+            vec![
+                Span::styled("hello", default_style),
+                Span::styled(", y̆w", highlighted_style),
+                Span::styled("orld", default_style),
             ]
         );
     }
@@ -201,8 +216,9 @@ mod tests {
         assert_eq!(
             line.spans,
             vec![
-                Span::styled("ab", default_style),
+                Span::styled(TRUNCATED_STR, default_style),
                 Span::styled("cd", highlighted_style),
+                Span::styled("xx", default_style),
                 Span::styled(TRUNCATED_STR, default_style)
             ]
         );
@@ -261,5 +277,15 @@ mod tests {
                 Span::styled(TRUNCATED_STR, default_style)
             ]
         );
+    }
+
+    #[test]
+    fn should_truncate_styled_line() {
+        let style = Style::new().bg(Color::Yellow).fg(Color::Black);
+        let line = styled_truncated_line("hello, y̆world", style, 10);
+        assert_eq!(
+            line.spans,
+            vec![Span::styled("hello, y̆w", style), Span::raw(TRUNCATED_STR)]
+        )
     }
 }
