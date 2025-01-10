@@ -405,7 +405,6 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
                     ports,
                 )),
                 Line::from(format!("CMD: {}", prc.exe())),
-                //FIXME: Sometimes args are too long and don't fit in details area
                 Line::from(format!("ARGS: {}", prc.args)),
             ]
         }
