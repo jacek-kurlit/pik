@@ -20,21 +20,25 @@ jobs:
         include:
           - build: linux
             os: ubuntu-latest
+            use-corss: false
             skip_tests: false
             target: x86_64-unknown-linux-gnu
 
           - build: linux-aarch64
             os: ubuntu-latest
+            use-corss: true
             skip_tests: false
             target: aarch64-unknown-linux-gnu
 
           - build: macos
             os: macos-latest
+            use-corss: false
             skip_tests: false
             target: x86_64-apple-darwin
 
           - build: aarch64-macos
             os: macos-latest
+            use-corss: false
             skip_tests: false
             target: aarch64-apple-darwin
 
@@ -46,14 +50,31 @@ jobs:
         shell: bash
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
+
+      - name: Install cross
+        if: matrix.use-cross
+        uses: taiki-e/install-action@v2
+        with:
+         tool: cross
+
       - uses: moonrepo/setup-rust@v1
         with:
           targets: ${{ matrix.target }}
-      - name: Run cargo test
-        if: "!matrix.skip_tests"
+
+
+      - name: Run cargo test (without cross)
+        if: "!matrix.skip_tests && !matrix.use-cross"
         run: cargo test --release --locked --target ${{ matrix.target }}
-      - name: Build
+      - name: Build (without cross)
+        if: "!matrix.use-cross"
         run: cargo build --verbose --release --locked --target ${{ matrix.target }}
+
+      - name: Run cargo test (cross)
+        if: "!matrix.skip_tests && matrix.use-cross"
+        run: cross test --release --locked --target ${{ matrix.target }}
+      - name: Build (cross)
+        if: "matrix.use-cross"
+        run: cross build --release --locked --target ${{ matrix.target }}
 
       - name: Build archive
         shell: bash
