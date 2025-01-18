@@ -173,7 +173,7 @@ impl ProcessManager {
             process_refresh_kind(),
         );
         // TODO: do we really need to refresh users?
-        self.users.refresh_list();
+        self.users.refresh();
         self.process_ports = refresh_ports();
     }
 

@@ -16,15 +16,15 @@ crossterm = "0.28"
 ratatui = "0.29"
 tui-textarea = "0.7"
 anyhow = "1.0.79"
-sysinfo = "0.32"
+sysinfo = "0.33"
 listeners = "0.2.1"
 chrono = "0.4"
 clap = { version = "4.5", features = ["derive"] }
-directories = "5.0"
+directories = "6.0"
 toml = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 fuzzy-matcher = "0.3.7"
-itertools = "0.13"
+itertools = "0.14"
 
 [dev-dependencies]
 http-test-server = "2.1.1"
