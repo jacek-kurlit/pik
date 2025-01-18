@@ -63,6 +63,11 @@ impl App {
         self.search_for_processess();
     }
 
+    fn delete_word(&mut self) {
+        self.tui.delete_word();
+        self.search_for_processess();
+    }
+
     fn search_for_processess(&mut self) {
         self.tui.reset_error_message();
         self.process_manager.refresh();
@@ -75,6 +80,11 @@ impl App {
 
     fn delete_char(&mut self) {
         self.tui.delete_char();
+        self.search_for_processess();
+    }
+
+    fn delete_next_char(&mut self) {
+        self.tui.delete_next_char();
         self.search_for_processess();
     }
 
@@ -148,6 +158,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     PageUp => app.tui.select_previous_row(10),
                     PageDown => app.tui.select_next_row(10),
                     Backspace => app.delete_char(),
+                    Delete => app.delete_next_char(),
+                    Left => app.tui.go_left(),
+                    Right => app.tui.go_right(),
+                    Home => app.tui.goto_begining(),
+                    End => app.tui.goto_end(),
                     Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.tui.select_next_row(1);
                     }
@@ -168,6 +183,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     }
                     Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.tui.process_details_up()
+                    }
+                    Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.delete_word();
                     }
                     Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
                         app.enforce_search_by(ProcessRelatedSearch::Parent);
