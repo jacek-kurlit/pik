@@ -108,9 +108,25 @@ impl Tui {
         self.search_area.insert_str(text);
     }
 
-    fn clear_search_area(&mut self) {
-        self.search_area.move_cursor(CursorMove::Head);
+    pub fn clear_search_area(&mut self) {
+        self.goto_begining();
         self.search_area.delete_line_by_end();
+    }
+
+    pub fn go_left(&mut self) {
+        self.search_area.move_cursor(CursorMove::Back)
+    }
+
+    pub fn go_right(&mut self) {
+        self.search_area.move_cursor(CursorMove::Forward)
+    }
+
+    pub fn goto_begining(&mut self) {
+        self.search_area.move_cursor(CursorMove::Head);
+    }
+
+    pub fn goto_end(&mut self) {
+        self.search_area.move_cursor(CursorMove::End);
     }
 
     pub fn select_first_row(&mut self) {
@@ -153,6 +169,10 @@ impl Tui {
         self.search_area.insert_char(new_char);
     }
 
+    pub fn delete_word(&mut self) {
+        self.search_area.delete_word();
+    }
+
     pub fn process_details_down(&mut self, frame: &mut Frame) {
         let rects = layout_rects(frame);
         let process_details_area = rects[2];
@@ -184,6 +204,10 @@ impl Tui {
 
     pub fn delete_char(&mut self) {
         self.search_area.delete_char();
+    }
+
+    pub fn delete_next_char(&mut self) {
+        self.search_area.delete_next_char();
     }
 
     pub fn get_selected_row_index(&self) -> Option<usize> {
