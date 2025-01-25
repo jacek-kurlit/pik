@@ -40,14 +40,45 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-      fail-fast: false
+        include:
+          - build: linux
+            os: ubuntu-latest
+            use-cross: false
+            target: x86_64-unknown-linux-gnu
+
+          - build: linux-aarch64
+            os: ubuntu-latest
+            use-cross: true
+            target: aarch64-unknown-linux-gnu
+
+          - build: macos
+            os: macos-latest
+            use-cross: false
+            target: x86_64-apple-darwin
+
+          - build: aarch64-macos
+            os: macos-latest
+            use-cross: false
+            target: aarch64-apple-darwin
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cross
+        if: matrix.use-cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
       - uses: moonrepo/setup-rust@v1
         with:
+          targets: ${{ matrix.target }}
           bins: cargo-make, cargo-nextest
-      - name: Run tests
-        run: cargo make ci-test
+
+      - name: Run cargo nextest (without cross)
+        if: "!matrix.use-cross"
+        run: cargo nextest run --release --locked --target ${{ matrix.target }}
+
+      - name: Run cross test (cross)
+        if: "matrix.use-cross"
+        run: cross test --release --locked --target ${{ matrix.target }}
