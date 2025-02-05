@@ -25,6 +25,7 @@ toml = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 fuzzy-matcher = "0.3.7"
 itertools = "0.14"
+regex = "1.11"
 
 [dev-dependencies]
 http-test-server = "2.1.1"

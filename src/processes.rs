@@ -142,7 +142,7 @@ impl ProcessManager {
         })
     }
 
-    pub fn find_processes(&mut self, query: &str, ignore: IgnoreOptions) -> ProcessSearchResults {
+    pub fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
         let query_filter = QueryFilter::new(query);
         let ignored_processes_filter = IgnoredProcessesFilter::new(ignore, &self.current_user_id);
 

@@ -20,7 +20,7 @@ use self::rendering::Tui;
 struct App {
     process_manager: ProcessManager,
     search_results: ProcessSearchResults,
-    filter_options: IgnoreOptions,
+    ignore_options: IgnoreOptions,
     tui: Tui,
 }
 
@@ -29,7 +29,7 @@ impl App {
         let mut app = App {
             process_manager: ProcessManager::new()?,
             search_results: ProcessSearchResults::empty(),
-            filter_options: app_settings.filter_opions,
+            ignore_options: app_settings.filter_opions,
             tui: Tui::new(search_criteria, app_settings.use_icons),
         };
         app.search_for_processess();
@@ -73,7 +73,7 @@ impl App {
         self.process_manager.refresh();
         self.search_results = self
             .process_manager
-            .find_processes(self.tui.search_input_text(), self.filter_options);
+            .find_processes(self.tui.search_input_text(), &self.ignore_options);
         self.tui
             .update_process_table_number_of_items(self.search_results.len());
     }

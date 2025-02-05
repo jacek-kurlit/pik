@@ -1,4 +1,5 @@
 use ratatui::Viewport;
+use regex::Regex;
 
 use crate::{
     args::{CliArgs, ScreenSizeOptions},
@@ -18,8 +19,10 @@ impl AppSettings {
         Self {
             viewport: prefer_override(config.screen_size, cli_args.screen_size),
             filter_opions: IgnoreOptions {
-                ignore_threads: !cli_args.include_threads_processes,
-                ignore_other_users: !cli_args.include_other_users_processes,
+                ignore_threads: !cli_args.ignore.include_threads_processes,
+                ignore_other_users: !cli_args.ignore.include_other_users_processes,
+                //FIXME: cloning
+                paths: cli_args.ignore.paths.clone(),
             },
             use_icons: config.use_icons,
         }
@@ -58,6 +61,8 @@ impl From<ScreenSizeOptions> for Viewport {
 #[cfg(test)]
 mod tests {
 
+    use crate::args::{self};
+
     use super::*;
 
     #[test]
@@ -89,10 +94,12 @@ mod tests {
         let config = AppConfig::default();
         let cli_args = CliArgs {
             query: "".to_string(),
-            include_threads_processes: true,
-            include_other_users_processes: true,
             screen_size: None,
-            ignore: Default::default(),
+            ignore: args::IgnoreOptions {
+                include_threads_processes: true,
+                include_other_users_processes: true,
+                paths: vec![],
+            },
         };
         let settings = AppSettings::from(config, &cli_args);
         assert_eq!(
@@ -102,7 +109,8 @@ mod tests {
                 use_icons: false,
                 filter_opions: IgnoreOptions {
                     ignore_threads: false,
-                    ignore_other_users: false
+                    ignore_other_users: false,
+                    paths: vec![]
                 }
             }
         );
@@ -128,8 +136,6 @@ mod tests {
     fn some_cli_args() -> CliArgs {
         CliArgs {
             query: "".to_string(),
-            include_threads_processes: true,
-            include_other_users_processes: true,
             screen_size: None,
             ignore: Default::default(),
         }

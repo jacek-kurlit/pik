@@ -1,4 +1,5 @@
 use clap::{Args, Parser};
+use regex::Regex;
 
 use crate::config;
 
@@ -15,12 +16,6 @@ pub struct CliArgs {
         If no prefix is given search will be done by process name"#
     )]
     pub query: String,
-    /// On linux threads can be listed as processes which are ignored by default. This flag allows to include them
-    #[arg(short = 't', long, default_value_t = false)]
-    pub include_threads_processes: bool,
-    /// By default pik shows only proceseses owned by current user. This flag allows to show all processes
-    #[arg(short = 'a', long, default_value_t = false)]
-    pub include_other_users_processes: bool,
     #[command(flatten)]
     pub ignore: IgnoreOptions,
     #[command(flatten)]
@@ -42,7 +37,23 @@ pub struct ScreenSizeOptions {
 #[group(required = false, multiple = true, id = "Ignored Options")]
 /// Ignored Options
 pub struct IgnoreOptions {
+    /// On linux threads can be listed as processes which are ignored by default. This flag allows to include them
+    #[arg(
+        help_heading = "Ignore Options",
+        short = 't',
+        long,
+        default_value_t = false
+    )]
+    pub include_threads_processes: bool,
+    /// By default pik shows only proceseses owned by current user. This flag allows to show all processes
+    #[arg(
+        help_heading = "Ignore Options",
+        short = 'a',
+        long,
+        default_value_t = false
+    )]
+    pub include_other_users_processes: bool,
     /// Ignore processes that path matches any of provided regexes
     #[arg(help_heading = "Ignore Options", short = 'p', long = "ignore-path")]
-    pub paths: Vec<String>,
+    pub paths: Vec<Regex>,
 }
