@@ -20,9 +20,15 @@ impl AppSettings {
             query: cli_args.query,
             viewport: prefer_override(config.screen_size, cli_args.screen_size),
             filter_opions: IgnoreOptions {
-                ignore_threads: !cli_args.ignore.include_threads_processes,
-                ignore_other_users: !cli_args.ignore.include_other_users_processes,
-                paths: cli_args.ignore.paths,
+                ignore_threads: prefer_override(
+                    config.ignore.threads,
+                    cli_args.ignore.ignore_thread_processes,
+                ),
+                ignore_other_users: prefer_override(
+                    config.ignore.other_users,
+                    cli_args.ignore.ignore_other_users_processes,
+                ),
+                paths: prefer_override(config.ignore.paths, cli_args.ignore.paths),
             },
             use_icons: config.use_icons,
         }
@@ -61,7 +67,12 @@ impl From<ScreenSizeOptions> for Viewport {
 #[cfg(test)]
 mod tests {
 
-    use crate::args::{self};
+    use regex::Regex;
+
+    use crate::{
+        args::{self},
+        config::IgnoreConfig,
+    };
 
     use super::*;
 
@@ -96,9 +107,9 @@ mod tests {
             query: "".to_string(),
             screen_size: None,
             ignore: args::IgnoreOptions {
-                include_threads_processes: true,
-                include_other_users_processes: true,
-                paths: vec![],
+                ignore_thread_processes: Some(false),
+                ignore_other_users_processes: Some(false),
+                paths: None,
             },
         };
         let settings = AppSettings::from(config, cli_args);
@@ -132,6 +143,128 @@ mod tests {
         };
         let settings = AppSettings::from(config, cli_args);
         assert_eq!(settings.viewport, Viewport::Fullscreen);
+    }
+
+    #[test]
+    fn should_prefer_config_ignore_threads_when_cli_args_is_none() {
+        let config = AppConfig {
+            ignore: IgnoreConfig {
+                threads: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let cli_args = CliArgs {
+            ignore: args::IgnoreOptions {
+                ignore_thread_processes: None,
+                ..Default::default()
+            },
+            ..some_cli_args()
+        };
+        let settings = AppSettings::from(config, cli_args);
+        assert!(settings.filter_opions.ignore_threads);
+    }
+
+    #[test]
+    fn should_prefer_cli_args_ignore_threads_when_flag_was_set() {
+        let config = AppConfig {
+            ignore: IgnoreConfig {
+                threads: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let cli_args = CliArgs {
+            ignore: args::IgnoreOptions {
+                ignore_thread_processes: Some(true),
+                ..Default::default()
+            },
+            ..some_cli_args()
+        };
+        let settings = AppSettings::from(config, cli_args);
+        assert!(settings.filter_opions.ignore_threads);
+    }
+
+    #[test]
+    fn should_prefer_config_ignore_other_users_when_cli_args_is_none() {
+        let config = AppConfig {
+            ignore: IgnoreConfig {
+                other_users: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let cli_args = CliArgs {
+            ignore: args::IgnoreOptions {
+                ignore_other_users_processes: None,
+                ..Default::default()
+            },
+            ..some_cli_args()
+        };
+        let settings = AppSettings::from(config, cli_args);
+        assert!(settings.filter_opions.ignore_other_users);
+    }
+
+    #[test]
+    fn should_prefer_cli_args_ignore_other_users_when_flag_was_set() {
+        let config = AppConfig {
+            ignore: IgnoreConfig {
+                other_users: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let cli_args = CliArgs {
+            ignore: args::IgnoreOptions {
+                ignore_other_users_processes: Some(true),
+                ..Default::default()
+            },
+            ..some_cli_args()
+        };
+        let settings = AppSettings::from(config, cli_args);
+        assert!(settings.filter_opions.ignore_other_users);
+    }
+
+    #[test]
+    fn should_prefer_config_ignored_paths_when_cli_args_was_not_set() {
+        let config = AppConfig {
+            ignore: IgnoreConfig {
+                paths: vec![Regex::new("/user/*").unwrap()],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let cli_args = CliArgs {
+            ignore: args::IgnoreOptions {
+                paths: None,
+                ..Default::default()
+            },
+            ..some_cli_args()
+        };
+        let settings = AppSettings::from(config, cli_args);
+        assert_eq!(settings.filter_opions.paths.len(), 1);
+        assert_eq!(settings.filter_opions.paths[0].as_str(), "/user/*");
+    }
+
+    #[test]
+    fn should_prefer_cli_args_ignored_paths() {
+        let config = AppConfig {
+            ignore: IgnoreConfig {
+                paths: vec![Regex::new("/user/*").unwrap()],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let cli_args = CliArgs {
+            ignore: args::IgnoreOptions {
+                paths: Some(vec![Regex::new("/*").unwrap()]),
+                ..Default::default()
+            },
+            ..some_cli_args()
+        };
+        let settings = AppSettings::from(config, cli_args);
+        assert_eq!(settings.filter_opions.paths.len(), 1);
+        assert_eq!(settings.filter_opions.paths[0].as_str(), "/*");
     }
 
     fn some_cli_args() -> CliArgs {

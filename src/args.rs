@@ -37,23 +37,24 @@ pub struct ScreenSizeOptions {
 #[group(required = false, multiple = true, id = "Ignored Options")]
 /// Ignored Options
 pub struct IgnoreOptions {
-    /// On linux threads can be listed as processes which are ignored by default. This flag allows to include them
+    /// Allows to ignore thread processes (linux). If not set all threads processes are ignored
     #[arg(
         help_heading = "Ignore Options",
         short = 't',
         long,
-        default_value_t = false
+        default_value = None
     )]
-    pub include_threads_processes: bool,
-    /// By default pik shows only proceseses owned by current user. This flag allows to show all processes
+    pub ignore_thread_processes: Option<bool>,
+    /// Allows to ignore processes owned by other users. If not set only current user processes are
+    /// shown
     #[arg(
         help_heading = "Ignore Options",
-        short = 'a',
+        short = 'o',
         long,
-        default_value_t = false
+        default_value = None
     )]
-    pub include_other_users_processes: bool,
+    pub ignore_other_users_processes: Option<bool>,
     /// Ignore processes that path matches any of provided regexes
     #[arg(help_heading = "Ignore Options", short = 'p', long = "ignore-path")]
-    pub paths: Vec<Regex>,
+    pub paths: Option<Vec<Regex>>,
 }

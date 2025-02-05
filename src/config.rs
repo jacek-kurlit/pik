@@ -18,6 +18,7 @@ fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
         .with_context(|| format!("Failed to deserialize config from file: {:?}", path))
 }
 
+use regex::Regex;
 use serde::Deserialize;
 
 #[derive(Debug, Default, PartialEq, Eq, Deserialize)]
@@ -26,7 +27,52 @@ pub struct AppConfig {
     pub screen_size: ScreenSize,
     #[serde(default)]
     pub use_icons: bool,
+    #[serde(default)]
+    pub ignore: IgnoreConfig,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct IgnoreConfig {
+    #[serde(with = "serde_regex", default)]
+    pub paths: Vec<Regex>,
+    #[serde(default = "set_true")]
+    pub other_users: bool,
+    #[serde(default = "set_true")]
+    pub threads: bool,
+}
+
+const fn set_true() -> bool {
+    true
+}
+
+impl Default for IgnoreConfig {
+    fn default() -> Self {
+        Self {
+            paths: vec![],
+            other_users: set_true(),
+            threads: set_true(),
+        }
+    }
+}
+
+impl PartialEq for IgnoreConfig {
+    fn eq(&self, other: &Self) -> bool {
+        let mut eq = self.threads == other.threads
+            && self.other_users == other.other_users
+            && self.paths.len() == other.paths.len();
+        if eq {
+            eq = self.paths.iter().map(|r| r.as_str()).collect::<Vec<&str>>()
+                == other
+                    .paths
+                    .iter()
+                    .map(|r| r.as_str())
+                    .collect::<Vec<&str>>()
+        }
+        eq
+    }
+}
+
+impl Eq for IgnoreConfig {}
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
@@ -57,7 +103,12 @@ mod tests {
             default_settings,
             Ok(AppConfig {
                 screen_size: ScreenSize::Height(DEFAULT_SCREEN_SIZE),
-                use_icons: false
+                use_icons: false,
+                ignore: IgnoreConfig {
+                    paths: vec![],
+                    other_users: true,
+                    threads: true
+                }
             })
         );
     }
@@ -68,6 +119,10 @@ mod tests {
             r#"
             screen_size = "fullscreen"
             use_icons = true
+            [ignore]
+            paths=["/usr/*"]
+            other_users = false
+            threads = false
             "#,
         )
         .unwrap();
@@ -75,7 +130,12 @@ mod tests {
             default_settings,
             AppConfig {
                 screen_size: ScreenSize::Fullscreen,
-                use_icons: true
+                use_icons: true,
+                ignore: IgnoreConfig {
+                    paths: vec![Regex::new("/usr/*").unwrap()],
+                    other_users: false,
+                    threads: false
+                }
             }
         );
     }
