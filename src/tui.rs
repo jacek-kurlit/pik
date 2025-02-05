@@ -11,7 +11,7 @@ mod highlight;
 mod rendering;
 
 use crate::{
-    processes::{FilterOptions, ProcessManager, ProcessSearchResults},
+    processes::{IgnoreOptions, ProcessManager, ProcessSearchResults},
     settings::AppSettings,
 };
 
@@ -20,7 +20,7 @@ use self::rendering::Tui;
 struct App {
     process_manager: ProcessManager,
     search_results: ProcessSearchResults,
-    filter_options: FilterOptions,
+    filter_options: IgnoreOptions,
     tui: Tui,
 }
 

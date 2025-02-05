@@ -22,6 +22,8 @@ pub struct CliArgs {
     #[arg(short = 'a', long, default_value_t = false)]
     pub include_other_users_processes: bool,
     #[command(flatten)]
+    pub ignore: IgnoreOptions,
+    #[command(flatten)]
     pub screen_size: Option<ScreenSizeOptions>,
 }
 
@@ -34,4 +36,13 @@ pub struct ScreenSizeOptions {
     /// Number of lines of the screen pik will use
     #[arg(short = 'H', long, default_value_t = config::DEFAULT_SCREEN_SIZE)]
     pub height: u16,
+}
+
+#[derive(Args, Debug, Clone, Default)]
+#[group(required = false, multiple = true, id = "Ignored Options")]
+/// Ignored Options
+pub struct IgnoreOptions {
+    /// Ignore processes that path matches any of provided regexes
+    #[arg(help_heading = "Ignore Options", short = 'p', long = "ignore-path")]
+    pub paths: Vec<String>,
 }

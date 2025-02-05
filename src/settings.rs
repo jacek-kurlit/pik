@@ -3,13 +3,13 @@ use ratatui::Viewport;
 use crate::{
     args::{CliArgs, ScreenSizeOptions},
     config::{AppConfig, ScreenSize},
-    processes::FilterOptions,
+    processes::IgnoreOptions,
 };
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AppSettings {
     pub viewport: Viewport,
-    pub filter_opions: FilterOptions,
+    pub filter_opions: IgnoreOptions,
     pub use_icons: bool,
 }
 
@@ -17,9 +17,9 @@ impl AppSettings {
     pub fn from(config: AppConfig, cli_args: &CliArgs) -> Self {
         Self {
             viewport: prefer_override(config.screen_size, cli_args.screen_size),
-            filter_opions: FilterOptions {
+            filter_opions: IgnoreOptions {
                 ignore_threads: !cli_args.include_threads_processes,
-                include_all_processes: cli_args.include_other_users_processes,
+                ignore_other_users: !cli_args.include_other_users_processes,
             },
             use_icons: config.use_icons,
         }
@@ -92,6 +92,7 @@ mod tests {
             include_threads_processes: true,
             include_other_users_processes: true,
             screen_size: None,
+            ignore: Default::default(),
         };
         let settings = AppSettings::from(config, &cli_args);
         assert_eq!(
@@ -99,9 +100,9 @@ mod tests {
             AppSettings {
                 viewport: Viewport::Inline(25),
                 use_icons: false,
-                filter_opions: FilterOptions {
+                filter_opions: IgnoreOptions {
                     ignore_threads: false,
-                    include_all_processes: true
+                    ignore_other_users: false
                 }
             }
         );
@@ -130,6 +131,7 @@ mod tests {
             include_threads_processes: true,
             include_other_users_processes: true,
             screen_size: None,
+            ignore: Default::default(),
         }
     }
 }

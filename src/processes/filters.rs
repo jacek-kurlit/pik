@@ -103,28 +103,28 @@ impl QueryFilter {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct FilterOptions {
+pub struct IgnoreOptions {
     //NOTE: On linux threads can be listed as processes and thus needs filtering
     pub ignore_threads: bool,
-    pub include_all_processes: bool,
+    pub ignore_other_users: bool,
 }
 
-impl Default for FilterOptions {
+impl Default for IgnoreOptions {
     fn default() -> Self {
         Self {
             ignore_threads: true,
-            include_all_processes: false,
+            ignore_other_users: true,
         }
     }
 }
 
-pub(super) struct OptionsFilter<'a> {
-    opt: FilterOptions,
+pub(super) struct IgnoredProcessesFilter<'a> {
+    opt: IgnoreOptions,
     current_user_id: &'a Uid,
 }
 
-impl<'a> OptionsFilter<'a> {
-    pub fn new(opt: FilterOptions, current_user_id: &'a Uid) -> Self {
+impl<'a> IgnoredProcessesFilter<'a> {
+    pub fn new(opt: IgnoreOptions, current_user_id: &'a Uid) -> Self {
         Self {
             opt,
             current_user_id,
@@ -136,10 +136,10 @@ impl<'a> OptionsFilter<'a> {
             if self.opt.ignore_threads && prc.is_thread() {
                 return false;
             }
-            if self.opt.include_all_processes {
-                return true;
+            if self.opt.ignore_other_users && prc.user_id() != Some(self.current_user_id) {
+                return false;
             }
-            prc.user_id() == Some(self.current_user_id)
+            true
         }
     }
 }
@@ -407,10 +407,10 @@ pub mod tests {
     }
 
     #[test]
-    fn options_filter_should_ignore_thread_processes() {
+    fn ignored_filter_should_ignore_thread_processes() {
         let current_user_id = Uid::from_str("1").unwrap();
-        let filter = OptionsFilter::new(
-            FilterOptions {
+        let filter = IgnoredProcessesFilter::new(
+            IgnoreOptions {
                 ignore_threads: true,
                 ..Default::default()
             },
@@ -425,10 +425,10 @@ pub mod tests {
     }
 
     #[test]
-    fn options_filter_should_accept_all_threads_processes() {
+    fn ignored_filter_should_accept_threads_processes() {
         let current_user_id = Uid::from_str("1").unwrap();
-        let filter = OptionsFilter::new(
-            FilterOptions {
+        let filter = IgnoredProcessesFilter::new(
+            IgnoreOptions {
                 ignore_threads: false,
                 ..Default::default()
             },
@@ -443,11 +443,11 @@ pub mod tests {
     }
 
     #[test]
-    fn options_filter_should_accept_only_current_user_processes() {
+    fn ignored_filter_should_accept_only_current_user_processes() {
         let current_user_id = Uid::from_str("1000").unwrap();
-        let filter = OptionsFilter::new(
-            FilterOptions {
-                include_all_processes: false,
+        let filter = IgnoredProcessesFilter::new(
+            IgnoreOptions {
+                ignore_other_users: true,
                 ..Default::default()
             },
             &current_user_id,
@@ -463,11 +463,11 @@ pub mod tests {
     }
 
     #[test]
-    fn options_filter_should_accept_all_processes() {
+    fn ignored_filter_should_accept_other_users_processes() {
         let current_user_id = Uid::from_str("1000").unwrap();
-        let filter = OptionsFilter::new(
-            FilterOptions {
-                include_all_processes: true,
+        let filter = IgnoredProcessesFilter::new(
+            IgnoreOptions {
+                ignore_other_users: false,
                 ..Default::default()
             },
             &current_user_id,
