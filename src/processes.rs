@@ -11,7 +11,7 @@ use sysinfo::{ProcessRefreshKind, RefreshKind};
 mod filters;
 mod utils;
 
-pub use filters::FilterOptions;
+pub use filters::IgnoreOptions;
 pub use filters::SearchBy;
 
 use filters::QueryFilter;
@@ -25,7 +25,7 @@ pub struct ProcessManager {
     current_user_id: Uid,
 }
 
-use self::filters::OptionsFilter;
+use self::filters::IgnoreProcessesFilter;
 use self::utils::{
     find_current_process_user, get_process_args, process_run_time, to_system_local_time,
 };
@@ -142,18 +142,18 @@ impl ProcessManager {
         })
     }
 
-    pub fn find_processes(&mut self, query: &str, options: FilterOptions) -> ProcessSearchResults {
-        let process_filter = QueryFilter::new(query);
-        let options_filter = OptionsFilter::new(options, &self.current_user_id);
+    pub fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
+        let query_filter = QueryFilter::new(query);
+        let ignored_processes_filter = IgnoreProcessesFilter::new(ignore, &self.current_user_id);
 
         let mut items = self
             .sys
             .processes()
             .values()
-            .filter(|prc| options_filter.accept(*prc))
+            .filter(|prc| ignored_processes_filter.accept(*prc))
             .filter_map(|prc| {
                 let ports = self.process_ports.get(&prc.pid().as_u32());
-                let match_data = process_filter.accept(prc, ports.map(|p| p.as_str()))?;
+                let match_data = query_filter.accept(prc, ports.map(|p| p.as_str()))?;
                 Some(ResultItem::new(
                     match_data,
                     self.create_process_info(prc, ports),

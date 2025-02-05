@@ -11,7 +11,7 @@ mod highlight;
 mod rendering;
 
 use crate::{
-    processes::{FilterOptions, ProcessManager, ProcessSearchResults},
+    processes::{IgnoreOptions, ProcessManager, ProcessSearchResults},
     settings::AppSettings,
 };
 
@@ -20,17 +20,17 @@ use self::rendering::Tui;
 struct App {
     process_manager: ProcessManager,
     search_results: ProcessSearchResults,
-    filter_options: FilterOptions,
+    ignore_options: IgnoreOptions,
     tui: Tui,
 }
 
 impl App {
-    fn new(search_criteria: String, app_settings: AppSettings) -> Result<App> {
+    fn new(app_settings: AppSettings) -> Result<App> {
         let mut app = App {
             process_manager: ProcessManager::new()?,
             search_results: ProcessSearchResults::empty(),
-            filter_options: app_settings.filter_opions,
-            tui: Tui::new(search_criteria, app_settings.use_icons),
+            ignore_options: app_settings.filter_opions,
+            tui: Tui::new(app_settings.query, app_settings.use_icons),
         };
         app.search_for_processess();
         Ok(app)
@@ -73,7 +73,7 @@ impl App {
         self.process_manager.refresh();
         self.search_results = self
             .process_manager
-            .find_processes(self.tui.search_input_text(), self.filter_options);
+            .find_processes(self.tui.search_input_text(), &self.ignore_options);
         self.tui
             .update_process_table_number_of_items(self.search_results.len());
     }
@@ -115,7 +115,7 @@ pub enum ProcessRelatedSearch {
     Parent,   // only parent process
 }
 
-pub fn start_app(search_criteria: String, app_settings: AppSettings) -> Result<()> {
+pub fn start_app(app_settings: AppSettings) -> Result<()> {
     // setup terminal
     enable_raw_mode()?;
     let backend = CrosstermBackend::new(io::stdout());
@@ -123,7 +123,7 @@ pub fn start_app(search_criteria: String, app_settings: AppSettings) -> Result<(
     let mut terminal = Terminal::with_options(backend, TerminalOptions { viewport })?;
 
     // create app and run it
-    let app = App::new(search_criteria, app_settings)?;
+    let app = App::new(app_settings)?;
     let res = run_app(&mut terminal, app);
 
     // restore terminal

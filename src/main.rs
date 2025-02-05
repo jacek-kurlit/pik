@@ -8,6 +8,6 @@ fn main() -> Result<()> {
     let config = pik::config::load_app_config()?;
     let args = CliArgs::parse();
 
-    let settings = AppSettings::from(config, &args);
-    start_app(args.query, settings)
+    let settings = AppSettings::from(config, args);
+    start_app(settings)
 }

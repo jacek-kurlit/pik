@@ -1,4 +1,5 @@
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use regex::Regex;
 use sysinfo::Uid;
 
 use super::{utils::get_process_args, MatchData, MatchType, MatchedBy, ProcessInfo};
@@ -102,29 +103,50 @@ impl QueryFilter {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct FilterOptions {
+#[derive(Debug)]
+pub struct IgnoreOptions {
     //NOTE: On linux threads can be listed as processes and thus needs filtering
     pub ignore_threads: bool,
-    pub include_all_processes: bool,
+    pub ignore_other_users: bool,
+    pub paths: Vec<Regex>,
 }
 
-impl Default for FilterOptions {
+impl Default for IgnoreOptions {
     fn default() -> Self {
         Self {
             ignore_threads: true,
-            include_all_processes: false,
+            ignore_other_users: true,
+            paths: vec![],
         }
     }
 }
 
-pub(super) struct OptionsFilter<'a> {
-    opt: FilterOptions,
+impl PartialEq for IgnoreOptions {
+    fn eq(&self, other: &Self) -> bool {
+        let mut eq = self.ignore_threads == other.ignore_threads
+            && self.ignore_other_users == other.ignore_other_users
+            && self.paths.len() == other.paths.len();
+        if eq {
+            eq = self.paths.iter().map(|r| r.as_str()).collect::<Vec<&str>>()
+                == other
+                    .paths
+                    .iter()
+                    .map(|r| r.as_str())
+                    .collect::<Vec<&str>>()
+        }
+        eq
+    }
+}
+
+impl Eq for IgnoreOptions {}
+
+pub(super) struct IgnoreProcessesFilter<'a> {
+    opt: &'a IgnoreOptions,
     current_user_id: &'a Uid,
 }
 
-impl<'a> OptionsFilter<'a> {
-    pub fn new(opt: FilterOptions, current_user_id: &'a Uid) -> Self {
+impl<'a> IgnoreProcessesFilter<'a> {
+    pub fn new(opt: &'a IgnoreOptions, current_user_id: &'a Uid) -> Self {
         Self {
             opt,
             current_user_id,
@@ -132,15 +154,17 @@ impl<'a> OptionsFilter<'a> {
     }
 
     pub fn accept(&self, prc: &impl ProcessInfo) -> bool {
-        {
-            if self.opt.ignore_threads && prc.is_thread() {
-                return false;
-            }
-            if self.opt.include_all_processes {
-                return true;
-            }
-            prc.user_id() == Some(self.current_user_id)
+        if self.opt.ignore_threads && prc.is_thread() {
+            return false;
         }
+        if self.opt.ignore_other_users && prc.user_id() != Some(self.current_user_id) {
+            return false;
+        }
+        if !self.opt.paths.is_empty() && prc.cmd_path().is_some() {
+            let path = prc.cmd_path().unwrap();
+            return !self.opt.paths.iter().any(|regex| regex.is_match(path));
+        }
+        true
     }
 }
 
@@ -407,15 +431,13 @@ pub mod tests {
     }
 
     #[test]
-    fn options_filter_should_ignore_thread_processes() {
+    fn ignore_filter_should_ignore_thread_processes() {
         let current_user_id = Uid::from_str("1").unwrap();
-        let filter = OptionsFilter::new(
-            FilterOptions {
-                ignore_threads: true,
-                ..Default::default()
-            },
-            &current_user_id,
-        );
+        let ignore = IgnoreOptions {
+            ignore_threads: true,
+            ..Default::default()
+        };
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let prc = MockProcessInfo {
             is_thread: true,
             ..Default::default()
@@ -425,15 +447,13 @@ pub mod tests {
     }
 
     #[test]
-    fn options_filter_should_accept_all_threads_processes() {
+    fn ignore_filter_should_accept_threads_processes() {
         let current_user_id = Uid::from_str("1").unwrap();
-        let filter = OptionsFilter::new(
-            FilterOptions {
-                ignore_threads: false,
-                ..Default::default()
-            },
-            &current_user_id,
-        );
+        let ignore = IgnoreOptions {
+            ignore_threads: false,
+            ..Default::default()
+        };
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let prc = MockProcessInfo {
             is_thread: true,
             ..Default::default()
@@ -443,15 +463,13 @@ pub mod tests {
     }
 
     #[test]
-    fn options_filter_should_accept_only_current_user_processes() {
+    fn ignore_filter_should_accept_only_current_user_processes() {
         let current_user_id = Uid::from_str("1000").unwrap();
-        let filter = OptionsFilter::new(
-            FilterOptions {
-                include_all_processes: false,
-                ..Default::default()
-            },
-            &current_user_id,
-        );
+        let ignore = IgnoreOptions {
+            ignore_other_users: true,
+            ..Default::default()
+        };
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let mut prc = MockProcessInfo {
             user_id: current_user_id.clone(),
             ..Default::default()
@@ -463,15 +481,13 @@ pub mod tests {
     }
 
     #[test]
-    fn options_filter_should_accept_all_processes() {
+    fn ignore_filter_should_accept_other_users_processes() {
         let current_user_id = Uid::from_str("1000").unwrap();
-        let filter = OptionsFilter::new(
-            FilterOptions {
-                include_all_processes: true,
-                ..Default::default()
-            },
-            &current_user_id,
-        );
+        let ignore = IgnoreOptions {
+            ignore_other_users: false,
+            ..Default::default()
+        };
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let mut prc = MockProcessInfo {
             user_id: current_user_id.clone(),
             ..Default::default()
@@ -479,6 +495,44 @@ pub mod tests {
         assert!(filter.accept(&prc));
 
         prc.user_id = Uid::from_str("1001").unwrap();
+        assert!(filter.accept(&prc));
+    }
+
+    #[test]
+    fn ignore_filter_should_ignore_processes_with_paths() {
+        let current_user_id = Uid::from_str("1").unwrap();
+        let ignore = IgnoreOptions {
+            paths: vec![
+                Regex::new("/usr/bin/*").unwrap(),
+                Regex::new("/bin/*").unwrap(),
+            ],
+            ..Default::default()
+        };
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
+        let prc = MockProcessInfo {
+            cmd_path: Some("/usr/bin/exe".into()),
+            ..Default::default()
+        };
+        assert!(!filter.accept(&prc));
+        let prc = MockProcessInfo {
+            cmd_path: Some("/bin/fireifox".into()),
+            ..Default::default()
+        };
+        assert!(!filter.accept(&prc));
+    }
+
+    #[test]
+    fn ignore_filter_should_accept_processes_that_does_not_match_path() {
+        let current_user_id = Uid::from_str("1").unwrap();
+        let ignore = IgnoreOptions {
+            paths: vec![Regex::new("/usr/bin/*").unwrap()],
+            ..Default::default()
+        };
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
+        let prc = MockProcessInfo {
+            cmd_path: Some("/bin/exe".into()),
+            ..Default::default()
+        };
         assert!(filter.accept(&prc));
     }
 

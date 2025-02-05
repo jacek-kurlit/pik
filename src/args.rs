@@ -1,4 +1,5 @@
 use clap::{Args, Parser};
+use regex::Regex;
 
 use crate::config;
 
@@ -15,12 +16,8 @@ pub struct CliArgs {
         If no prefix is given search will be done by process name"#
     )]
     pub query: String,
-    /// On linux threads can be listed as processes which are ignored by default. This flag allows to include them
-    #[arg(short = 't', long, default_value_t = false)]
-    pub include_threads_processes: bool,
-    /// By default pik shows only proceseses owned by current user. This flag allows to show all processes
-    #[arg(short = 'a', long, default_value_t = false)]
-    pub include_other_users_processes: bool,
+    #[command(flatten)]
+    pub ignore: IgnoreOptions,
     #[command(flatten)]
     pub screen_size: Option<ScreenSizeOptions>,
 }
@@ -34,4 +31,30 @@ pub struct ScreenSizeOptions {
     /// Number of lines of the screen pik will use
     #[arg(short = 'H', long, default_value_t = config::DEFAULT_SCREEN_SIZE)]
     pub height: u16,
+}
+
+#[derive(Args, Debug, Clone, Default)]
+#[group(required = false, multiple = true, id = "Ignored Options")]
+/// Ignored Options
+pub struct IgnoreOptions {
+    /// Allows to ignore thread processes (linux). If not set all threads processes are ignored
+    #[arg(
+        help_heading = "Ignore Options",
+        short = 't',
+        long,
+        default_value = None
+    )]
+    pub ignore_thread_processes: Option<bool>,
+    /// Allows to ignore processes owned by other users. If not set only current user processes are
+    /// shown
+    #[arg(
+        help_heading = "Ignore Options",
+        short = 'o',
+        long,
+        default_value = None
+    )]
+    pub ignore_other_users_processes: Option<bool>,
+    /// Ignore processes that path matches any of provided regexes
+    #[arg(help_heading = "Ignore Options", short = 'p', long = "ignore-path")]
+    pub paths: Option<Vec<Regex>>,
 }
