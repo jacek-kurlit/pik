@@ -121,7 +121,6 @@ impl Default for IgnoreOptions {
     }
 }
 
-//FIXME: duplicated with config find a way to fix this
 impl PartialEq for IgnoreOptions {
     fn eq(&self, other: &Self) -> bool {
         let mut eq = self.ignore_threads == other.ignore_threads
