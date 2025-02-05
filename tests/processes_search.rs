@@ -99,6 +99,26 @@ fn should_find_cargo_process_by_process_family() {
     assert!(results_are_sorted_by_match_type(results));
 }
 
+#[cfg(target_family = "unix")]
+#[test]
+fn should_ignore_processes_in_usr_dir() {
+    use regex::Regex;
+
+    let mut process_manager = ProcessManager::new().unwrap();
+    let ignore = IgnoreOptions {
+        paths: vec![Regex::new("/usr/*").unwrap()],
+        ..Default::default()
+    };
+    let results = process_manager.find_processes("", &ignore);
+    assert!(!results.is_empty());
+    assert!(results.iter().all(|item| item
+        .process
+        .cmd_path
+        .as_ref()
+        .map(|path| !path.starts_with("/usr"))
+        .unwrap_or(true)));
+}
+
 fn fuzzy_matches(value: &str, pattern: &str) -> bool {
     let (_, indicies) = SkimMatcherV2::default()
         .fuzzy_indices(value, pattern)

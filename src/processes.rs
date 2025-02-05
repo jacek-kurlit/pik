@@ -25,7 +25,7 @@ pub struct ProcessManager {
     current_user_id: Uid,
 }
 
-use self::filters::IgnoredProcessesFilter;
+use self::filters::IgnoreProcessesFilter;
 use self::utils::{
     find_current_process_user, get_process_args, process_run_time, to_system_local_time,
 };
@@ -144,7 +144,7 @@ impl ProcessManager {
 
     pub fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
         let query_filter = QueryFilter::new(query);
-        let ignored_processes_filter = IgnoredProcessesFilter::new(ignore, &self.current_user_id);
+        let ignored_processes_filter = IgnoreProcessesFilter::new(ignore, &self.current_user_id);
 
         let mut items = self
             .sys

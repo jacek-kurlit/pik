@@ -140,12 +140,12 @@ impl PartialEq for IgnoreOptions {
 
 impl Eq for IgnoreOptions {}
 
-pub(super) struct IgnoredProcessesFilter<'a> {
+pub(super) struct IgnoreProcessesFilter<'a> {
     opt: &'a IgnoreOptions,
     current_user_id: &'a Uid,
 }
 
-impl<'a> IgnoredProcessesFilter<'a> {
+impl<'a> IgnoreProcessesFilter<'a> {
     pub fn new(opt: &'a IgnoreOptions, current_user_id: &'a Uid) -> Self {
         Self {
             opt,
@@ -431,13 +431,13 @@ pub mod tests {
     }
 
     #[test]
-    fn ignored_filter_should_ignore_thread_processes() {
+    fn ignore_filter_should_ignore_thread_processes() {
         let current_user_id = Uid::from_str("1").unwrap();
         let ignore = IgnoreOptions {
             ignore_threads: true,
             ..Default::default()
         };
-        let filter = IgnoredProcessesFilter::new(&ignore, &current_user_id);
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let prc = MockProcessInfo {
             is_thread: true,
             ..Default::default()
@@ -447,13 +447,13 @@ pub mod tests {
     }
 
     #[test]
-    fn ignored_filter_should_accept_threads_processes() {
+    fn ignore_filter_should_accept_threads_processes() {
         let current_user_id = Uid::from_str("1").unwrap();
         let ignore = IgnoreOptions {
             ignore_threads: false,
             ..Default::default()
         };
-        let filter = IgnoredProcessesFilter::new(&ignore, &current_user_id);
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let prc = MockProcessInfo {
             is_thread: true,
             ..Default::default()
@@ -463,13 +463,13 @@ pub mod tests {
     }
 
     #[test]
-    fn ignored_filter_should_accept_only_current_user_processes() {
+    fn ignore_filter_should_accept_only_current_user_processes() {
         let current_user_id = Uid::from_str("1000").unwrap();
         let ignore = IgnoreOptions {
             ignore_other_users: true,
             ..Default::default()
         };
-        let filter = IgnoredProcessesFilter::new(&ignore, &current_user_id);
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let mut prc = MockProcessInfo {
             user_id: current_user_id.clone(),
             ..Default::default()
@@ -481,13 +481,13 @@ pub mod tests {
     }
 
     #[test]
-    fn ignored_filter_should_accept_other_users_processes() {
+    fn ignore_filter_should_accept_other_users_processes() {
         let current_user_id = Uid::from_str("1000").unwrap();
         let ignore = IgnoreOptions {
             ignore_other_users: false,
             ..Default::default()
         };
-        let filter = IgnoredProcessesFilter::new(&ignore, &current_user_id);
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let mut prc = MockProcessInfo {
             user_id: current_user_id.clone(),
             ..Default::default()
@@ -499,7 +499,7 @@ pub mod tests {
     }
 
     #[test]
-    fn ignored_filter_should_ignore_processes_with_paths() {
+    fn ignore_filter_should_ignore_processes_with_paths() {
         let current_user_id = Uid::from_str("1").unwrap();
         let ignore = IgnoreOptions {
             paths: vec![
@@ -508,7 +508,7 @@ pub mod tests {
             ],
             ..Default::default()
         };
-        let filter = IgnoredProcessesFilter::new(&ignore, &current_user_id);
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let prc = MockProcessInfo {
             cmd_path: Some("/usr/bin/exe".into()),
             ..Default::default()
@@ -522,13 +522,13 @@ pub mod tests {
     }
 
     #[test]
-    fn ignored_filter_should_accept_processes_that_does_not_match_path() {
+    fn ignore_filter_should_accept_processes_that_does_not_match_path() {
         let current_user_id = Uid::from_str("1").unwrap();
         let ignore = IgnoreOptions {
             paths: vec![Regex::new("/usr/bin/*").unwrap()],
             ..Default::default()
         };
-        let filter = IgnoredProcessesFilter::new(&ignore, &current_user_id);
+        let filter = IgnoreProcessesFilter::new(&ignore, &current_user_id);
         let prc = MockProcessInfo {
             cmd_path: Some("/bin/exe".into()),
             ..Default::default()

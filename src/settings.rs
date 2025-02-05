@@ -1,5 +1,4 @@
 use ratatui::Viewport;
-use regex::Regex;
 
 use crate::{
     args::{CliArgs, ScreenSizeOptions},
