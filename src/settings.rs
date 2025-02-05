@@ -8,20 +8,21 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct AppSettings {
+    pub query: String,
     pub viewport: Viewport,
     pub filter_opions: IgnoreOptions,
     pub use_icons: bool,
 }
 
 impl AppSettings {
-    pub fn from(config: AppConfig, cli_args: &CliArgs) -> Self {
+    pub fn from(config: AppConfig, cli_args: CliArgs) -> Self {
         Self {
+            query: cli_args.query,
             viewport: prefer_override(config.screen_size, cli_args.screen_size),
             filter_opions: IgnoreOptions {
                 ignore_threads: !cli_args.ignore.include_threads_processes,
                 ignore_other_users: !cli_args.ignore.include_other_users_processes,
-                //FIXME: cloning
-                paths: cli_args.ignore.paths.clone(),
+                paths: cli_args.ignore.paths,
             },
             use_icons: config.use_icons,
         }
@@ -100,10 +101,11 @@ mod tests {
                 paths: vec![],
             },
         };
-        let settings = AppSettings::from(config, &cli_args);
+        let settings = AppSettings::from(config, cli_args);
         assert_eq!(
             settings,
             AppSettings {
+                query: "".into(),
                 viewport: Viewport::Inline(25),
                 use_icons: false,
                 filter_opions: IgnoreOptions {
@@ -128,7 +130,7 @@ mod tests {
             }),
             ..some_cli_args()
         };
-        let settings = AppSettings::from(config, &cli_args);
+        let settings = AppSettings::from(config, cli_args);
         assert_eq!(settings.viewport, Viewport::Fullscreen);
     }
 

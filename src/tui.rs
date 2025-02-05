@@ -25,12 +25,12 @@ struct App {
 }
 
 impl App {
-    fn new(search_criteria: String, app_settings: AppSettings) -> Result<App> {
+    fn new(app_settings: AppSettings) -> Result<App> {
         let mut app = App {
             process_manager: ProcessManager::new()?,
             search_results: ProcessSearchResults::empty(),
             ignore_options: app_settings.filter_opions,
-            tui: Tui::new(search_criteria, app_settings.use_icons),
+            tui: Tui::new(app_settings.query, app_settings.use_icons),
         };
         app.search_for_processess();
         Ok(app)
@@ -115,7 +115,7 @@ pub enum ProcessRelatedSearch {
     Parent,   // only parent process
 }
 
-pub fn start_app(search_criteria: String, app_settings: AppSettings) -> Result<()> {
+pub fn start_app(app_settings: AppSettings) -> Result<()> {
     // setup terminal
     enable_raw_mode()?;
     let backend = CrosstermBackend::new(io::stdout());
@@ -123,7 +123,7 @@ pub fn start_app(search_criteria: String, app_settings: AppSettings) -> Result<(
     let mut terminal = Terminal::with_options(backend, TerminalOptions { viewport })?;
 
     // create app and run it
-    let app = App::new(search_criteria, app_settings)?;
+    let app = App::new(app_settings)?;
     let res = run_app(&mut terminal, app);
 
     // restore terminal
