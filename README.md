@@ -105,6 +105,8 @@ cargo binstall pik
 
 You may set your preferences in `config.toml` file located in `~/.config/pik` directory.
 All options are optional, if skipped default values will be used.
+Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
+Run `pik -- --help` to see cli options
 
 You can find default values below
 
@@ -115,6 +117,15 @@ screen_size = { height = 20 } # run pik in 20 lines of the terminal
 
 # Icons require nerd fonts v3
 use_icons = false
+
+[ignore]
+# ignore processes that path matches any of given regex
+paths = []
+# paths = ["/System/*", "Applications/*"]
+# ignore other users processes
+other_users = true
+# ignore thread processes (on linux)
+threads = true
 ```
 
 ### Key maps
