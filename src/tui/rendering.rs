@@ -10,7 +10,6 @@ use ratatui::{
     },
     Frame,
 };
-use tui_textarea::{CursorMove, TextArea};
 
 use crate::processes::{MatchedBy, Process, ProcessSearchResults, ResultItem};
 
@@ -49,7 +48,6 @@ pub struct Tui {
     process_details_scroll_state: ScrollbarState,
     process_details_scroll_offset: u16,
     process_details_number_of_lines: u16,
-    search_area: TextArea<'static>,
     error_message: Option<&'static str>,
 }
 
@@ -85,9 +83,7 @@ const TABLE_WIDTHS: [Constraint; 8] = [
 ];
 
 impl Tui {
-    pub fn new(search_text: String, use_icons: bool) -> Self {
-        let mut search_area = TextArea::from(search_text.lines());
-        search_area.move_cursor(tui_textarea::CursorMove::End);
+    pub fn new(use_icons: bool) -> Self {
         Self {
             process_table: TableState::default(),
             process_table_scroll_state: ScrollbarState::new(0),
@@ -98,35 +94,8 @@ impl Tui {
             process_details_number_of_lines: 0,
             //NOTE: we don't update this, value 1 means that this should be rendered
             process_details_scroll_state: ScrollbarState::new(1),
-            search_area,
             error_message: None,
         }
-    }
-
-    pub fn set_search_text(&mut self, text: String) {
-        self.clear_search_area();
-        self.search_area.insert_str(text);
-    }
-
-    pub fn clear_search_area(&mut self) {
-        self.goto_begining();
-        self.search_area.delete_line_by_end();
-    }
-
-    pub fn go_left(&mut self) {
-        self.search_area.move_cursor(CursorMove::Back)
-    }
-
-    pub fn go_right(&mut self) {
-        self.search_area.move_cursor(CursorMove::Forward)
-    }
-
-    pub fn goto_begining(&mut self) {
-        self.search_area.move_cursor(CursorMove::Head);
-    }
-
-    pub fn goto_end(&mut self) {
-        self.search_area.move_cursor(CursorMove::End);
     }
 
     pub fn select_first_row(&mut self) {
@@ -165,14 +134,6 @@ impl Tui {
         self.select_row_by_index(previous_index);
     }
 
-    pub fn enter_char(&mut self, new_char: char) {
-        self.search_area.insert_char(new_char);
-    }
-
-    pub fn delete_word(&mut self) {
-        self.search_area.delete_word();
-    }
-
     pub fn process_details_down(&mut self, frame: &mut Frame) {
         let rects = layout_rects(frame);
         let process_details_area = rects[2];
@@ -202,14 +163,6 @@ impl Tui {
         self.error_message = None;
     }
 
-    pub fn delete_char(&mut self) {
-        self.search_area.delete_char();
-    }
-
-    pub fn delete_next_char(&mut self) {
-        self.search_area.delete_next_char();
-    }
-
     pub fn get_selected_row_index(&self) -> Option<usize> {
         self.process_table.selected()
     }
@@ -226,24 +179,16 @@ impl Tui {
         }
     }
 
-    pub fn search_input_text(&self) -> &str {
-        &self.search_area.lines()[0]
-    }
-
-    pub fn render_ui(&mut self, search_results: &ProcessSearchResults, frame: &mut Frame) {
-        let rects = layout_rects(frame);
-
-        self.render_search_input(frame, rects[0]);
+    pub fn render_ui(
+        &mut self,
+        search_results: &ProcessSearchResults,
+        frame: &mut Frame,
+        rects: Rc<[Rect]>,
+    ) {
         self.render_process_table(frame, search_results, rects[1]);
         self.render_process_details(frame, search_results, rects[2]);
 
         render_help(frame, self.error_message, rects[3]);
-    }
-
-    fn render_search_input(&self, f: &mut Frame, area: Rect) {
-        let rects = Layout::horizontal([Constraint::Length(2), Constraint::Min(2)]).split(area);
-        f.render_widget(Paragraph::new("> "), rects[0]);
-        f.render_widget(&self.search_area, rects[1]);
     }
 
     fn render_process_table(

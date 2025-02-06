@@ -1,12 +1,14 @@
-use std::io;
+use std::{io, rc::Rc};
 
 use anyhow::Result;
+use components::{search_bar::SearchBarComponent, Action, Component};
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
+    event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{prelude::*, TerminalOptions};
 
+pub mod components;
 mod highlight;
 mod rendering;
 
@@ -22,6 +24,7 @@ struct App {
     search_results: ProcessSearchResults,
     ignore_options: IgnoreOptions,
     tui: Tui,
+    search_bar: SearchBarComponent,
 }
 
 impl App {
@@ -30,7 +33,8 @@ impl App {
             process_manager: ProcessManager::new()?,
             search_results: ProcessSearchResults::empty(),
             ignore_options: app_settings.filter_opions,
-            tui: Tui::new(app_settings.query, app_settings.use_icons),
+            tui: Tui::new(app_settings.use_icons),
+            search_bar: SearchBarComponent::new(app_settings.query),
         };
         app.search_for_processess();
         Ok(app)
@@ -54,18 +58,18 @@ impl App {
                 format!("@{}", selected_process.parent_pid.unwrap_or(0))
             }
         };
-        self.tui.set_search_text(search_string);
+        //TODO: should be event
+        self.search_bar.set_search_text(search_string);
         self.search_for_processess();
     }
 
-    fn enter_char(&mut self, new_char: char) {
-        self.tui.enter_char(new_char);
-        self.search_for_processess();
-    }
-
-    fn delete_word(&mut self) {
-        self.tui.delete_word();
-        self.search_for_processess();
+    //TODO: this should not be here
+    fn handle_event(&mut self, event: KeyEvent) {
+        let action = self.search_bar.handle_input(event);
+        match action {
+            Action::SearchForProcesses(_) => self.search_for_processess(),
+            _ => {}
+        }
     }
 
     fn search_for_processess(&mut self) {
@@ -73,19 +77,10 @@ impl App {
         self.process_manager.refresh();
         self.search_results = self
             .process_manager
-            .find_processes(self.tui.search_input_text(), &self.ignore_options);
+            //TODO: refactor
+            .find_processes(self.search_bar.get_search_text(), &self.ignore_options);
         self.tui
             .update_process_table_number_of_items(self.search_results.len());
-    }
-
-    fn delete_char(&mut self) {
-        self.tui.delete_char();
-        self.search_for_processess();
-    }
-
-    fn delete_next_char(&mut self) {
-        self.tui.delete_next_char();
-        self.search_for_processess();
     }
 
     fn kill_selected_process(&mut self) {
@@ -140,7 +135,11 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
     loop {
-        terminal.draw(|f| app.tui.render_ui(&app.search_results, f))?;
+        terminal.draw(|f| {
+            let rects = layout_rects(f);
+            app.search_bar.render(f, rects[0]);
+            app.tui.render_ui(&app.search_results, f, rects);
+        })?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
@@ -157,12 +156,6 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Tab | Down => app.tui.select_next_row(1),
                     PageUp => app.tui.select_previous_row(10),
                     PageDown => app.tui.select_next_row(10),
-                    Backspace => app.delete_char(),
-                    Delete => app.delete_next_char(),
-                    Left => app.tui.go_left(),
-                    Right => app.tui.go_right(),
-                    Home => app.tui.goto_begining(),
-                    End => app.tui.goto_end(),
                     Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.tui.select_next_row(1);
                     }
@@ -184,9 +177,6 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.tui.process_details_up()
                     }
-                    Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.delete_word();
-                    }
                     Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
                         app.enforce_search_by(ProcessRelatedSearch::Parent);
                     }
@@ -196,10 +186,19 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Char('s') if key.modifiers.contains(KeyModifiers::ALT) => {
                         app.enforce_search_by(ProcessRelatedSearch::Siblings);
                     }
-                    Char(to_insert) => app.enter_char(to_insert),
-                    _ => (),
+                    _ => app.handle_event(key),
                 }
             }
         }
     }
+}
+
+fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
+    Layout::vertical([
+        Constraint::Length(1),
+        Constraint::Min(10),
+        Constraint::Max(7),
+        Constraint::Length(1),
+    ])
+    .split(frame.area())
 }
