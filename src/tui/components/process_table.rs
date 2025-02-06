@@ -1,3 +1,4 @@
+use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Margin},
@@ -11,16 +12,19 @@ use ratatui::{
 };
 
 use crate::{
-    processes::{MatchedBy, Process, ProcessSearchResults, ResultItem},
-    tui::{highlight::highlight_text, Theme},
+    processes::{
+        IgnoreOptions, MatchedBy, Process, ProcessManager, ProcessSearchResults, ResultItem,
+    },
+    tui::{highlight::highlight_text, ProcessRelatedSearch, Theme},
 };
 
 use super::{Action, Component};
 
 pub struct ProcessTableComponent {
+    process_manager: ProcessManager,
+    ignore_options: IgnoreOptions,
     theme: Theme,
-    //TODO: this should not be pub
-    pub search_results: ProcessSearchResults,
+    search_results: ProcessSearchResults,
     use_icons: bool,
     process_table: TableState,
     process_table_scroll_state: ScrollbarState,
@@ -59,28 +63,79 @@ const TABLE_WIDTHS: [Constraint; 8] = [
 ];
 
 impl ProcessTableComponent {
-    pub fn new(use_icons: bool) -> Self {
-        Self {
+    pub fn new(use_icons: bool, ignore_options: IgnoreOptions) -> Result<Self> {
+        Ok(Self {
+            ignore_options,
+            process_manager: ProcessManager::new()?,
             process_table: TableState::default(),
             process_table_scroll_state: ScrollbarState::new(0),
             theme: Theme::new(),
             search_results: ProcessSearchResults::empty(),
             use_icons,
             process_table_number_of_items: 0,
+        })
+    }
+
+    pub fn search_for_processess(&mut self, search_text: &str) {
+        self.process_manager.refresh();
+        self.search_results = self
+            .process_manager
+            .find_processes(search_text, &self.ignore_options);
+        self.update_process_table_number_of_items();
+    }
+
+    pub fn kill_selected_process(&mut self) -> Action {
+        if let Some(prc) = self.get_selected_process() {
+            let pid = prc.pid;
+            if self.process_manager.kill_process(pid) {
+                //FIXME: this should be event
+                //something is wrong here, we should refresh but we don't have access to search bar
+                // self.search_for_processess(self.search_bar.get_search_text());
+                //NOTE: cache refresh takes time and process may reappear in list!
+                self.search_results.remove(pid);
+                //TODO: this must be here because details will show 1/0 when removed!
+                // seems like this can only be fixed by autorefresh!
+                self.update_process_table_number_of_items();
+                return Action::ProcessKilled;
+            } else {
+                return Action::ProcessKillFailure;
+            }
         }
+        Action::NoProcessToKill
     }
 
-    pub fn select_first_row(&mut self) {
+    pub fn enforce_search_by(&mut self, search_by: ProcessRelatedSearch) -> Action {
+        let selected_process = self.get_selected_process();
+        if selected_process.is_none() {
+            return Action::Consumed;
+        }
+        let selected_process = selected_process.unwrap();
+        let search_string = match search_by {
+            ProcessRelatedSearch::Parent => {
+                format!("!{}", selected_process.parent_pid.unwrap_or(0))
+            }
+            ProcessRelatedSearch::Family => {
+                format!("@{}", selected_process.pid)
+            }
+            ProcessRelatedSearch::Siblings => {
+                format!("@{}", selected_process.parent_pid.unwrap_or(0))
+            }
+        };
+        self.search_for_processess(&search_string);
+        Action::SetSearchText(search_string)
+    }
+
+    pub fn select_first_row(&mut self) -> Action {
         let index = (self.process_table_number_of_items > 0).then_some(0);
-        self.select_row_by_index(index);
+        self.select_row_by_index(index)
     }
 
-    pub fn select_last_row(&mut self) {
+    pub fn select_last_row(&mut self) -> Action {
         let index = self.process_table_number_of_items.checked_sub(1);
-        self.select_row_by_index(index);
+        self.select_row_by_index(index)
     }
 
-    pub fn select_next_row(&mut self, step_size: usize) {
+    pub fn select_next_row(&mut self, step_size: usize) -> Action {
         let next_row_index = self.process_table.selected().map(|i| {
             let mut i = i + step_size;
             if i >= self.process_table_number_of_items {
@@ -88,23 +143,25 @@ impl ProcessTableComponent {
             }
             i
         });
-        self.select_row_by_index(next_row_index);
+        self.select_row_by_index(next_row_index)
     }
 
-    pub fn select_row_by_index(&mut self, index: Option<usize>) {
+    pub fn select_row_by_index(&mut self, index: Option<usize>) -> Action {
         self.process_table.select(index);
         self.process_table_scroll_state =
             self.process_table_scroll_state.position(index.unwrap_or(0));
-        //FIXME: this is not the right place to reset the scroll
-        // self.reset_process_detals_scroll();
+        self.get_selected_process()
+            //FIXME: cloning hurts!
+            .map(|prc| Action::ProcessSelected(prc.clone()))
+            .unwrap_or(Action::Consumed)
     }
 
-    pub fn select_previous_row(&mut self, step_size: usize) {
+    pub fn select_previous_row(&mut self, step_size: usize) -> Action {
         let previous_index = self.process_table.selected().map(|i| {
             let i = i.wrapping_sub(step_size);
             i.clamp(0, self.process_table_number_of_items.saturating_sub(1))
         });
-        self.select_row_by_index(previous_index);
+        self.select_row_by_index(previous_index)
     }
 
     pub fn get_selected_process(&self) -> Option<&Process> {
@@ -150,36 +207,35 @@ impl Component for ProcessTableComponent {
     fn handle_input(&mut self, key: KeyEvent) -> Action {
         use KeyCode::*;
         match key.code {
-            Up if key.modifiers.contains(KeyModifiers::CONTROL) => self.select_first_row(),
-            Down if key.modifiers.contains(KeyModifiers::CONTROL) => self.select_last_row(),
-            Up | BackTab => self.select_previous_row(1),
-            Tab | Down => self.select_next_row(1),
-            PageUp => self.select_previous_row(10),
-            PageDown => self.select_next_row(10),
+            Up if key.modifiers.contains(KeyModifiers::CONTROL) => return self.select_first_row(),
+            Down if key.modifiers.contains(KeyModifiers::CONTROL) => return self.select_last_row(),
+            Up | BackTab => return self.select_previous_row(1),
+            Tab | Down => return self.select_next_row(1),
+            PageUp => return self.select_previous_row(10),
+            PageDown => return self.select_next_row(10),
+            Esc => return Action::Quit,
+            Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => return Action::Quit,
             Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.select_next_row(1);
             }
             Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.select_previous_row(1);
             }
-            // Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            //     self.kill_selected_process()
-            // }
-            // Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-            //     self.search_for_processess()
-            // }
-            // Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
-            //     self.enforce_search_by(ProcessRelatedSearch::Parent);
-            // }
-            // Char('f') if key.modifiers.contains(KeyModifiers::ALT) => {
-            //     self.enforce_search_by(ProcessRelatedSearch::Family);
-            // }
-            // Char('s') if key.modifiers.contains(KeyModifiers::ALT) => {
-            //     self.enforce_search_by(ProcessRelatedSearch::Siblings);
-            // }
-            _ => return Action::Input(key),
+            Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                return self.kill_selected_process();
+            }
+            Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
+                return self.enforce_search_by(ProcessRelatedSearch::Parent);
+            }
+            Char('f') if key.modifiers.contains(KeyModifiers::ALT) => {
+                return self.enforce_search_by(ProcessRelatedSearch::Family);
+            }
+            Char('s') if key.modifiers.contains(KeyModifiers::ALT) => {
+                return self.enforce_search_by(ProcessRelatedSearch::Siblings);
+            }
+            _ => return Action::Noop,
         };
-        Action::Noop
+        Action::Consumed
     }
 
     fn render(&mut self, f: &mut ratatui::Frame, area: Rect) {

@@ -1,3 +1,4 @@
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     prelude::Rect,
     text::Line,
@@ -5,17 +6,17 @@ use ratatui::{
         Block, BorderType, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
         Wrap,
     },
-    Frame,
 };
 
-use crate::{processes::Process, tui::layout_rects};
+use crate::processes::Process;
 
-use super::Component;
+use super::{Action, Component};
 
 pub struct ProcessDetailsComponent {
     process_details_scroll_state: ScrollbarState,
     process_details_scroll_offset: u16,
     process_details_number_of_lines: u16,
+    area_content_height: u16,
     selected_process: Option<Process>,
 }
 
@@ -27,18 +28,16 @@ impl ProcessDetailsComponent {
             process_details_number_of_lines: 0,
             //NOTE: we don't update this, value 1 means that this should be rendered
             process_details_scroll_state: ScrollbarState::new(1),
+            area_content_height: 0,
             selected_process: None,
         }
     }
 
-    pub fn process_details_down(&mut self, frame: &mut Frame) {
-        let rects = layout_rects(frame);
-        let process_details_area = rects[2];
-        let area_content_height = process_details_area.height - 2;
+    pub fn process_details_down(&mut self) {
         let content_scrolled =
             self.process_details_number_of_lines - self.process_details_scroll_offset;
 
-        if content_scrolled > area_content_height {
+        if content_scrolled > self.area_content_height {
             self.process_details_scroll_offset =
                 self.process_details_scroll_offset.saturating_add(1);
         }
@@ -48,8 +47,9 @@ impl ProcessDetailsComponent {
         self.process_details_scroll_offset = self.process_details_scroll_offset.saturating_sub(1);
     }
 
-    pub fn handle_process_select(&mut self, process: Option<Process>) {
-        self.selected_process = process;
+    pub fn handle_process_select(&mut self, process: Process) {
+        self.selected_process = Some(process);
+        self.process_details_scroll_offset = 0;
     }
 
     fn update_process_details_number_of_lines(&mut self, area: Rect) {
@@ -67,6 +67,7 @@ impl ProcessDetailsComponent {
         }
     }
 }
+
 fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
     match selected_process {
         Some(prc) => {
@@ -99,7 +100,23 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
 }
 
 impl Component for ProcessDetailsComponent {
+    fn handle_input(&mut self, key: KeyEvent) -> Action {
+        use KeyCode::*;
+        match key.code {
+            Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.process_details_down();
+                Action::Consumed
+            }
+            Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.process_details_up();
+                Action::Consumed
+            }
+            _ => Action::Noop,
+        }
+    }
+
     fn render(&mut self, frame: &mut ratatui::Frame, area: Rect) {
+        self.area_content_height = area.height - 2;
         let lines = process_details_lines(self.selected_process.as_ref());
         let info_footer = Paragraph::new(lines)
             .wrap(Wrap { trim: false })

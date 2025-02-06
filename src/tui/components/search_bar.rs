@@ -39,19 +39,23 @@ impl Component for SearchBarComponent {
         match event.code {
             Left => {
                 self.search_area.move_cursor(CursorMove::Back);
-                Action::Noop
+                Action::Consumed
             }
             Right => {
                 self.search_area.move_cursor(CursorMove::Forward);
-                Action::Noop
+                Action::Consumed
             }
             Home => {
                 self.search_area.move_cursor(CursorMove::Head);
-                Action::Noop
+                Action::Consumed
             }
             End => {
                 self.search_area.move_cursor(CursorMove::End);
-                Action::Noop
+                Action::Consumed
+            }
+            Char('r') if event.modifiers.contains(KeyModifiers::CONTROL) => {
+                //FIXME: cloning hurts!
+                Action::SearchForProcesses(self.search_area.lines().join(""))
             }
             Backspace => {
                 self.search_area.delete_char();
@@ -69,7 +73,7 @@ impl Component for SearchBarComponent {
                 self.search_area.insert_char(c);
                 Action::SearchForProcesses(self.search_area.lines().join(""))
             }
-            _ => Action::Noop,
+            _ => Action::Consumed,
         }
     }
 
