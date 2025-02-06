@@ -103,7 +103,14 @@ cargo binstall pik
 
 ### Application configuration
 
-You may set your preferences in `config.toml` file located in `~/.config/pik` directory.
+You may set your preferences in `config.toml` file located in:
+
+| Platform                     | Config dir                 |
+| -------------------------- | ---------------------- |
+|  Linux        | /home/<username>/.config/pik|
+|  MacOS        | /Users/<username>/Library/Application Support/pik|
+|  Windows        | C:\Users\<username>\AppData\Roaming\pik|
+
 All options are optional, if skipped default values will be used.
 Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
 Run `pik -- --help` to see cli options
@@ -121,7 +128,7 @@ use_icons = false
 [ignore]
 # ignore processes that path matches any of given regex
 paths = []
-# paths = ["/System/*", "Applications/*"]
+# paths = ["/System/.*", "Applications/.*"]
 # ignore other users processes
 other_users = true
 # ignore thread processes (on linux)

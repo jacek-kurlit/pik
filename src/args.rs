@@ -37,7 +37,7 @@ pub struct ScreenSizeOptions {
 #[group(required = false, multiple = true, id = "Ignored Options")]
 /// Ignored Options
 pub struct IgnoreOptions {
-    /// Allows to ignore thread processes (linux). If not set all threads processes are ignored
+    /// Allows to include/exclude thread processes (linux). If not set all threads processes are ignored
     #[arg(
         help_heading = "Ignore Options",
         short = 't',
@@ -45,7 +45,7 @@ pub struct IgnoreOptions {
         default_value = None
     )]
     pub ignore_thread_processes: Option<bool>,
-    /// Allows to ignore processes owned by other users. If not set only current user processes are
+    /// Allows to include/exclude processes owned by other users. If not set only current user processes are
     /// shown
     #[arg(
         help_heading = "Ignore Options",
@@ -54,7 +54,8 @@ pub struct IgnoreOptions {
         default_value = None
     )]
     pub ignore_other_users_processes: Option<bool>,
-    /// Ignore processes that path matches any of provided regexes
+    /// Ignore processes that cmd path matches any of provided regexes.
+    /// List of regex example: -p "/path/.*" -p "/other/.*"
     #[arg(help_heading = "Ignore Options", short = 'p', long = "ignore-path")]
     pub paths: Option<Vec<Regex>>,
 }
