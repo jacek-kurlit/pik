@@ -10,7 +10,8 @@ pub trait Component {
         Action::Input(event)
     }
 
-    fn render(&self, frame: &mut Frame, area: Rect);
+    //TODO: i dont like mut here
+    fn render(&mut self, frame: &mut Frame, area: Rect);
 }
 
 pub enum Action {

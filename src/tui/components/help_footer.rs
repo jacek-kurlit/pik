@@ -28,7 +28,7 @@ const HELP_TEXT: &str =
     "ESC/<C+C> quit | <C+X> kill process | <C+R> refresh | <C+F> details forward | <C+B> details backward ";
 
 impl Component for HelpFooterComponent {
-    fn render(&self, f: &mut ratatui::Frame, area: Rect) {
+    fn render(&mut self, f: &mut ratatui::Frame, area: Rect) {
         let rects = Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)])
             .horizontal_margin(1)
             .split(area);

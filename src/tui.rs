@@ -2,7 +2,8 @@ use std::{io, rc::Rc};
 
 use anyhow::Result;
 use components::{
-    help_footer::HelpFooterComponent, search_bar::SearchBarComponent, Action, Component,
+    help_footer::HelpFooterComponent, process_table::ProcessTableComponent,
+    search_bar::SearchBarComponent, Action, Component,
 };
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
@@ -15,7 +16,7 @@ mod highlight;
 mod rendering;
 
 use crate::{
-    processes::{IgnoreOptions, ProcessManager, ProcessSearchResults},
+    processes::{IgnoreOptions, ProcessManager},
     settings::AppSettings,
 };
 
@@ -23,10 +24,10 @@ use self::rendering::Tui;
 
 struct App {
     process_manager: ProcessManager,
-    search_results: ProcessSearchResults,
     ignore_options: IgnoreOptions,
     tui: Tui,
     search_bar: SearchBarComponent,
+    process_table: ProcessTableComponent,
     healp_footer: HelpFooterComponent,
 }
 
@@ -34,10 +35,10 @@ impl App {
     fn new(app_settings: AppSettings) -> Result<App> {
         let mut app = App {
             process_manager: ProcessManager::new()?,
-            search_results: ProcessSearchResults::empty(),
             ignore_options: app_settings.filter_opions,
             tui: Tui::new(app_settings.use_icons),
             search_bar: SearchBarComponent::new(app_settings.query),
+            process_table: ProcessTableComponent::new(app_settings.use_icons),
             healp_footer: HelpFooterComponent::default(),
         };
         app.search_for_processess();
@@ -45,8 +46,8 @@ impl App {
     }
 
     pub fn enforce_search_by(&mut self, search_by: ProcessRelatedSearch) {
-        let selected_index = self.tui.get_selected_row_index();
-        let selected_process = self.search_results.nth(selected_index);
+        //TODO: accessing search results directly is not good
+        let selected_process = self.process_table.get_selected_process();
         if selected_process.is_none() {
             return;
         }
@@ -78,27 +79,24 @@ impl App {
     fn search_for_processess(&mut self) {
         self.healp_footer.reset_error_message();
         self.process_manager.refresh();
-        self.search_results = self
+        self.process_table.search_results = self
             .process_manager
             //TODO: refactor
             .find_processes(self.search_bar.get_search_text(), &self.ignore_options);
-        self.tui
-            .update_process_table_number_of_items(self.search_results.len());
+        self.process_table.update_process_table_number_of_items();
     }
 
     fn kill_selected_process(&mut self) {
         self.healp_footer.reset_error_message();
-        let prc_index = self.tui.get_selected_row_index();
-        if let Some(prc) = self.search_results.nth(prc_index) {
+        if let Some(prc) = self.process_table.get_selected_process() {
             let pid = prc.pid;
             if self.process_manager.kill_process(pid) {
                 self.search_for_processess();
                 //NOTE: cache refresh takes time and process may reappear in list!
-                self.search_results.remove(pid);
+                self.process_table.search_results.remove(pid);
                 //TODO: this must be here because details will show 1/0 when removed!
                 // seems like this can only be fixed by autorefresh!
-                self.tui
-                    .update_process_table_number_of_items(self.search_results.len());
+                self.process_table.update_process_table_number_of_items();
             } else {
                 self.healp_footer
                     .set_error_message("Failed to kill process, check permissions");
@@ -141,8 +139,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
         terminal.draw(|f| {
             let rects = layout_rects(f);
             app.search_bar.render(f, rects[0]);
+            app.process_table.render(f, rects[1]);
             app.healp_footer.render(f, rects[3]);
-            app.tui.render_ui(&app.search_results, f, rects);
+            app.tui
+                .render_ui(f, app.process_table.get_selected_process(), rects);
         })?;
 
         if let Event::Key(key) = event::read()? {
@@ -151,20 +151,20 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                 match key.code {
                     Esc => return Ok(()),
                     Up if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.select_first_row()
+                        app.process_table.select_first_row()
                     }
                     Down if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.select_last_row()
+                        app.process_table.select_last_row()
                     }
-                    Up | BackTab => app.tui.select_previous_row(1),
-                    Tab | Down => app.tui.select_next_row(1),
-                    PageUp => app.tui.select_previous_row(10),
-                    PageDown => app.tui.select_next_row(10),
+                    Up | BackTab => app.process_table.select_previous_row(1),
+                    Tab | Down => app.process_table.select_next_row(1),
+                    PageUp => app.process_table.select_previous_row(10),
+                    PageDown => app.process_table.select_next_row(10),
                     Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.select_next_row(1);
+                        app.process_table.select_next_row(1);
                     }
                     Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.select_previous_row(1);
+                        app.process_table.select_previous_row(1);
                     }
                     Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         return Ok(());
