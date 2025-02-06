@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use ratatui::{
     layout::{Constraint, Layout, Margin, Rect},
-    style::{palette::tailwind, Color, Modifier, Style, Stylize},
+    style::{palette::tailwind, Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{
         Block, BorderType, Borders, HighlightSpacing, Paragraph, Row, Scrollbar,
@@ -48,7 +48,6 @@ pub struct Tui {
     process_details_scroll_state: ScrollbarState,
     process_details_scroll_offset: u16,
     process_details_number_of_lines: u16,
-    error_message: Option<&'static str>,
 }
 
 const MAX_CMD_LEN: usize = 20;
@@ -94,7 +93,6 @@ impl Tui {
             process_details_number_of_lines: 0,
             //NOTE: we don't update this, value 1 means that this should be rendered
             process_details_scroll_state: ScrollbarState::new(1),
-            error_message: None,
         }
     }
 
@@ -155,14 +153,6 @@ impl Tui {
         self.process_details_scroll_offset = 0;
     }
 
-    pub fn set_error_message(&mut self, message: &'static str) {
-        self.error_message = Some(message);
-    }
-
-    pub fn reset_error_message(&mut self) {
-        self.error_message = None;
-    }
-
     pub fn get_selected_row_index(&self) -> Option<usize> {
         self.process_table.selected()
     }
@@ -187,8 +177,6 @@ impl Tui {
     ) {
         self.render_process_table(frame, search_results, rects[1]);
         self.render_process_details(frame, search_results, rects[2]);
-
-        render_help(frame, self.error_message, rects[3]);
     }
 
     fn render_process_table(
@@ -379,21 +367,6 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
         }
         None => vec![Line::from("No process selected")],
     }
-}
-
-const HELP_TEXT: &str =
-    "ESC/<C+C> quit | <C+X> kill process | <C+R> refresh | <C+F> details forward | <C+B> details backward ";
-
-fn render_help(f: &mut Frame, error_message: Option<&str>, area: Rect) {
-    let rects = Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)])
-        .horizontal_margin(1)
-        .split(area);
-    let error = Paragraph::new(Span::from(error_message.unwrap_or("")).fg(Color::Red))
-        .left_aligned()
-        .block(Block::default().borders(Borders::NONE));
-    let help = Paragraph::new(Line::from(HELP_TEXT)).right_aligned();
-    f.render_widget(error, rects[0]);
-    f.render_widget(help, rects[1]);
 }
 
 fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {

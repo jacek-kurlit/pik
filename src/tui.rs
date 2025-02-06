@@ -1,7 +1,9 @@
 use std::{io, rc::Rc};
 
 use anyhow::Result;
-use components::{search_bar::SearchBarComponent, Action, Component};
+use components::{
+    help_footer::HelpFooterComponent, search_bar::SearchBarComponent, Action, Component,
+};
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode},
@@ -25,6 +27,7 @@ struct App {
     ignore_options: IgnoreOptions,
     tui: Tui,
     search_bar: SearchBarComponent,
+    healp_footer: HelpFooterComponent,
 }
 
 impl App {
@@ -35,6 +38,7 @@ impl App {
             ignore_options: app_settings.filter_opions,
             tui: Tui::new(app_settings.use_icons),
             search_bar: SearchBarComponent::new(app_settings.query),
+            healp_footer: HelpFooterComponent::default(),
         };
         app.search_for_processess();
         Ok(app)
@@ -66,14 +70,13 @@ impl App {
     //TODO: this should not be here
     fn handle_event(&mut self, event: KeyEvent) {
         let action = self.search_bar.handle_input(event);
-        match action {
-            Action::SearchForProcesses(_) => self.search_for_processess(),
-            _ => {}
+        if let Action::SearchForProcesses(_) = action {
+            self.search_for_processess()
         }
     }
 
     fn search_for_processess(&mut self) {
-        self.tui.reset_error_message();
+        self.healp_footer.reset_error_message();
         self.process_manager.refresh();
         self.search_results = self
             .process_manager
@@ -84,7 +87,7 @@ impl App {
     }
 
     fn kill_selected_process(&mut self) {
-        self.tui.reset_error_message();
+        self.healp_footer.reset_error_message();
         let prc_index = self.tui.get_selected_row_index();
         if let Some(prc) = self.search_results.nth(prc_index) {
             let pid = prc.pid;
@@ -97,7 +100,7 @@ impl App {
                 self.tui
                     .update_process_table_number_of_items(self.search_results.len());
             } else {
-                self.tui
+                self.healp_footer
                     .set_error_message("Failed to kill process, check permissions");
             }
         }
@@ -138,6 +141,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
         terminal.draw(|f| {
             let rects = layout_rects(f);
             app.search_bar.render(f, rects[0]);
+            app.healp_footer.render(f, rects[3]);
             app.tui.render_ui(&app.search_results, f, rects);
         })?;
 
