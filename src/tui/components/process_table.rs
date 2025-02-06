@@ -12,7 +12,7 @@ use ratatui::{
 
 use crate::{
     processes::{MatchedBy, Process, ProcessSearchResults, ResultItem},
-    tui::{highlight::highlight_text, rendering::Theme},
+    tui::{highlight::highlight_text, Theme},
 };
 
 use super::{Action, Component};

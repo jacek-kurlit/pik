@@ -2,13 +2,14 @@ use std::{io, rc::Rc};
 
 use anyhow::Result;
 use components::{
-    help_footer::HelpFooterComponent, process_table::ProcessTableComponent,
-    search_bar::SearchBarComponent, Action, Component,
+    help_footer::HelpFooterComponent, process_details::ProcessDetailsComponent,
+    process_table::ProcessTableComponent, search_bar::SearchBarComponent, Action, Component,
 };
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
+use ratatui::style::{palette::tailwind, Color, Style};
 use ratatui::{prelude::*, TerminalOptions};
 
 pub mod components;
@@ -20,14 +21,12 @@ use crate::{
     settings::AppSettings,
 };
 
-use self::rendering::Tui;
-
 struct App {
     process_manager: ProcessManager,
     ignore_options: IgnoreOptions,
-    tui: Tui,
     search_bar: SearchBarComponent,
     process_table: ProcessTableComponent,
+    process_details: ProcessDetailsComponent,
     healp_footer: HelpFooterComponent,
 }
 
@@ -36,9 +35,9 @@ impl App {
         let mut app = App {
             process_manager: ProcessManager::new()?,
             ignore_options: app_settings.filter_opions,
-            tui: Tui::new(app_settings.use_icons),
             search_bar: SearchBarComponent::new(app_settings.query),
             process_table: ProcessTableComponent::new(app_settings.use_icons),
+            process_details: ProcessDetailsComponent::new(),
             healp_footer: HelpFooterComponent::default(),
         };
         app.search_for_processess();
@@ -140,9 +139,13 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
             let rects = layout_rects(f);
             app.search_bar.render(f, rects[0]);
             app.process_table.render(f, rects[1]);
+
+            app.process_details
+                //FIXME: cloning hurts!
+                .handle_process_select(app.process_table.get_selected_process().cloned());
+            app.process_details.render(f, rects[2]);
+
             app.healp_footer.render(f, rects[3]);
-            app.tui
-                .render_ui(f, app.process_table.get_selected_process(), rects);
         })?;
 
         if let Event::Key(key) = event::read()? {
@@ -175,11 +178,11 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
                     Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.search_for_processess()
                     }
-                    Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.process_details_down(&mut terminal.get_frame())
-                    }
+                    Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => app
+                        .process_details
+                        .process_details_down(&mut terminal.get_frame()),
                     Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.process_details_up()
+                        app.process_details.process_details_up()
                     }
                     Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
                         app.enforce_search_by(ProcessRelatedSearch::Parent);
@@ -197,7 +200,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
     }
 }
 
-fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
+//TODO: crate struct that will hold info about layout areas
+pub fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
     Layout::vertical([
         Constraint::Length(1),
         Constraint::Min(10),
@@ -205,4 +209,29 @@ fn layout_rects(frame: &mut Frame) -> Rc<[Rect]> {
         Constraint::Length(1),
     ])
     .split(frame.area())
+}
+
+pub struct Theme {
+    pub row_fg: Color,
+    pub selected_style_fg: Color,
+    pub normal_row_color: Color,
+    pub alt_row_color: Color,
+    pub process_table_border_color: Color,
+    pub highlight_style: Style,
+    pub default_style: Style,
+}
+
+#[allow(clippy::new_without_default)]
+impl Theme {
+    pub fn new() -> Self {
+        Self {
+            row_fg: tailwind::SLATE.c200,
+            selected_style_fg: tailwind::BLUE.c400,
+            normal_row_color: tailwind::SLATE.c950,
+            alt_row_color: tailwind::SLATE.c900,
+            process_table_border_color: tailwind::BLUE.c400,
+            highlight_style: Style::new().bg(Color::Yellow).fg(Color::Black),
+            default_style: Style::default(),
+        }
+    }
 }
