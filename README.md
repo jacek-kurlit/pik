@@ -107,9 +107,9 @@ You may set your preferences in `config.toml` file located in:
 
 | Platform                     | Config dir                 |
 | -------------------------- | ---------------------- |
-|  Linux        | /home/<username>/.config/pik|
-|  MacOS        | /Users/<username>/Library/Application Support/pik|
-|  Windows        | C:\Users\<username>\AppData\Roaming\pik|
+|  Linux        | /home/_:username_/.config/pik|
+|  MacOS        | /Users/_:username_/Library/Application Support/pik|
+|  Windows        | C:\Users\\_:username_\AppData\Roaming\pik|
 
 All options are optional, if skipped default values will be used.
 Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
