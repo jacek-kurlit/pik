@@ -156,7 +156,6 @@ threads = true
 
 - Process name on linux system it is not always exe name also it is limited to 15 chars
 - In linux process may appear on list but you are not allowed to get information about ports it uses. In such situations you need to run pik with root privileges
-- Currently fuzzy search for args is not supported due to weird behavior - some processes pass all arguments as single causing them to always appear on list. Due to this fact args search is done by **contains** method
 
 ## Development
 
