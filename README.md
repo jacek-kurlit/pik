@@ -107,9 +107,9 @@ You may set your preferences in `config.toml` file located in:
 
 | Platform                     | Config dir                 |
 | -------------------------- | ---------------------- |
-|  Linux        | /home/<username>/.config/pik|
-|  MacOS        | /Users/<username>/Library/Application Support/pik|
-|  Windows        | C:\Users\<username>\AppData\Roaming\pik|
+|  Linux        | /home/_:username_/.config/pik|
+|  MacOS        | /Users/_:username_/Library/Application Support/pik|
+|  Windows        | C:\Users\\_:username_\AppData\Roaming\pik|
 
 All options are optional, if skipped default values will be used.
 Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
@@ -156,7 +156,6 @@ threads = true
 
 - Process name on linux system it is not always exe name also it is limited to 15 chars
 - In linux process may appear on list but you are not allowed to get information about ports it uses. In such situations you need to run pik with root privileges
-- Currently fuzzy search for args is not supported due to weird behavior - some processes pass all arguments as single causing them to always appear on list. Due to this fact args search is done by **contains** method
 
 ## Development
 
