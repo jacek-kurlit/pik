@@ -10,7 +10,7 @@ use ratatui::{
 
 use crate::processes::Process;
 
-use super::{Action, Component};
+use super::{Component, ComponentEvent, KeyAction};
 
 pub struct ProcessDetailsComponent {
     process_details_scroll_state: ScrollbarState,
@@ -20,6 +20,7 @@ pub struct ProcessDetailsComponent {
     selected_process: Option<Process>,
 }
 
+//FIXME: empty search displays previous process!
 #[allow(clippy::new_without_default)]
 impl ProcessDetailsComponent {
     pub fn new() -> Self {
@@ -100,19 +101,27 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
 }
 
 impl Component for ProcessDetailsComponent {
-    fn handle_input(&mut self, key: KeyEvent) -> Action {
+    fn handle_input(&mut self, key: KeyEvent) -> KeyAction {
         use KeyCode::*;
         match key.code {
             Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.process_details_down();
-                Action::Consumed
+                KeyAction::Consumed
             }
             Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.process_details_up();
-                Action::Consumed
+                KeyAction::Consumed
             }
-            _ => Action::Noop,
+            _ => KeyAction::Unhandled,
         }
+    }
+
+    fn handle_event(&mut self, event: &super::ComponentEvent) -> Option<super::ComponentEvent> {
+        if let ComponentEvent::ProcessSelected(prc) = event {
+            //FIXME: cloning is bad! Maybe some global state or what?
+            self.handle_process_select(prc.clone());
+        };
+        None
     }
 
     fn render(&mut self, frame: &mut ratatui::Frame, area: Rect) {

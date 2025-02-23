@@ -1,9 +1,10 @@
-use std::io;
+use std::{collections::VecDeque, io, time::Duration};
 
 use anyhow::Result;
 use components::{
     help_footer::HelpFooterComponent, process_details::ProcessDetailsComponent,
-    process_table::ProcessTableComponent, search_bar::SearchBarComponent, Action, Component,
+    process_table::ProcessTableComponent, search_bar::SearchBarComponent, Component,
+    ComponentEvent, KeyAction,
 };
 use crossterm::{
     event::{self, Event, KeyEventKind},
@@ -25,26 +26,20 @@ struct App {
 }
 
 impl App {
-    fn new(app_settings: AppSettings) -> Result<App> {
-        let mut app = App {
-            //FIXME: cloning hurts!
-            search_bar: SearchBarComponent::new(app_settings.query.clone()),
-            process_table: ProcessTableComponent::new(
-                app_settings.use_icons,
-                app_settings.filter_opions,
-            )?,
-            process_details: ProcessDetailsComponent::new(),
-            help_footer: HelpFooterComponent::default(),
-        };
-        //FIXME: we are not setting process details
-        //maybe it will be fixed with event driven approach?
-        app.search_for_processess(app_settings.query.as_str());
-        Ok(app)
-    }
-
-    fn search_for_processess(&mut self, search_text: &str) {
-        self.help_footer.reset_error_message();
-        self.process_table.search_for_processess(search_text);
+    //NOTE: this is not the nices thing to return app and query string but it works
+    fn new(app_settings: AppSettings) -> Result<(App, String)> {
+        Ok((
+            App {
+                search_bar: SearchBarComponent::new(),
+                process_table: ProcessTableComponent::new(
+                    app_settings.use_icons,
+                    app_settings.filter_opions,
+                )?,
+                process_details: ProcessDetailsComponent::new(),
+                help_footer: HelpFooterComponent::default(),
+            },
+            app_settings.query,
+        ))
     }
 }
 
@@ -62,8 +57,8 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
     let mut terminal = Terminal::with_options(backend, TerminalOptions { viewport })?;
 
     // create app and run it
-    let app = App::new(app_settings)?;
-    let res = run_app(&mut terminal, app);
+    let (app, initial_query) = App::new(app_settings)?;
+    let res = run_app(&mut terminal, app, initial_query);
 
     // restore terminal
     disable_raw_mode()?;
@@ -77,8 +72,18 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
+fn run_app<B: Backend>(
+    terminal: &mut Terminal<B>,
+    mut app: App,
+    initial_query: String,
+) -> io::Result<()> {
+    let mut component_events = VecDeque::new();
+    //NOTE: publish initial query so search_bar and search table will be updated right away
+    component_events.push_front(ComponentEvent::SearchByTextRequested(initial_query));
+
     loop {
+        //TODO: I dont like te order of this
+        //it should be 1 events handling, render, key reads
         terminal.draw(|f| {
             let rects = LayoutRects::new(f);
             app.search_bar.render(f, rects.search_bar);
@@ -86,49 +91,41 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<(
             app.process_details.render(f, rects.process_details);
             app.help_footer.render(f, rects.help_footer);
         })?;
+        let mut components: Vec<&mut dyn Component> = vec![
+            //order matters!
+            &mut app.process_table,
+            &mut app.process_details,
+            &mut app.search_bar,
+        ];
 
-        if let Event::Key(key) = event::read()? {
-            let components: Vec<&mut dyn Component> = vec![
-                //order matters!
-                &mut app.process_table,
-                &mut app.process_details,
-                &mut app.search_bar,
-            ];
-            if key.kind == KeyEventKind::Press {
-                let mut actions = vec![];
-                for c in components {
-                    let action = c.handle_input(key);
-                    match action {
-                        Action::Consumed => break,
-                        //TODO: i don't like this, special case for kill
-                        Action::ProcessKilled | Action::NoProcessToKill => {
-                            app.help_footer.reset_error_message();
-                            break;
-                        }
-                        //TODO: this is sad
-                        Action::SetSearchText(query) => {
-                            actions.push(Action::SetSearchText(query));
-                            break;
-                        }
-                        action => actions.push(action),
-                    }
+        while let Some(event) = component_events.pop_front() {
+            //TODO: not cool but what is the other way of doing this?
+            //only to have some global state (which may be not a bad idea...)
+            if let ComponentEvent::QuitRequested = event {
+                return Ok(());
+            }
+            for component in components.iter_mut() {
+                let new_event = component.handle_event(&event);
+                if let Some(new_event) = new_event {
+                    component_events.push_back(new_event);
                 }
-                //TODO: refactor
-                for action in actions {
-                    match action {
-                        Action::Quit => return Ok(()),
-                        Action::SearchForProcesses(query) => app.search_for_processess(&query),
-                        Action::ProcessSelected(prc) => {
-                            app.process_details.handle_process_select(prc);
+            }
+        }
+        if event::poll(Duration::from_millis(20))? {
+            if let Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press {
+                    for component in components.iter_mut() {
+                        let action = component.handle_input(key);
+                        match action {
+                            KeyAction::Unhandled => continue,
+                            KeyAction::Consumed => {
+                                break;
+                            }
+                            KeyAction::Event(act) => {
+                                component_events.push_back(act);
+                                break;
+                            }
                         }
-                        Action::SetSearchText(query) => {
-                            app.search_bar.set_search_text(query);
-                        }
-                        Action::ProcessKillFailure => {
-                            app.help_footer
-                                .set_error_message("Failed to kill process. Check permissions");
-                        }
-                        _ => {}
                     }
                 }
             }

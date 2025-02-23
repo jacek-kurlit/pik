@@ -6,20 +6,20 @@ use ratatui::{
 };
 use tui_textarea::{CursorMove, TextArea};
 
-use super::{Action, Component};
+use super::{Component, ComponentEvent, KeyAction};
 
 pub struct SearchBarComponent {
     search_area: TextArea<'static>,
 }
 
 impl SearchBarComponent {
-    pub fn new(search_text: String) -> Self {
-        let mut search_area = TextArea::from(search_text.lines());
-        search_area.move_cursor(CursorMove::End);
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        let search_area = TextArea::default();
         Self { search_area }
     }
 
-    pub fn set_search_text(&mut self, text: String) {
+    pub fn set_search_text(&mut self, text: &str) {
         self.clear_search_area();
         self.search_area.insert_str(text);
     }
@@ -32,49 +32,62 @@ impl SearchBarComponent {
     pub fn get_search_text(&self) -> &str {
         &self.search_area.lines()[0]
     }
+
+    fn emit_search_updated(&mut self) -> ComponentEvent {
+        //FIXME: cloning hurts!
+        ComponentEvent::SearchQueryUpdated(self.search_area.lines().join(""))
+    }
 }
 
 impl Component for SearchBarComponent {
-    fn handle_input(&mut self, event: KeyEvent) -> Action {
+    fn handle_input(&mut self, event: KeyEvent) -> KeyAction {
         match event.code {
             Left => {
                 self.search_area.move_cursor(CursorMove::Back);
-                Action::Consumed
+                KeyAction::Consumed
             }
             Right => {
                 self.search_area.move_cursor(CursorMove::Forward);
-                Action::Consumed
+                KeyAction::Consumed
             }
             Home => {
                 self.search_area.move_cursor(CursorMove::Head);
-                Action::Consumed
+                KeyAction::Consumed
             }
             End => {
                 self.search_area.move_cursor(CursorMove::End);
-                Action::Consumed
+                KeyAction::Consumed
             }
+            //TODO: this is sad, we must emit it from search br because search needs query!
             Char('r') if event.modifiers.contains(KeyModifiers::CONTROL) => {
-                //FIXME: cloning hurts!
-                Action::SearchForProcesses(self.search_area.lines().join(""))
+                KeyAction::Event(self.emit_search_updated())
             }
             Backspace => {
                 self.search_area.delete_char();
-                Action::SearchForProcesses(self.search_area.lines().join(""))
+                KeyAction::Event(self.emit_search_updated())
             }
             Delete => {
                 self.search_area.delete_next_char();
-                Action::SearchForProcesses(self.search_area.lines().join(""))
+                KeyAction::Event(self.emit_search_updated())
             }
             Char('w') if event.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.search_area.delete_word();
-                Action::SearchForProcesses(self.search_area.lines().join(""))
+                KeyAction::Event(self.emit_search_updated())
             }
             Char(c) => {
                 self.search_area.insert_char(c);
-                Action::SearchForProcesses(self.search_area.lines().join(""))
+                KeyAction::Event(self.emit_search_updated())
             }
-            _ => Action::Consumed,
+            _ => KeyAction::Consumed,
         }
+    }
+
+    fn handle_event(&mut self, event: &ComponentEvent) -> Option<ComponentEvent> {
+        if let ComponentEvent::SearchByTextRequested(query) = event {
+            self.set_search_text(query);
+            return Some(self.emit_search_updated());
+        }
+        None
     }
 
     fn render(&mut self, f: &mut Frame, area: Rect) {

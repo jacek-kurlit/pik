@@ -18,7 +18,7 @@ use crate::{
     tui::{highlight::highlight_text, ProcessRelatedSearch, Theme},
 };
 
-use super::{Action, Component};
+use super::{Component, ComponentEvent, KeyAction};
 
 pub struct ProcessTableComponent {
     process_manager: ProcessManager,
@@ -84,7 +84,7 @@ impl ProcessTableComponent {
         self.update_process_table_number_of_items();
     }
 
-    pub fn kill_selected_process(&mut self) -> Action {
+    pub fn kill_selected_process(&mut self) -> KeyAction {
         if let Some(prc) = self.get_selected_process() {
             let pid = prc.pid;
             if self.process_manager.kill_process(pid) {
@@ -96,18 +96,18 @@ impl ProcessTableComponent {
                 //TODO: this must be here because details will show 1/0 when removed!
                 // seems like this can only be fixed by autorefresh!
                 self.update_process_table_number_of_items();
-                return Action::ProcessKilled;
+                return KeyAction::Event(ComponentEvent::ProcessKilled);
             } else {
-                return Action::ProcessKillFailure;
+                return KeyAction::Event(ComponentEvent::ProcessKillFailed);
             }
         }
-        Action::NoProcessToKill
+        KeyAction::Event(ComponentEvent::NoProcessToKill)
     }
 
-    pub fn enforce_search_by(&mut self, search_by: ProcessRelatedSearch) -> Action {
+    pub fn enforce_search_by(&mut self, search_by: ProcessRelatedSearch) -> KeyAction {
         let selected_process = self.get_selected_process();
         if selected_process.is_none() {
-            return Action::Consumed;
+            return KeyAction::Consumed;
         }
         let selected_process = selected_process.unwrap();
         let search_string = match search_by {
@@ -121,21 +121,20 @@ impl ProcessTableComponent {
                 format!("@{}", selected_process.parent_pid.unwrap_or(0))
             }
         };
-        self.search_for_processess(&search_string);
-        Action::SetSearchText(search_string)
+        KeyAction::Event(ComponentEvent::SearchByTextRequested(search_string))
     }
 
-    pub fn select_first_row(&mut self) -> Action {
+    pub fn select_first_row(&mut self) -> KeyAction {
         let index = (self.process_table_number_of_items > 0).then_some(0);
         self.select_row_by_index(index)
     }
 
-    pub fn select_last_row(&mut self) -> Action {
+    pub fn select_last_row(&mut self) -> KeyAction {
         let index = self.process_table_number_of_items.checked_sub(1);
         self.select_row_by_index(index)
     }
 
-    pub fn select_next_row(&mut self, step_size: usize) -> Action {
+    pub fn select_next_row(&mut self, step_size: usize) -> KeyAction {
         let next_row_index = self.process_table.selected().map(|i| {
             let mut i = i + step_size;
             if i >= self.process_table_number_of_items {
@@ -146,17 +145,17 @@ impl ProcessTableComponent {
         self.select_row_by_index(next_row_index)
     }
 
-    pub fn select_row_by_index(&mut self, index: Option<usize>) -> Action {
+    pub fn select_row_by_index(&mut self, index: Option<usize>) -> KeyAction {
         self.process_table.select(index);
         self.process_table_scroll_state =
             self.process_table_scroll_state.position(index.unwrap_or(0));
         self.get_selected_process()
             //FIXME: cloning hurts!
-            .map(|prc| Action::ProcessSelected(prc.clone()))
-            .unwrap_or(Action::Consumed)
+            .map(|prc| KeyAction::Event(ComponentEvent::ProcessSelected(prc.clone())))
+            .unwrap_or(KeyAction::Consumed)
     }
 
-    pub fn select_previous_row(&mut self, step_size: usize) -> Action {
+    pub fn select_previous_row(&mut self, step_size: usize) -> KeyAction {
         let previous_index = self.process_table.selected().map(|i| {
             let i = i.wrapping_sub(step_size);
             i.clamp(0, self.process_table_number_of_items.saturating_sub(1))
@@ -204,7 +203,7 @@ impl ProcessTableComponent {
 }
 
 impl Component for ProcessTableComponent {
-    fn handle_input(&mut self, key: KeyEvent) -> Action {
+    fn handle_input(&mut self, key: KeyEvent) -> KeyAction {
         use KeyCode::*;
         match key.code {
             Up if key.modifiers.contains(KeyModifiers::CONTROL) => return self.select_first_row(),
@@ -213,8 +212,11 @@ impl Component for ProcessTableComponent {
             Tab | Down => return self.select_next_row(1),
             PageUp => return self.select_previous_row(10),
             PageDown => return self.select_next_row(10),
-            Esc => return Action::Quit,
-            Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => return Action::Quit,
+            //TODO: this is not related with the process table but rather some global app logic
+            Esc => return KeyAction::Event(ComponentEvent::QuitRequested),
+            Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                return KeyAction::Event(ComponentEvent::QuitRequested)
+            }
             Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.select_next_row(1);
             }
@@ -233,9 +235,24 @@ impl Component for ProcessTableComponent {
             Char('s') if key.modifiers.contains(KeyModifiers::ALT) => {
                 return self.enforce_search_by(ProcessRelatedSearch::Siblings);
             }
-            _ => return Action::Noop,
+            _ => return KeyAction::Unhandled,
         };
-        Action::Consumed
+        KeyAction::Consumed
+    }
+
+    fn handle_event(&mut self, event: &ComponentEvent) -> Option<ComponentEvent> {
+        if let ComponentEvent::SearchQueryUpdated(query) = event {
+            self.search_for_processess(query);
+            //FIXME: we are sending this event even if selection did not changed!, on the other
+            //hand we may not know when selection changed
+            return self
+                .get_selected_process()
+                //FIXME: cloning hurts!
+                .cloned()
+                .map(ComponentEvent::ProcessSelected);
+        };
+
+        None
     }
 
     fn render(&mut self, f: &mut ratatui::Frame, area: Rect) {

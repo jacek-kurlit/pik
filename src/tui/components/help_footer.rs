@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 
-use super::Component;
+use super::{Component, ComponentEvent};
 
 #[derive(Default)]
 pub struct HelpFooterComponent {
@@ -38,5 +38,21 @@ impl Component for HelpFooterComponent {
         let help = Paragraph::new(Line::from(HELP_TEXT)).right_aligned();
         f.render_widget(error, rects[0]);
         f.render_widget(help, rects[1]);
+    }
+
+    fn handle_event(&mut self, event: &ComponentEvent) -> Option<ComponentEvent> {
+        match event {
+            ComponentEvent::SearchQueryUpdated(_) => self.reset_error_message(),
+
+            ComponentEvent::ProcessKilled | ComponentEvent::NoProcessToKill => {
+                self.reset_error_message()
+            }
+            ComponentEvent::ProcessKillFailed => {
+                self.set_error_message("Failed to kill process. Check permissions");
+            }
+            _ => (),
+        }
+
+        None
     }
 }
