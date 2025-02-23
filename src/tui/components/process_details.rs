@@ -8,7 +8,7 @@ use ratatui::{
     },
 };
 
-use crate::processes::Process;
+use crate::{processes::Process, tui::LayoutRects};
 
 use super::{Component, ComponentEvent, KeyAction};
 
@@ -124,7 +124,8 @@ impl Component for ProcessDetailsComponent {
         None
     }
 
-    fn render(&mut self, frame: &mut ratatui::Frame, area: Rect) {
+    fn render(&mut self, frame: &mut ratatui::Frame, layout: &LayoutRects) {
+        let area = layout.process_details;
         self.area_content_height = area.height - 2;
         let lines = process_details_lines(self.selected_process.as_ref());
         let info_footer = Paragraph::new(lines)

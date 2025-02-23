@@ -2,7 +2,6 @@ use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Margin},
-    prelude::Rect,
     style::{Modifier, Style},
     text::{Line, Span, Text},
     widgets::{
@@ -15,7 +14,7 @@ use crate::{
     processes::{
         IgnoreOptions, MatchedBy, Process, ProcessManager, ProcessSearchResults, ResultItem,
     },
-    tui::{highlight::highlight_text, ProcessRelatedSearch, Theme},
+    tui::{highlight::highlight_text, LayoutRects, ProcessRelatedSearch, Theme},
 };
 
 use super::{Component, ComponentEvent, KeyAction};
@@ -255,7 +254,8 @@ impl Component for ProcessTableComponent {
         None
     }
 
-    fn render(&mut self, f: &mut ratatui::Frame, area: Rect) {
+    fn render(&mut self, f: &mut ratatui::Frame, layout: &LayoutRects) {
+        let area = layout.process_table;
         let rows = self.search_results.iter().enumerate().map(|(i, item)| {
             let color = match i % 2 {
                 0 => self.theme.normal_row_color,

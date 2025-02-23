@@ -19,27 +19,92 @@ mod highlight;
 use crate::settings::AppSettings;
 
 struct App {
-    search_bar: SearchBarComponent,
-    process_table: ProcessTableComponent,
-    process_details: ProcessDetailsComponent,
-    help_footer: HelpFooterComponent,
+    components: Vec<Box<dyn Component>>,
+    component_events: VecDeque<ComponentEvent>,
 }
 
 impl App {
-    //NOTE: this is not the nices thing to return app and query string but it works
-    fn new(app_settings: AppSettings) -> Result<(App, String)> {
-        Ok((
-            App {
-                search_bar: SearchBarComponent::new(),
-                process_table: ProcessTableComponent::new(
+    fn new(app_settings: AppSettings) -> Result<App> {
+        let mut component_events = VecDeque::new();
+        //NOTE: publish initial query so search_bar and search table will be updated right away
+        component_events.push_front(ComponentEvent::SearchByTextRequested(app_settings.query));
+
+        Ok(App {
+            //order matters!
+            //It should be according key input handling
+            components: vec![
+                Box::new(ProcessTableComponent::new(
                     app_settings.use_icons,
                     app_settings.filter_opions,
-                )?,
-                process_details: ProcessDetailsComponent::new(),
-                help_footer: HelpFooterComponent::default(),
-            },
-            app_settings.query,
-        ))
+                )?),
+                Box::new(ProcessDetailsComponent::new()),
+                Box::new(HelpFooterComponent::default()),
+                Box::new(SearchBarComponent::new()),
+            ],
+            component_events,
+        })
+    }
+
+    fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
+        loop {
+            if self.handle_events()? {
+                return Ok(());
+            }
+
+            self.render(terminal)?;
+
+            self.handle_input()?;
+        }
+    }
+
+    fn handle_events(&mut self) -> Result<bool, io::Error> {
+        while let Some(event) = self.component_events.pop_front() {
+            //TODO: not cool but what is the other way of doing this?
+            //only to have some global state (which may be not a bad idea...)
+            if let ComponentEvent::QuitRequested = event {
+                return Ok(true);
+            }
+            for component in self.components.iter_mut() {
+                let new_event = component.handle_event(&event);
+                if let Some(new_event) = new_event {
+                    self.component_events.push_back(new_event);
+                }
+            }
+        }
+        Ok(false)
+    }
+
+    fn render<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<(), io::Error> {
+        terminal.draw(|frame| {
+            let layout = LayoutRects::new(frame);
+            for component in self.components.iter_mut() {
+                component.render(frame, &layout);
+            }
+        })?;
+        Ok(())
+    }
+
+    fn handle_input(&mut self) -> Result<(), io::Error> {
+        if event::poll(Duration::from_millis(20))? {
+            if let Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press {
+                    for component in self.components.iter_mut() {
+                        let action = component.handle_input(key);
+                        match action {
+                            KeyAction::Unhandled => continue,
+                            KeyAction::Consumed => {
+                                break;
+                            }
+                            KeyAction::Event(act) => {
+                                self.component_events.push_back(act);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        Ok(())
     }
 }
 
@@ -57,8 +122,8 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
     let mut terminal = Terminal::with_options(backend, TerminalOptions { viewport })?;
 
     // create app and run it
-    let (app, initial_query) = App::new(app_settings)?;
-    let res = run_app(&mut terminal, app, initial_query);
+    let app = App::new(app_settings)?;
+    let res = app.run(&mut terminal);
 
     // restore terminal
     disable_raw_mode()?;
@@ -70,67 +135,6 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
     }
 
     Ok(())
-}
-
-fn run_app<B: Backend>(
-    terminal: &mut Terminal<B>,
-    mut app: App,
-    initial_query: String,
-) -> io::Result<()> {
-    let mut component_events = VecDeque::new();
-    //NOTE: publish initial query so search_bar and search table will be updated right away
-    component_events.push_front(ComponentEvent::SearchByTextRequested(initial_query));
-
-    loop {
-        //TODO: I dont like te order of this
-        //it should be 1 events handling, render, key reads
-        terminal.draw(|f| {
-            let rects = LayoutRects::new(f);
-            app.search_bar.render(f, rects.search_bar);
-            app.process_table.render(f, rects.process_table);
-            app.process_details.render(f, rects.process_details);
-            app.help_footer.render(f, rects.help_footer);
-        })?;
-        let mut components: Vec<&mut dyn Component> = vec![
-            //order matters!
-            &mut app.process_table,
-            &mut app.process_details,
-            &mut app.search_bar,
-        ];
-
-        while let Some(event) = component_events.pop_front() {
-            //TODO: not cool but what is the other way of doing this?
-            //only to have some global state (which may be not a bad idea...)
-            if let ComponentEvent::QuitRequested = event {
-                return Ok(());
-            }
-            for component in components.iter_mut() {
-                let new_event = component.handle_event(&event);
-                if let Some(new_event) = new_event {
-                    component_events.push_back(new_event);
-                }
-            }
-        }
-        if event::poll(Duration::from_millis(20))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    for component in components.iter_mut() {
-                        let action = component.handle_input(key);
-                        match action {
-                            KeyAction::Unhandled => continue,
-                            KeyAction::Consumed => {
-                                break;
-                            }
-                            KeyAction::Event(act) => {
-                                component_events.push_back(act);
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 pub struct LayoutRects {

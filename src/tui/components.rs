@@ -1,7 +1,9 @@
 use crossterm::event::KeyEvent;
-use ratatui::{layout::Rect, Frame};
+use ratatui::Frame;
 
 use crate::processes::Process;
+
+use super::LayoutRects;
 
 pub mod help_footer;
 pub mod process_details;
@@ -17,8 +19,9 @@ pub trait Component {
         None
     }
 
-    //TODO: i dont like mut here
-    fn render(&mut self, frame: &mut Frame, area: Rect);
+    //TODO: I don't like the fact that all componets must have access to some global layout rects
+    //each component should have it set in constructor
+    fn render(&mut self, frame: &mut Frame, layout: &LayoutRects);
 }
 
 pub enum KeyAction {

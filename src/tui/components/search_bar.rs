@@ -1,10 +1,12 @@
 use crossterm::event::{KeyCode::*, KeyEvent, KeyModifiers};
 use ratatui::{
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Layout},
     widgets::Paragraph,
     Frame,
 };
 use tui_textarea::{CursorMove, TextArea};
+
+use crate::tui::LayoutRects;
 
 use super::{Component, ComponentEvent, KeyAction};
 
@@ -90,8 +92,9 @@ impl Component for SearchBarComponent {
         None
     }
 
-    fn render(&mut self, f: &mut Frame, area: Rect) {
-        let rects = Layout::horizontal([Constraint::Length(2), Constraint::Min(2)]).split(area);
+    fn render(&mut self, f: &mut Frame, layout: &LayoutRects) {
+        let rects = Layout::horizontal([Constraint::Length(2), Constraint::Min(2)])
+            .split(layout.search_bar);
         f.render_widget(Paragraph::new("> "), rects[0]);
         f.render_widget(&self.search_area, rects[1]);
     }

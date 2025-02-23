@@ -1,10 +1,11 @@
 use ratatui::{
     layout::{Constraint, Layout},
-    prelude::Rect,
     style::{Color, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph},
 };
+
+use crate::tui::LayoutRects;
 
 use super::{Component, ComponentEvent};
 
@@ -28,10 +29,10 @@ const HELP_TEXT: &str =
     "ESC/<C+C> quit | <C+X> kill process | <C+R> refresh | <C+F> details forward | <C+B> details backward ";
 
 impl Component for HelpFooterComponent {
-    fn render(&mut self, f: &mut ratatui::Frame, area: Rect) {
+    fn render(&mut self, f: &mut ratatui::Frame, layout: &LayoutRects) {
         let rects = Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)])
             .horizontal_margin(1)
-            .split(area);
+            .split(layout.help_footer);
         let error = Paragraph::new(Span::from(self.error_message.unwrap_or("")).fg(Color::Red))
             .left_aligned()
             .block(Block::default().borders(Borders::NONE));
