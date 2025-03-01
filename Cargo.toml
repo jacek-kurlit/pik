@@ -1,7 +1,7 @@
 [package]
 name = "pik"
 version = "0.16.0"
-edition = "2021"
+edition = "2024"
 authors = ["Jacek Kurlit"]
 keywords = ["terminal", "process", "linux", "system", "kill"]
 categories = ["command-line-utilities"]

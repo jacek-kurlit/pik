@@ -24,8 +24,7 @@ impl HelpFooterComponent {
     }
 }
 
-const HELP_TEXT: &str =
-    "ESC/<C+C> quit | <C+X> kill process | <C+R> refresh | <C+F> details forward | <C+B> details backward ";
+const HELP_TEXT: &str = "ESC/<C+C> quit | <C+X> kill process | <C+R> refresh | <C+F> details forward | <C+B> details backward ";
 
 impl Component for HelpFooterComponent {
     fn render(&mut self, f: &mut ratatui::Frame, layout: &LayoutRects) {
@@ -42,7 +41,7 @@ impl Component for HelpFooterComponent {
 
     fn handle_event(&mut self, event: &ComponentEvent) -> Option<ComponentEvent> {
         match event {
-            ComponentEvent::SearchQueryUpdated(_) => self.reset_error_message(),
+            ComponentEvent::ProcessListRefreshed => self.reset_error_message(),
 
             ComponentEvent::ProcessKilled | ComponentEvent::NoProcessToKill => {
                 self.reset_error_message()

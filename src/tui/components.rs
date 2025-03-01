@@ -33,8 +33,7 @@ pub enum KeyAction {
 }
 
 pub enum ComponentEvent {
-    SearchQueryUpdated(String),
-    SearchByTextRequested(String),
+    ProcessListRefreshed,
     NoProcessToKill,
     ProcessKilled,
     ProcessKillFailed,

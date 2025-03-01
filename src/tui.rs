@@ -2,15 +2,15 @@ use std::{collections::VecDeque, io, time::Duration};
 
 use anyhow::Result;
 use components::{
-    help_footer::HelpFooterComponent, processes_view::ProcessesViewComponent,
-    search_bar::SearchBarComponent, Component, ComponentEvent, KeyAction,
+    Component, ComponentEvent, KeyAction, help_footer::HelpFooterComponent,
+    processes_view::ProcessesViewComponent,
 };
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use ratatui::style::{palette::tailwind, Color, Style};
-use ratatui::{prelude::*, TerminalOptions};
+use ratatui::style::{Color, Style, palette::tailwind};
+use ratatui::{TerminalOptions, prelude::*};
 
 pub mod components;
 mod highlight;
@@ -22,43 +22,35 @@ struct App {
     component_events: VecDeque<ComponentEvent>,
 }
 
-#[derive(Default)]
-pub struct AppState {
-    exit: bool,
-}
-
 impl App {
     fn new(app_settings: AppSettings) -> Result<App> {
-        let mut component_events = VecDeque::new();
-        //NOTE: publish initial query so search_bar and search table will be updated right away
-        component_events.push_front(ComponentEvent::SearchByTextRequested(app_settings.query));
+        let component_events = VecDeque::new();
 
         Ok(App {
             //order matters!
             //It should be according key input handling
             components: vec![
+                Box::new(HelpFooterComponent::default()),
                 Box::new(ProcessesViewComponent::new(
                     app_settings.use_icons,
                     app_settings.filter_opions,
+                    app_settings.query,
                 )?),
-                Box::new(HelpFooterComponent::default()),
-                Box::new(SearchBarComponent::new()),
             ],
             component_events,
         })
     }
 
     fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
-        let mut app_state = AppState::default();
         loop {
             //NOTE: Why this order?
             // reading input is blocking and we want to have initial query rendered right away
             // along with process table
+            self.render(terminal)?;
+
             if self.handle_events()? {
                 return Ok(());
             }
-
-            self.render(terminal)?;
 
             self.handle_input()?;
         }
@@ -66,8 +58,6 @@ impl App {
 
     fn handle_events(&mut self) -> Result<bool, io::Error> {
         while let Some(event) = self.component_events.pop_front() {
-            //TODO: not cool but what is the other way of doing this?
-            //only to have some global state (which may be not a bad idea...)
             if let ComponentEvent::QuitRequested = event {
                 return Ok(true);
             }
@@ -96,6 +86,7 @@ impl App {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     //TODO: move it to some component that only is looking for exit input?
+                    //maybe event to footer?
                     match key.code {
                         KeyCode::Esc => self
                             .component_events
