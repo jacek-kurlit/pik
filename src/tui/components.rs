@@ -1,13 +1,12 @@
 use crossterm::event::KeyEvent;
 use ratatui::Frame;
 
-use crate::processes::Process;
-
 use super::LayoutRects;
 
 pub mod help_footer;
 pub mod process_details;
 pub mod process_table;
+pub mod processes_view;
 pub mod search_bar;
 
 pub trait Component {
@@ -21,7 +20,7 @@ pub trait Component {
 
     //TODO: I don't like the fact that all componets must have access to some global layout rects
     //each component should have it set in constructor
-    fn render(&mut self, frame: &mut Frame, layout: &LayoutRects);
+    fn render(&mut self, _frame: &mut Frame, _layout: &LayoutRects) {}
 }
 
 pub enum KeyAction {
@@ -34,7 +33,6 @@ pub enum KeyAction {
 }
 
 pub enum ComponentEvent {
-    ProcessSelected(Process),
     SearchQueryUpdated(String),
     SearchByTextRequested(String),
     NoProcessToKill,

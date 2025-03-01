@@ -2,12 +2,11 @@ use std::{collections::VecDeque, io, time::Duration};
 
 use anyhow::Result;
 use components::{
-    help_footer::HelpFooterComponent, process_details::ProcessDetailsComponent,
-    process_table::ProcessTableComponent, search_bar::SearchBarComponent, Component,
-    ComponentEvent, KeyAction,
+    help_footer::HelpFooterComponent, processes_view::ProcessesViewComponent,
+    search_bar::SearchBarComponent, Component, ComponentEvent, KeyAction,
 };
 use crossterm::{
-    event::{self, Event, KeyEventKind},
+    event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use ratatui::style::{palette::tailwind, Color, Style};
@@ -23,6 +22,11 @@ struct App {
     component_events: VecDeque<ComponentEvent>,
 }
 
+#[derive(Default)]
+pub struct AppState {
+    exit: bool,
+}
+
 impl App {
     fn new(app_settings: AppSettings) -> Result<App> {
         let mut component_events = VecDeque::new();
@@ -33,11 +37,10 @@ impl App {
             //order matters!
             //It should be according key input handling
             components: vec![
-                Box::new(ProcessTableComponent::new(
+                Box::new(ProcessesViewComponent::new(
                     app_settings.use_icons,
                     app_settings.filter_opions,
                 )?),
-                Box::new(ProcessDetailsComponent::new()),
                 Box::new(HelpFooterComponent::default()),
                 Box::new(SearchBarComponent::new()),
             ],
@@ -46,7 +49,11 @@ impl App {
     }
 
     fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
+        let mut app_state = AppState::default();
         loop {
+            //NOTE: Why this order?
+            // reading input is blocking and we want to have initial query rendered right away
+            // along with process table
             if self.handle_events()? {
                 return Ok(());
             }
@@ -88,6 +95,17 @@ impl App {
         if event::poll(Duration::from_millis(20))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
+                    //TODO: move it to some component that only is looking for exit input?
+                    match key.code {
+                        KeyCode::Esc => self
+                            .component_events
+                            .push_back(ComponentEvent::QuitRequested),
+                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                            self.component_events
+                                .push_back(ComponentEvent::QuitRequested);
+                        }
+                        _ => (),
+                    }
                     for component in self.components.iter_mut() {
                         let action = component.handle_input(key);
                         match action {

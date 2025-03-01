@@ -15,7 +15,6 @@ pub struct HelpFooterComponent {
 }
 
 impl HelpFooterComponent {
-    //TODO: should be event?
     pub fn set_error_message(&mut self, message: &'static str) {
         self.error_message = Some(message);
     }
