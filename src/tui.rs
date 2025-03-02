@@ -2,11 +2,11 @@ use std::{collections::VecDeque, io, time::Duration};
 
 use anyhow::Result;
 use components::{
-    Component, ComponentEvent, KeyAction, help_footer::HelpFooterComponent,
-    processes_view::ProcessesViewComponent,
+    Component, ComponentEvent, KeyAction, general_input_handler::GeneralInputHandlerComponent,
+    help_footer::HelpFooterComponent, processes_view::ProcessesViewComponent,
 };
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
+    event::{self, Event, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
 use ratatui::style::{Color, Style, palette::tailwind};
@@ -30,6 +30,7 @@ impl App {
             //order matters!
             //It should be according key input handling
             components: vec![
+                Box::new(GeneralInputHandlerComponent),
                 Box::new(HelpFooterComponent::default()),
                 Box::new(ProcessesViewComponent::new(
                     app_settings.use_icons,
@@ -46,11 +47,11 @@ impl App {
             //NOTE: Why this order?
             // reading input is blocking and we want to have initial query rendered right away
             // along with process table
-            self.render(terminal)?;
-
             if self.handle_events()? {
                 return Ok(());
             }
+
+            self.render(terminal)?;
 
             self.handle_input()?;
         }
@@ -85,18 +86,6 @@ impl App {
         if event::poll(Duration::from_millis(20))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    //TODO: move it to some component that only is looking for exit input?
-                    //maybe event to footer?
-                    match key.code {
-                        KeyCode::Esc => self
-                            .component_events
-                            .push_back(ComponentEvent::QuitRequested),
-                        KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                            self.component_events
-                                .push_back(ComponentEvent::QuitRequested);
-                        }
-                        _ => (),
-                    }
                     for component in self.components.iter_mut() {
                         let action = component.handle_input(key);
                         match action {
@@ -147,10 +136,10 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
 }
 
 pub struct LayoutRects {
-    pub search_bar: Rect,
+    pub top_bar: Rect,
     pub process_table: Rect,
     pub process_details: Rect,
-    pub help_footer: Rect,
+    pub footer: Rect,
 }
 
 impl LayoutRects {
@@ -163,10 +152,10 @@ impl LayoutRects {
         ])
         .split(frame.area());
         Self {
-            search_bar: rects[0],
+            top_bar: rects[0],
             process_table: rects[1],
             process_details: rects[2],
-            help_footer: rects[3],
+            footer: rects[3],
         }
     }
 }

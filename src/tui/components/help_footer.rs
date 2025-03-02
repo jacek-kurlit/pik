@@ -30,7 +30,7 @@ impl Component for HelpFooterComponent {
     fn render(&mut self, f: &mut ratatui::Frame, layout: &LayoutRects) {
         let rects = Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)])
             .horizontal_margin(1)
-            .split(layout.help_footer);
+            .split(layout.footer);
         let error = Paragraph::new(Span::from(self.error_message.unwrap_or("")).fg(Color::Red))
             .left_aligned()
             .block(Block::default().borders(Borders::NONE));

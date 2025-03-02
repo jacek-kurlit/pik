@@ -3,6 +3,7 @@ use ratatui::Frame;
 
 use super::LayoutRects;
 
+pub mod general_input_handler;
 pub mod help_footer;
 pub mod process_details;
 pub mod process_table;
@@ -18,8 +19,6 @@ pub trait Component {
         None
     }
 
-    //TODO: I don't like the fact that all componets must have access to some global layout rects
-    //each component should have it set in constructor
     fn render(&mut self, _frame: &mut Frame, _layout: &LayoutRects) {}
 }
 
