@@ -139,7 +139,13 @@ impl Component for ProcessesViewComponent {
             Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.select_next_row(1);
             }
+            Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.select_next_row(1);
+            }
             Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.select_previous_row(1);
+            }
+            Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.select_previous_row(1);
             }
             Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => {
@@ -188,6 +194,10 @@ impl Component for ProcessesViewComponent {
             }
             Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.search_bar.delete_word();
+                return self.search_for_processess();
+            }
+            Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.search_bar.delete_to_start();
                 return self.search_for_processess();
             }
             Char(c) => {
