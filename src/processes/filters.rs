@@ -1,8 +1,8 @@
-use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
+use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 use regex::Regex;
 use sysinfo::Uid;
 
-use super::{utils::get_process_args, MatchData, MatchType, MatchedBy, ProcessInfo};
+use super::{MatchData, MatchType, MatchedBy, ProcessInfo, utils::get_process_args};
 
 pub(super) struct QueryFilter {
     query: String,

@@ -98,7 +98,7 @@ mod tests {
         text::Span,
     };
 
-    use crate::tui::highlight::{highlight_fuzzy, TRUNCATED_STR};
+    use crate::tui::highlight::{TRUNCATED_STR, highlight_fuzzy};
 
     use super::styled_truncated_line;
 

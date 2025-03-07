@@ -10,7 +10,7 @@ use ratatui::{
 
 use crate::{
     processes::{MatchedBy, ProcessSearchResults, ResultItem},
-    tui::{highlight::highlight_text, LayoutRects, Theme},
+    tui::{LayoutRects, Theme, highlight::highlight_text},
 };
 
 pub struct ProcessTableComponent {
