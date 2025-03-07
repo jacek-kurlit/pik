@@ -1,111 +1,112 @@
-use std::io;
+use std::{collections::VecDeque, io, time::Duration};
 
 use anyhow::Result;
+use components::{
+    Component, ComponentEvent, KeyAction, general_input_handler::GeneralInputHandlerComponent,
+    help_footer::HelpFooterComponent, help_popup::HelpPopupComponent,
+    processes_view::ProcessesViewComponent,
+};
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
+    event::{self, Event, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use ratatui::{prelude::*, TerminalOptions};
+use ratatui::style::{Color, Style, palette::tailwind};
+use ratatui::{TerminalOptions, prelude::*};
 
+pub mod components;
 mod highlight;
-mod rendering;
 
-use crate::{
-    processes::{IgnoreOptions, ProcessManager, ProcessSearchResults},
-    settings::AppSettings,
-};
-
-use self::rendering::Tui;
+use crate::settings::AppSettings;
 
 struct App {
-    process_manager: ProcessManager,
-    search_results: ProcessSearchResults,
-    ignore_options: IgnoreOptions,
-    tui: Tui,
+    components: Vec<Box<dyn Component>>,
+    component_events: VecDeque<ComponentEvent>,
 }
 
 impl App {
     fn new(app_settings: AppSettings) -> Result<App> {
-        let mut app = App {
-            process_manager: ProcessManager::new()?,
-            search_results: ProcessSearchResults::empty(),
-            ignore_options: app_settings.filter_opions,
-            tui: Tui::new(app_settings.query, app_settings.use_icons),
-        };
-        app.search_for_processess();
-        Ok(app)
+        let component_events = VecDeque::new();
+
+        Ok(App {
+            //order matters!
+            //Input handling is done in this order
+            //Rendering is done in reverse
+            //It allows for popups to be rendered on top but they handle input first
+            components: vec![
+                Box::new(GeneralInputHandlerComponent),
+                Box::new(HelpPopupComponent::default()),
+                Box::new(HelpFooterComponent::default()),
+                Box::new(ProcessesViewComponent::new(
+                    app_settings.use_icons,
+                    app_settings.filter_opions,
+                    app_settings.query,
+                )?),
+            ],
+            component_events,
+        })
     }
 
-    pub fn enforce_search_by(&mut self, search_by: ProcessRelatedSearch) {
-        let selected_index = self.tui.get_selected_row_index();
-        let selected_process = self.search_results.nth(selected_index);
-        if selected_process.is_none() {
-            return;
+    fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
+        loop {
+            //NOTE: Why this order?
+            // reading input is blocking and we want to have initial query rendered right away
+            // along with process table
+            if self.handle_events()? {
+                return Ok(());
+            }
+
+            self.render(terminal)?;
+
+            self.handle_input()?;
         }
-        let selected_process = selected_process.unwrap();
-        let search_string = match search_by {
-            ProcessRelatedSearch::Parent => {
-                format!("!{}", selected_process.parent_pid.unwrap_or(0))
+    }
+
+    fn handle_events(&mut self) -> Result<bool, io::Error> {
+        while let Some(event) = self.component_events.pop_front() {
+            if let ComponentEvent::QuitRequested = event {
+                return Ok(true);
             }
-            ProcessRelatedSearch::Family => {
-                format!("@{}", selected_process.pid)
-            }
-            ProcessRelatedSearch::Siblings => {
-                format!("@{}", selected_process.parent_pid.unwrap_or(0))
-            }
-        };
-        self.tui.set_search_text(search_string);
-        self.search_for_processess();
-    }
-
-    fn enter_char(&mut self, new_char: char) {
-        self.tui.enter_char(new_char);
-        self.search_for_processess();
-    }
-
-    fn delete_word(&mut self) {
-        self.tui.delete_word();
-        self.search_for_processess();
-    }
-
-    fn search_for_processess(&mut self) {
-        self.tui.reset_error_message();
-        self.process_manager.refresh();
-        self.search_results = self
-            .process_manager
-            .find_processes(self.tui.search_input_text(), &self.ignore_options);
-        self.tui
-            .update_process_table_number_of_items(self.search_results.len());
-    }
-
-    fn delete_char(&mut self) {
-        self.tui.delete_char();
-        self.search_for_processess();
-    }
-
-    fn delete_next_char(&mut self) {
-        self.tui.delete_next_char();
-        self.search_for_processess();
-    }
-
-    fn kill_selected_process(&mut self) {
-        self.tui.reset_error_message();
-        let prc_index = self.tui.get_selected_row_index();
-        if let Some(prc) = self.search_results.nth(prc_index) {
-            let pid = prc.pid;
-            if self.process_manager.kill_process(pid) {
-                self.search_for_processess();
-                //NOTE: cache refresh takes time and process may reappear in list!
-                self.search_results.remove(pid);
-                //TODO: this must be here because details will show 1/0 when removed!
-                // seems like this can only be fixed by autorefresh!
-                self.tui
-                    .update_process_table_number_of_items(self.search_results.len());
-            } else {
-                self.tui
-                    .set_error_message("Failed to kill process, check permissions");
+            for component in self.components.iter_mut() {
+                let new_event = component.handle_event(&event);
+                if let Some(new_event) = new_event {
+                    self.component_events.push_back(new_event);
+                }
             }
         }
+        Ok(false)
+    }
+
+    fn render<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<(), io::Error> {
+        terminal.draw(|frame| {
+            let layout = LayoutRects::new(frame);
+            for component in self.components.iter_mut().rev() {
+                component.render(frame, &layout);
+            }
+        })?;
+        Ok(())
+    }
+
+    fn handle_input(&mut self) -> Result<(), io::Error> {
+        if event::poll(Duration::from_millis(20))? {
+            if let Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press {
+                    for component in self.components.iter_mut() {
+                        let action = component.handle_input(key);
+                        match action {
+                            KeyAction::Unhandled => continue,
+                            KeyAction::Consumed => {
+                                break;
+                            }
+                            KeyAction::Event(act) => {
+                                self.component_events.push_back(act);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        Ok(())
     }
 }
 
@@ -124,7 +125,7 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
 
     // create app and run it
     let app = App::new(app_settings)?;
-    let res = run_app(&mut terminal, app);
+    let res = app.run(&mut terminal);
 
     // restore terminal
     disable_raw_mode()?;
@@ -138,68 +139,52 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App) -> io::Result<()> {
-    loop {
-        terminal.draw(|f| app.tui.render_ui(&app.search_results, f))?;
+pub struct LayoutRects {
+    pub top_bar: Rect,
+    pub process_table: Rect,
+    pub process_details: Rect,
+    pub footer: Rect,
+}
 
-        if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
-                use KeyCode::*;
-                match key.code {
-                    Esc => return Ok(()),
-                    Up if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.select_first_row()
-                    }
-                    Down if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.select_last_row()
-                    }
-                    Up | BackTab => app.tui.select_previous_row(1),
-                    Tab | Down => app.tui.select_next_row(1),
-                    PageUp => app.tui.select_previous_row(10),
-                    PageDown => app.tui.select_next_row(10),
-                    Backspace => app.delete_char(),
-                    Delete => app.delete_next_char(),
-                    Left => app.tui.go_left(),
-                    Right => app.tui.go_right(),
-                    Home => app.tui.goto_begining(),
-                    End => app.tui.goto_end(),
-                    Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.select_next_row(1);
-                    }
-                    Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.select_previous_row(1);
-                    }
-                    Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        return Ok(());
-                    }
-                    Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.kill_selected_process()
-                    }
-                    Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.search_for_processess()
-                    }
-                    Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.process_details_down(&mut terminal.get_frame())
-                    }
-                    Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.tui.process_details_up()
-                    }
-                    Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                        app.delete_word();
-                    }
-                    Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        app.enforce_search_by(ProcessRelatedSearch::Parent);
-                    }
-                    Char('f') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        app.enforce_search_by(ProcessRelatedSearch::Family);
-                    }
-                    Char('s') if key.modifiers.contains(KeyModifiers::ALT) => {
-                        app.enforce_search_by(ProcessRelatedSearch::Siblings);
-                    }
-                    Char(to_insert) => app.enter_char(to_insert),
-                    _ => (),
-                }
-            }
+impl LayoutRects {
+    pub fn new(frame: &Frame) -> Self {
+        let rects = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Min(10),
+            Constraint::Max(7),
+            Constraint::Length(1),
+        ])
+        .split(frame.area());
+        Self {
+            top_bar: rects[0],
+            process_table: rects[1],
+            process_details: rects[2],
+            footer: rects[3],
+        }
+    }
+}
+
+pub struct Theme {
+    pub row_fg: Color,
+    pub selected_style_fg: Color,
+    pub normal_row_color: Color,
+    pub alt_row_color: Color,
+    pub process_table_border_color: Color,
+    pub highlight_style: Style,
+    pub default_style: Style,
+}
+
+#[allow(clippy::new_without_default)]
+impl Theme {
+    pub fn new() -> Self {
+        Self {
+            row_fg: tailwind::SLATE.c200,
+            selected_style_fg: tailwind::BLUE.c400,
+            normal_row_color: tailwind::SLATE.c950,
+            alt_row_color: tailwind::SLATE.c900,
+            process_table_border_color: tailwind::BLUE.c400,
+            highlight_style: Style::new().bg(Color::Yellow).fg(Color::Black),
+            default_style: Style::default(),
         }
     }
 }

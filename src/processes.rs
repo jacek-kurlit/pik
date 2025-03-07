@@ -248,7 +248,7 @@ fn create_sorted_process_ports(ports: HashSet<Listener>) -> ProcessPorts {
         .collect()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Process {
     pub pid: u32,
     pub parent_pid: Option<u32>,
