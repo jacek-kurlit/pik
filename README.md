@@ -105,11 +105,11 @@ cargo binstall pik
 
 You may set your preferences in `config.toml` file located in:
 
-| Platform                     | Config dir                 |
-| -------------------------- | ---------------------- |
-|  Linux        | /home/_:username_/.config/pik|
-|  MacOS        | /Users/_:username_/Library/Application Support/pik|
-|  Windows        | C:\Users\\_:username_\AppData\Roaming\pik|
+| Platform | Config dir                                         |
+| -------- | -------------------------------------------------- |
+| Linux    | /home/_:username_/.config/pik                      |
+| MacOS    | /Users/_:username_/Library/Application Support/pik |
+| Windows  | C:\Users\\_:username_\AppData\Roaming\pik          |
 
 All options are optional, if skipped default values will be used.
 Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
@@ -117,7 +117,7 @@ Run `pik -- --help` to see cli options
 
 You can find default values below
 
-``` toml
+```toml
 # Size of the viewport
 screen_size = { height = 20 } # run pik in 20 lines of the terminal
 # screen_size = "fullscreen" # run pik in fullscreen
@@ -137,20 +137,21 @@ threads = true
 
 ### Key maps
 
-| Key(s)                     | Action                 |
-| -------------------------- | ---------------------- |
-| `Esc` \| `Ctrl + C`        | Quit                   |
-| `Ctrl + X`                 | Kill process           |
-| `Ctrl + R`                 | Refresh processes list |
-| `Ctrl + F`                 | Details forward        |
-| `Ctrl + B`                 | Details backward       |
-| `Tab` \| `Shift + Tab`     | Select next/previous   |
-| `Arrow Down` \| `Arrow Up` | Select next/previous   |
-| `Ctrl + J` \| `Ctrl + K`   | Select next/previous   |
-| `Ctrl + Arrow Down` \| `Ctrl + Arrow Up`   | Select last/first   |
-| `Alt + P`                 | Select parent process |
-| `Alt + F`                 | Select familly processes |
-| `Alt + S`                 | Select siblings processes |
+| Key(s)                                   | Action                    |
+| ---------------------------------------- | ------------------------- |
+| `Esc` \| `Ctrl + C`                      | Quit                      |
+| `Ctrl + X`                               | Kill process              |
+| `Ctrl + R`                               | Refresh processes list    |
+| `Ctrl + F`                               | Details forward           |
+| `Ctrl + B`                               | Details backward          |
+| `Tab` \| `Shift + Tab`                   | Select next/previous      |
+| `Arrow Down` \| `Arrow Up`               | Select next/previous      |
+| `Ctrl + J` \| `Ctrl + K`                 | Select next/previous      |
+| `Ctrl + N` \| `Ctrl + P`                 | Select next/previous      |
+| `Ctrl + Arrow Down` \| `Ctrl + Arrow Up` | Select last/first         |
+| `Alt + P`                                | Select parent process     |
+| `Alt + F`                                | Select familly processes  |
+| `Alt + S`                                | Select siblings processes |
 
 ## Caveats
 
