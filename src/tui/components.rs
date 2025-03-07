@@ -5,6 +5,7 @@ use super::LayoutRects;
 
 pub mod general_input_handler;
 pub mod help_footer;
+pub mod help_popup;
 pub mod process_details;
 pub mod process_table;
 pub mod processes_view;

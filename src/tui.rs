@@ -3,7 +3,8 @@ use std::{collections::VecDeque, io, time::Duration};
 use anyhow::Result;
 use components::{
     Component, ComponentEvent, KeyAction, general_input_handler::GeneralInputHandlerComponent,
-    help_footer::HelpFooterComponent, processes_view::ProcessesViewComponent,
+    help_footer::HelpFooterComponent, help_popup::HelpPopupComponent,
+    processes_view::ProcessesViewComponent,
 };
 use crossterm::{
     event::{self, Event, KeyEventKind},
@@ -28,9 +29,12 @@ impl App {
 
         Ok(App {
             //order matters!
-            //It should be according key input handling
+            //Input handling is done in this order
+            //Rendering is done in reverse
+            //It allows for popups to be rendered on top but they handle input first
             components: vec![
                 Box::new(GeneralInputHandlerComponent),
+                Box::new(HelpPopupComponent::default()),
                 Box::new(HelpFooterComponent::default()),
                 Box::new(ProcessesViewComponent::new(
                     app_settings.use_icons,
@@ -75,7 +79,7 @@ impl App {
     fn render<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<(), io::Error> {
         terminal.draw(|frame| {
             let layout = LayoutRects::new(frame);
-            for component in self.components.iter_mut() {
+            for component in self.components.iter_mut().rev() {
                 component.render(frame, &layout);
             }
         })?;
