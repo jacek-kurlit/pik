@@ -194,14 +194,14 @@ impl ProcessTableComponent {
                     )
                     .borders(Borders::ALL)
                     .border_style(Style::new().fg(self.theme.process_table_border_color))
-                    .border_type(BorderType::Plain),
+                    .border_type(BorderType::Rounded),
             )
             .row_highlight_style(
                 Style::default()
                     .add_modifier(Modifier::REVERSED)
                     .fg(self.theme.selected_style_fg),
             )
-            .highlight_symbol(Text::from(vec![" ".into()]))
+            .highlight_symbol(Text::from(" "))
             .highlight_spacing(HighlightSpacing::Always);
         f.render_stateful_widget(table, area, &mut self.process_table);
         f.render_stateful_widget(

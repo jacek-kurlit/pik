@@ -28,7 +28,7 @@ impl App {
         let component_events = VecDeque::new();
 
         Ok(App {
-            //order matters!
+            //Order matters!
             //Input handling is done in this order
             //Rendering is done in reverse
             //It allows for popups to be rendered on top but they handle input first
@@ -37,7 +37,7 @@ impl App {
                 Box::new(HelpPopupComponent::default()),
                 Box::new(HelpFooterComponent::default()),
                 Box::new(ProcessesViewComponent::new(
-                    app_settings.use_icons,
+                    app_settings.ui_config.use_icons,
                     app_settings.filter_opions,
                     app_settings.query,
                 )?),
@@ -49,7 +49,7 @@ impl App {
     fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
         loop {
             //NOTE: Why this order?
-            // reading input is blocking and we want to have initial query rendered right away
+            // Reading input is blocking and we want to have initial query rendered right away
             // along with process table
             if self.handle_events()? {
                 return Ok(());
@@ -111,7 +111,7 @@ impl App {
 }
 
 pub enum ProcessRelatedSearch {
-    Family,   // process + process childrens
+    Family,   // process + process children
     Siblings, // process parent + all his children
     Parent,   // only parent process
 }
@@ -131,7 +131,7 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
     disable_raw_mode()?;
     terminal.clear()?;
 
-    //FIXME: add error handling, for exaple some error page should be shown
+    //FIXME: add error handling, for example some error page should be shown
     if let Err(err) = res {
         println!("{err:?}");
     }
