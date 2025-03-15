@@ -1,20 +1,56 @@
 # Configuration
 
+You can find default values below
+
+```toml
+# Size of the viewport
+screen_size = { height = 20 } # run pik in 20 lines of the terminal
+# screen_size = "fullscreen" # run pik in fullscreen
+
+[ignore]
+# ignore processes that path matches any of given regex
+paths = []
+# paths = ["/System/.*", "Applications/.*"]
+# ignore other users processes
+other_users = true
+# ignore thread processes (on linux)
+threads = true
+
+### UI Configuration ###
+[ui]
+# Icons require nerd fonts v3
+use_icons = false
+
+[ui.process_table]
+title = { alignment = "Left", position = "Top" }
+border = { type = "Rounded", style = { fg = "#60A5FA" } }
+
+[ui.process_table.row]
+selected_symbol = " "
+even = { fg = "#E2E8F0", bg = "#0F172A" }
+odd = { fg = "#E2E8F0", bg = "#020617" }
+selected = { fg = "#60A5FA", add_modifier = "REVERSED" }
+
+[ui.process_table.cell]
+# normal = {}
+highlighted = { bg = "Yellow", add_modifier = "ITALIC" }
+```
+
 ## General options
 
-| Field       | Description          | Default     | Possible values        |
-| ----------- | -------------------- | ----------- | ---------------------- |
-| screen_size | Size of the viewport | height = 20 | fullscreen, height = n |
+| Field       | Description          | Possible values        |
+| ----------- | -------------------- | ---------------------- |
+| screen_size | Size of the viewport | fullscreen, height = n |
 
 ## Ignore filers
 
 These properties are toml table under `[ignore]` section
 
-| Field       | Description                                                                                | Default | Possible values |
-| ----------- | ------------------------------------------------------------------------------------------ | ------- | --------------- |
-| threads     | Ignore Linux threads                                                                       | true    | true, false     |
-| other_users | Ignore Other users processes                                                               | true    | true, false     |
-| paths       | List of path regex to ignore. If process matches at least of the regex, it will be ignored | empty   | array of regex  |
+| Field       | Description                                                                                | Possible values |
+| ----------- | ------------------------------------------------------------------------------------------ | --------------- |
+| threads     | Ignore Linux threads                                                                       | true, false     |
+| other_users | Ignore Other users processes                                                               | true, false     |
+| paths       | List of path regex to ignore. If process matches at least of the regex, it will be ignored | array of regex  |
 
 Regex are defined using the [regex create](https://docs.rs/regex/latest/regex)
 
@@ -22,67 +58,67 @@ Regex are defined using the [regex create](https://docs.rs/regex/latest/regex)
 
 These properties are toml table under `[ui]` section
 
-| Field     | Description            | Default | Possible values |
-| --------- | ---------------------- | ------- | --------------- |
-| use_icons | Use Nerd font v3 icons | false   | true, false     |
+| Field     | Description            | Possible values |
+| --------- | ---------------------- | --------------- |
+| use_icons | Use Nerd font v3 icons | true, false     |
 
 ### Process table
 
 These properties are toml table under `[ui.process_table]` section
 
-| Field  | Description                | Default                                            | Possible values |
-| ------ | -------------------------- | -------------------------------------------------- | --------------- |
-| title  | Title configuration        | `{ alignment = "Left", position = "Top" }`         | See below       |
-| border | Border configuration       | `{ type = "Rounded", style = { fg = "#60A5FA" } }` | See below       |
-| row    | Row styling configuration  | See below                                          | See below       |
-| cell   | Cell styling configuration | See below                                          | See below       |
+| Field  | Description                | Possible values |
+| ------ | -------------------------- | --------------- |
+| title  | Title configuration        | See below       |
+| border | Border configuration       | See below       |
+| row    | Row styling configuration  | See below       |
+| cell   | Cell styling configuration | See below       |
 
 #### Title Configuration
 
 These properties are toml table under `[ui.process_table.title]` section
 
-| Field     | Description                 | Default | Possible values           |
-| --------- | --------------------------- | ------- | ------------------------- |
-| alignment | Text alignment within title | "Left"  | "Left", "Center", "Right" |
-| position  | Position of the title       | "Top"   | "Top", "Bottom"           |
+| Field     | Description                 | Possible values           |
+| --------- | --------------------------- | ------------------------- |
+| alignment | Text alignment within title | "Left", "Center", "Right" |
+| position  | Position of the title       | "Top", "Bottom"           |
 
 #### Border Configuration
 
 These properties are toml table under `[ui.process_table.border]` section
 
-| Field | Description                 | Default              | Possible values                                                            |
-| ----- | --------------------------- | -------------------- | -------------------------------------------------------------------------- |
-| type  | Style of border to display  | "Rounded"            | "Plain", "Rounded", "Double", "Thick", "QuadrantInside", "QuadrantOutside" |
-| style | Border color and formatting | `{ fg = "#60A5FA" }` | Style configuration (see below)                                            |
+| Field | Description                 | Possible values                                                            |
+| ----- | --------------------------- | -------------------------------------------------------------------------- |
+| type  | Style of border to display  | "Plain", "Rounded", "Double", "Thick", "QuadrantInside", "QuadrantOutside" |
+| style | Border color and formatting | Style configuration (see below)                                            |
 
 #### Row Configuration
 
 These properties are toml table under `[ui.process_table.row]` section
 
-| Field           | Description                      | Default                                         | Possible values     |
-| --------------- | -------------------------------- | ----------------------------------------------- | ------------------- |
-| even            | Style for even-numbered rows     | `{ fg = "#E2E8F0", bg = "#0F172A" }`            | Style configuration |
-| odd             | Style for odd-numbered rows      | `{ fg = "#E2E8F0", bg = "#020617" }`            | Style configuration |
-| selected        | Style for selected row           | `{ fg = "#60A5FA", add_modifier = "REVERSED" }` | Style configuration |
-| selected_symbol | Symbol displayed on selected row | " " (space)                                     | Any string          |
+| Field           | Description                      | Possible values     |
+| --------------- | -------------------------------- | ------------------- |
+| even            | Style for even-numbered rows     | Style configuration |
+| odd             | Style for odd-numbered rows      | Style configuration |
+| selected        | Style for selected row           | Style configuration |
+| selected_symbol | Symbol displayed on selected row | Any string          |
 
 #### Cell Configuration
 
 These properties are toml table under `[ui.process_table.cell]` section
 
-| Field       | Description                 | Default                                      | Possible values     |
-| ----------- | --------------------------- | -------------------------------------------- | ------------------- |
-| normal      | Base style for cells        | `{}`                                         | Style configuration |
-| highlighted | Style for highlighted cells | `{ bg = "Yellow", add_modifier = "ITALIC" }` | Style configuration |
+| Field       | Description                 | Possible values     |
+| ----------- | --------------------------- | ------------------- |
+| normal      | Base style for cells        | Style configuration |
+| highlighted | Style for highlighted cells | Style configuration |
 
 #### Style Configuration
 
 Styles can be configured with these properties:
 
-| Field           | Description               | Default | Possible values                                                                                         |
-| --------------- | ------------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| fg              | Foreground color          | None    | Color name or hex code (e.g., "#60A5FA")                                                                |
-| bg              | Background color          | None    | Color name or hex code                                                                                  |
-| add_modifier    | Text modifiers to add     | None    | "BOLD", "DIM", "ITALIC", "UNDERLINED", "SLOW_BLINK", "RAPID_BLINK", "REVERSED", "HIDDEN", "CROSSED_OUT" |
-| sub_modifier    | Text modifiers to remove  | None    | Same as add_modifier                                                                                    |
-| underline_color | Color for underlined text | None    | Color name or hex code                                                                                  |
+| Field           | Description               | Possible values                                                                                         |
+| --------------- | ------------------------- | ------------------------------------------------------------------------------------------------------- |
+| fg              | Foreground color          | Color name or hex code (e.g., "#60A5FA")                                                                |
+| bg              | Background color          | Color name or hex code                                                                                  |
+| add_modifier    | Text modifiers to add     | "BOLD", "DIM", "ITALIC", "UNDERLINED", "SLOW_BLINK", "RAPID_BLINK", "REVERSED", "HIDDEN", "CROSSED_OUT" |
+| sub_modifier    | Text modifiers to remove  | Same as add_modifier                                                                                    |
+| underline_color | Color for underlined text | Color name or hex code                                                                                  |

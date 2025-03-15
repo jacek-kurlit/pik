@@ -1,4 +1,4 @@
-use ratatui::{Viewport, style::Color};
+use ratatui::Viewport;
 
 use crate::{
     args::{CliArgs, ScreenSizeOptions},
@@ -60,32 +60,6 @@ impl From<ScreenSizeOptions> for Viewport {
         match (ss.fullscreen, ss.height) {
             (true, _) => Viewport::Fullscreen,
             (_, height) => Viewport::Inline(height),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct StyleSettings {
-    pub use_icons: bool,
-    pub process_table: Option<PrcessTableStyle>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct PrcessTableStyle {
-    pub row_fg: Color,
-    pub selected_row_fg: Color,
-    pub odd_row_bg: Color,
-    pub even_row_bg: Color,
-    pub border_color: Color,
-    pub highlight_fg: Color,
-    pub highlight_bg: Color,
-}
-
-impl StyleSettings {
-    pub fn new(use_icons: bool) -> Self {
-        Self {
-            use_icons,
-            process_table: None,
         }
     }
 }

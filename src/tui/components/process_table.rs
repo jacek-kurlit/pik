@@ -1,6 +1,6 @@
 use ratatui::{
     layout::{Constraint, Margin},
-    text::{Line, Span, Text},
+    text::{Line, Span},
     widgets::{
         Block, Borders, HighlightSpacing, Row, Scrollbar, ScrollbarOrientation, ScrollbarState,
         Table, TableState,
