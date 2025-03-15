@@ -149,7 +149,7 @@ selected = { fg = "#60A5FA", add_modifier = "REVERSED" }
 
 [ui.process_table.cell]
 # normal = {}
-highlighted = { fg = "Black", bg = "Yellow" }
+highlighted = { bg = "Yellow", add_modifier = "ITALIC" }
 ```
 
 ### Key maps

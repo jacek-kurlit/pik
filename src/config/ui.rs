@@ -1,6 +1,6 @@
 use ratatui::{
     layout::Alignment,
-    style::{Color, Modifier, Style, palette::tailwind},
+    style::{Color, Modifier, Style, Stylize, palette::tailwind},
     widgets::{BorderType, block::Position},
 };
 use serde::{Deserialize, Serialize};
@@ -90,7 +90,7 @@ impl Default for CellTheme {
     fn default() -> Self {
         Self {
             normal: Style::default(),
-            highlighted: Style::new().bg(Color::Yellow).fg(Color::Black),
+            highlighted: Style::new().bg(Color::Yellow).italic(),
         }
     }
 }

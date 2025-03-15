@@ -70,10 +70,10 @@ These properties are toml table under `[ui.process_table.row]` section
 
 These properties are toml table under `[ui.process_table.cell]` section
 
-| Field       | Description                 | Default                           | Possible values     |
-| ----------- | --------------------------- | --------------------------------- | ------------------- |
-| normal      | Base style for cells        | `{}`                              | Style configuration |
-| highlighted | Style for highlighted cells | `{ fg = "Black", bg = "Yellow" }` | Style configuration |
+| Field       | Description                 | Default                                      | Possible values     |
+| ----------- | --------------------------- | -------------------------------------------- | ------------------- |
+| normal      | Base style for cells        | `{}`                                         | Style configuration |
+| highlighted | Style for highlighted cells | `{ bg = "Yellow", add_modifier = "ITALIC" }` | Style configuration |
 
 #### Style Configuration
 

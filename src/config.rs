@@ -153,7 +153,7 @@ mod tests {
                         },
                         cell: CellTheme {
                             normal: Style::default(),
-                            highlighted: Style::new().bg(Color::Yellow).fg(Color::Black),
+                            highlighted: Style::new().bg(Color::Yellow).italic(),
                         }
                     }
                 }
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn should_allow_to_override_defaults() {
-        let default_settings: AppConfig = toml::from_str(
+        let overrided_settings: AppConfig = toml::from_str(
             r##"
             screen_size = "fullscreen"
             use_icons = true
@@ -197,7 +197,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            default_settings,
+            overrided_settings,
             AppConfig {
                 screen_size: ScreenSize::Fullscreen,
                 use_icons: Some(true),

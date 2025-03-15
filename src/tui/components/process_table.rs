@@ -196,7 +196,7 @@ impl ProcessTableComponent {
                     .border_type(self.theme.border._type),
             )
             .row_highlight_style(self.theme.row.selected)
-            .highlight_symbol(Text::from(" "))
+            .highlight_symbol(self.theme.row.selected_symbol.as_str())
             .highlight_spacing(HighlightSpacing::Always);
         f.render_stateful_widget(table, area, &mut self.process_table);
         f.render_stateful_widget(
