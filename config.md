@@ -22,8 +22,8 @@ threads = true
 use_icons = false
 
 [ui.process_table]
-title = { alignment = "Left", position = "Top" }
-border = { type = "Rounded", style = { fg = "#60A5FA" } }
+title = { alignment = "left", position = "top" }
+border = { type = "rounded", style = { fg = "#60A5FA" } }
 
 [ui.process_table.row]
 selected_symbol = " "
@@ -46,11 +46,11 @@ highlighted = { bg = "Yellow", add_modifier = "ITALIC" }
 
 These properties are toml table under `[ignore]` section
 
-| Field       | Description                                                                                | Possible values |
-| ----------- | ------------------------------------------------------------------------------------------ | --------------- |
-| threads     | Ignore Linux threads                                                                       | true, false     |
-| other_users | Ignore Other users processes                                                               | true, false     |
-| paths       | List of path regex to ignore. If process matches at least of the regex, it will be ignored | array of regex  |
+| Field       | Description                                                                           | Possible values |
+| ----------- | ------------------------------------------------------------------------------------- | --------------- |
+| threads     | Ignore Linux threads                                                                  | true, false     |
+| other_users | Ignore Other users processes                                                          | true, false     |
+| paths       | List of path regex to ignore. If process matches any of the regex, it will be ignored | array of regex  |
 
 Regex are defined using the [regex create](https://docs.rs/regex/latest/regex)
 
@@ -79,8 +79,8 @@ These properties are toml table under `[ui.process_table.title]` section
 
 | Field     | Description                 | Possible values           |
 | --------- | --------------------------- | ------------------------- |
-| alignment | Text alignment within title | "Left", "Center", "Right" |
-| position  | Position of the title       | "Top", "Bottom"           |
+| alignment | Text alignment within title | "left", "center", "right" |
+| position  | Position of the title       | "top", "bottom"           |
 
 #### Border Configuration
 
@@ -88,7 +88,7 @@ These properties are toml table under `[ui.process_table.border]` section
 
 | Field | Description                 | Possible values                                                            |
 | ----- | --------------------------- | -------------------------------------------------------------------------- |
-| type  | Style of border to display  | "Plain", "Rounded", "Double", "Thick", "QuadrantInside", "QuadrantOutside" |
+| type  | Style of border to display  | "plain", "rounded", "double", "thick", "quadrant_inside", "quadrant_outside" |
 | style | Border color and formatting | Style configuration (see below)                                            |
 
 #### Row Configuration

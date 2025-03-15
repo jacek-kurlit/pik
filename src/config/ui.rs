@@ -111,11 +111,17 @@ pub struct StyleDef {
 #[serde(remote = "BorderType")]
 pub enum BorderTypeDef {
     #[default]
+    #[serde(alias = "plain")]
     Plain,
+    #[serde(alias = "rounded")]
     Rounded,
+    #[serde(alias = "double")]
     Double,
+    #[serde(alias = "thick")]
     Thick,
+    #[serde(alias = "quadrant_inside")]
     QuadrantInside,
+    #[serde(alias = "quadrant_outside")]
     QuadrantOutside,
 }
 
@@ -123,8 +129,11 @@ pub enum BorderTypeDef {
 #[serde(remote = "Alignment")]
 pub enum AlignmentDef {
     #[default]
+    #[serde(alias = "left")]
     Left,
+    #[serde(alias = "center")]
     Center,
+    #[serde(alias = "right")]
     Right,
 }
 
@@ -132,6 +141,47 @@ pub enum AlignmentDef {
 #[serde(remote = "Position")]
 pub enum PositionDef {
     #[default]
+    #[serde(alias = "top")]
     Top,
+    #[serde(alias = "bottom")]
     Bottom,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn enums_accept_snake_case() {
+        let toml = r#"
+            [title]
+            alignment = "right"
+            position = "bottom"
+            [border]
+            type = "quadrant_inside"
+            style = {}
+        "#;
+
+        let config: TableTheme = toml::from_str(toml).unwrap();
+        assert_eq!(config.title.alignment, Alignment::Right);
+        assert_eq!(config.title.position, Position::Bottom);
+        assert_eq!(config.border._type, BorderType::QuadrantInside);
+    }
+
+    #[test]
+    fn enums_accept_pascal_case() {
+        let toml = r#"
+            [title]
+            alignment = "Right"
+            position = "Bottom"
+            [border]
+            type = "QuadrantInside"
+            style = {}
+        "#;
+
+        let config: TableTheme = toml::from_str(toml).unwrap();
+        assert_eq!(config.title.alignment, Alignment::Right);
+        assert_eq!(config.title.position, Position::Bottom);
+        assert_eq!(config.border._type, BorderType::QuadrantInside);
+    }
 }
