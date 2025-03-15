@@ -87,7 +87,7 @@ impl PartialEq for IgnoreConfig {
 impl Eq for IgnoreConfig {}
 
 #[derive(Debug, Eq, PartialEq, Deserialize, Clone, Copy)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub enum ScreenSize {
     Fullscreen,
     Height(u16),
@@ -177,11 +177,11 @@ mod tests {
             use_icons = true
 
             [ui.process_table.title]
-            alignment = "Right"
-            position = "Bottom"
+            alignment = "right"
+            position = "bottom"
 
             [ui.process_table.border]
-            type = "Plain"
+            type = "plain"
             style = {fg = "#6366f1", add_modifier = "BOLD | ITALIC"}
 
             [ui.process_table.row]
