@@ -1,21 +1,21 @@
 use ratatui::{
     layout::{Constraint, Margin},
-    style::{Modifier, Style},
-    text::{Line, Span, Text},
+    text::{Line, Span},
     widgets::{
-        Block, BorderType, Borders, HighlightSpacing, Row, Scrollbar, ScrollbarOrientation,
-        ScrollbarState, Table, TableState,
+        Block, Borders, HighlightSpacing, Row, Scrollbar, ScrollbarOrientation, ScrollbarState,
+        Table, TableState,
     },
 };
 
 use crate::{
+    config::ui::TableTheme,
     processes::{MatchedBy, ProcessSearchResults, ResultItem},
-    tui::{LayoutRects, Theme, highlight::highlight_text},
+    tui::{LayoutRects, highlight::highlight_text},
 };
 
 pub struct ProcessTableComponent {
-    theme: Theme,
     use_icons: bool,
+    theme: TableTheme,
     process_table: TableState,
     process_table_scroll_state: ScrollbarState,
 }
@@ -52,11 +52,11 @@ const TABLE_WIDTHS: [Constraint; 8] = [
 ];
 
 impl ProcessTableComponent {
-    pub fn new(use_icons: bool) -> Self {
+    pub fn new(use_icons: bool, theme: TableTheme) -> Self {
         Self {
             process_table: TableState::default(),
             process_table_scroll_state: ScrollbarState::new(0),
-            theme: Theme::new(),
+            theme,
             use_icons,
         }
     }
@@ -122,12 +122,12 @@ impl ProcessTableComponent {
             highlight_text(
                 text,
                 &item.match_data.match_type,
-                self.theme.highlight_style,
-                self.theme.default_style,
+                self.theme.cell.highlighted,
+                self.theme.cell.normal,
                 max_len,
             )
         } else {
-            Line::from(Span::styled(text, self.theme.default_style))
+            Line::from(Span::styled(text, self.theme.cell.normal))
         }
     }
 
@@ -139,25 +139,25 @@ impl ProcessTableComponent {
     ) {
         let area = layout.process_table;
         let rows = search_results.iter().enumerate().map(|(i, item)| {
-            let color = match i % 2 {
-                0 => self.theme.normal_row_color,
-                _ => self.theme.alt_row_color,
+            let row_style = match i % 2 {
+                0 => self.theme.row.even,
+                _ => self.theme.row.odd,
             };
             let data = &item.process;
             Row::new(vec![
                 Line::from(Span::styled(
                     data.user_name.as_str(),
-                    self.theme.default_style,
+                    self.theme.cell.normal,
                 )),
                 Line::from(Span::styled(
                     format!("{}", data.pid),
-                    self.theme.default_style,
+                    self.theme.cell.normal,
                 )),
                 Line::from(Span::styled(
                     data.parent_as_string(),
-                    self.theme.default_style,
+                    self.theme.cell.normal,
                 )),
-                Line::from(Span::styled(&data.run_time, self.theme.default_style)),
+                Line::from(Span::styled(&data.run_time, self.theme.cell.normal)),
                 self.create_line(item, &data.cmd, MatchedBy::Cmd, MAX_CMD_LEN),
                 self.create_line(
                     item,
@@ -173,7 +173,7 @@ impl ProcessTableComponent {
                     MAX_PORTS_LEN,
                 ),
             ])
-            .style(Style::new().fg(self.theme.row_fg).bg(color))
+            .style(row_style)
         });
         let headers = if self.use_icons {
             TABLE_HEADERS_ICONS
@@ -184,24 +184,19 @@ impl ProcessTableComponent {
             .header(Row::new(headers))
             .block(
                 Block::default()
-                    .title_top(
-                        Line::from(format!(
-                            " {} / {} ",
-                            self.process_table.selected().map(|i| i + 1).unwrap_or(0),
-                            search_results.len()
-                        ))
-                        .left_aligned(),
-                    )
+                    .title_position(self.theme.title.position)
+                    .title_alignment(self.theme.title.alignment)
+                    .title(Line::from(format!(
+                        " {} / {} ",
+                        self.process_table.selected().map(|i| i + 1).unwrap_or(0),
+                        search_results.len()
+                    )))
                     .borders(Borders::ALL)
-                    .border_style(Style::new().fg(self.theme.process_table_border_color))
-                    .border_type(BorderType::Plain),
+                    .border_style(self.theme.border.style)
+                    .border_type(self.theme.border._type),
             )
-            .row_highlight_style(
-                Style::default()
-                    .add_modifier(Modifier::REVERSED)
-                    .fg(self.theme.selected_style_fg),
-            )
-            .highlight_symbol(Text::from(vec![" ".into()]))
+            .row_highlight_style(self.theme.row.selected)
+            .highlight_symbol(self.theme.row.selected_symbol.as_str())
             .highlight_spacing(HighlightSpacing::Always);
         f.render_stateful_widget(table, area, &mut self.process_table);
         f.render_stateful_widget(

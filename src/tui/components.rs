@@ -24,7 +24,7 @@ pub trait Component {
 }
 
 pub enum KeyAction {
-    //component could not handle key event
+    // component could not handle key event
     Unhandled,
     // component handled key event but no event is published
     Consumed,

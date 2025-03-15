@@ -2,7 +2,7 @@ use ratatui::Viewport;
 
 use crate::{
     args::{CliArgs, ScreenSizeOptions},
-    config::{AppConfig, ScreenSize},
+    config::{AppConfig, ScreenSize, ui::UIConfig},
     processes::IgnoreOptions,
 };
 
@@ -11,7 +11,7 @@ pub struct AppSettings {
     pub query: String,
     pub viewport: Viewport,
     pub filter_opions: IgnoreOptions,
-    pub use_icons: bool,
+    pub ui_config: UIConfig,
 }
 
 impl AppSettings {
@@ -30,7 +30,7 @@ impl AppSettings {
                 ),
                 paths: prefer_override(config.ignore.paths, cli_args.ignore.paths),
             },
-            use_icons: config.use_icons,
+            ui_config: config.ui,
         }
     }
 }
@@ -118,12 +118,12 @@ mod tests {
             AppSettings {
                 query: "".into(),
                 viewport: Viewport::Inline(25),
-                use_icons: false,
                 filter_opions: IgnoreOptions {
                     ignore_threads: false,
                     ignore_other_users: false,
                     paths: vec![]
-                }
+                },
+                ui_config: UIConfig::default()
             }
         );
     }

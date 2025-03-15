@@ -4,6 +4,7 @@ use ratatui::Frame;
 use tui_textarea::CursorMove;
 
 use crate::{
+    config::ui::UIConfig,
     processes::{IgnoreOptions, Process, ProcessManager, ProcessSearchResults},
     tui::{ProcessRelatedSearch, components::KeyAction},
 };
@@ -24,7 +25,7 @@ pub struct ProcessesViewComponent {
 
 impl ProcessesViewComponent {
     pub fn new(
-        use_icons: bool,
+        ui_config: &UIConfig,
         ignore_options: IgnoreOptions,
         initial_query: String,
     ) -> Result<Self> {
@@ -32,7 +33,11 @@ impl ProcessesViewComponent {
             process_manager: ProcessManager::new()?,
             ignore_options,
             search_results: ProcessSearchResults::empty(),
-            process_table_component: ProcessTableComponent::new(use_icons),
+            process_table_component: ProcessTableComponent::new(
+                ui_config.use_icons,
+                // cloning for sake of simplicity
+                ui_config.process_table.clone(),
+            ),
             process_details_component: ProcessDetailsComponent::new(),
             search_bar: SearchBarComponent::new(initial_query),
         };
