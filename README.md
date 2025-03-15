@@ -114,6 +114,7 @@ You may set your preferences in `config.toml` file located in:
 All options are optional, if skipped default values will be used.
 Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
 Run `pik -- --help` to see cli options
+Please refer to [config](config.md) for more details about configuration options
 
 You can find default values below
 
@@ -121,9 +122,6 @@ You can find default values below
 # Size of the viewport
 screen_size = { height = 20 } # run pik in 20 lines of the terminal
 # screen_size = "fullscreen" # run pik in fullscreen
-
-# Icons require nerd fonts v3
-use_icons = false
 
 [ignore]
 # ignore processes that path matches any of given regex
@@ -133,6 +131,25 @@ paths = []
 other_users = true
 # ignore thread processes (on linux)
 threads = true
+
+### UI Configuration ###
+[ui]
+# Icons require nerd fonts v3
+use_icons = false
+
+[ui.process_table]
+title = { alignment = "Left", position = "Top" }
+border = { type = "Rounded", style = { fg = "#60A5FA" } }
+
+[ui.process_table.row]
+selected_symbol = " "
+even = { fg = "#E2E8F0", bg = "#0F172A" }
+odd = { fg = "#E2E8F0", bg = "#020617" }
+selected = { fg = "#60A5FA", add_modifier = "REVERSED" }
+
+[ui.process_table.cell]
+# normal = {}
+highlighted = { fg = "Black", bg = "Yellow" }
 ```
 
 ### Key maps

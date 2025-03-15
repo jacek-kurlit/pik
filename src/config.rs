@@ -17,6 +17,14 @@ fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
     let raw_toml = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to load config from file: {:?}", path))?;
     toml::from_str(&raw_toml)
+        .map(|mut config: AppConfig| {
+            if let Some(use_icons) = config.use_icons {
+                println!("### WARNING ####");
+                println!("use_icons is deprecated and will be removed in future. Please use ui.use_icons instead");
+                config.ui.use_icons = use_icons;
+            }
+            config
+        })
         .with_context(|| format!("Failed to deserialize config from file: {:?}", path))
 }
 
@@ -28,8 +36,7 @@ use ui::UIConfig;
 pub struct AppConfig {
     #[serde(default)]
     pub screen_size: ScreenSize,
-    #[serde(default)]
-    pub use_icons: bool,
+    pub use_icons: Option<bool>,
     #[serde(default)]
     pub ignore: IgnoreConfig,
     #[serde(default)]
@@ -115,7 +122,7 @@ mod tests {
             default_settings,
             Ok(AppConfig {
                 screen_size: ScreenSize::Height(DEFAULT_SCREEN_SIZE),
-                use_icons: false,
+                use_icons: None,
                 ignore: IgnoreConfig {
                     paths: vec![],
                     other_users: true,
@@ -193,7 +200,7 @@ mod tests {
             default_settings,
             AppConfig {
                 screen_size: ScreenSize::Fullscreen,
-                use_icons: true,
+                use_icons: Some(true),
                 ignore: IgnoreConfig {
                     paths: vec![Regex::new("/usr/*").unwrap()],
                     other_users: false,

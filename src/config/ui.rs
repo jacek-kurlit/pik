@@ -13,7 +13,7 @@ pub struct UIConfig {
     pub process_table: TableTheme,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
 pub struct TableTheme {
     #[serde(default)]
     pub title: TitleTheme,
@@ -25,7 +25,7 @@ pub struct TableTheme {
     pub cell: CellTheme,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct BorderTheme {
     #[serde(with = "StyleDef")]
     pub style: Style,
@@ -42,7 +42,7 @@ impl Default for BorderTheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
 pub struct TitleTheme {
     #[serde(with = "AlignmentDef")]
     pub alignment: Alignment,
@@ -50,14 +50,7 @@ pub struct TitleTheme {
     pub position: Position,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct SelectedRowTheme {
-    #[serde(with = "StyleDef")]
-    pub style: Style,
-    pub symbol: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct RowTheme {
     #[serde(with = "StyleDef")]
     pub even: Style,
@@ -85,9 +78,9 @@ impl Default for RowTheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct CellTheme {
-    #[serde(with = "StyleDef")]
+    #[serde(default, with = "StyleDef")]
     pub normal: Style,
     #[serde(with = "StyleDef")]
     pub highlighted: Style,

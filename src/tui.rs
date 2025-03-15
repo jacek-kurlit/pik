@@ -10,7 +10,6 @@ use crossterm::{
     event::{self, Event, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
-use ratatui::style::{Color, Style, palette::tailwind};
 use ratatui::{TerminalOptions, prelude::*};
 
 pub mod components;
@@ -37,7 +36,7 @@ impl App {
                 Box::new(HelpPopupComponent::default()),
                 Box::new(HelpFooterComponent::default()),
                 Box::new(ProcessesViewComponent::new(
-                    app_settings.ui_config.use_icons,
+                    &app_settings.ui_config,
                     app_settings.filter_opions,
                     app_settings.query,
                 )?),
@@ -160,31 +159,6 @@ impl LayoutRects {
             process_table: rects[1],
             process_details: rects[2],
             footer: rects[3],
-        }
-    }
-}
-
-pub struct Theme {
-    pub row_fg: Color,
-    pub selected_style_fg: Color,
-    pub normal_row_color: Color,
-    pub alt_row_color: Color,
-    pub process_table_border_color: Color,
-    pub highlight_style: Style,
-    pub default_style: Style,
-}
-
-#[allow(clippy::new_without_default)]
-impl Theme {
-    pub fn new() -> Self {
-        Self {
-            row_fg: tailwind::SLATE.c200,
-            selected_style_fg: tailwind::BLUE.c400,
-            normal_row_color: tailwind::SLATE.c950,
-            alt_row_color: tailwind::SLATE.c900,
-            process_table_border_color: tailwind::BLUE.c400,
-            highlight_style: Style::new().bg(Color::Yellow).fg(Color::Black),
-            default_style: Style::default(),
         }
     }
 }
