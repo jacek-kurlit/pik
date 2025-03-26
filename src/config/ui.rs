@@ -11,6 +11,8 @@ pub struct UIConfig {
     pub use_icons: bool,
     #[serde(default)]
     pub process_table: TableTheme,
+    #[serde(default)]
+    pub process_details: ProcessDetailsTheme,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
@@ -145,6 +147,14 @@ pub enum PositionDef {
     Top,
     #[serde(alias = "bottom")]
     Bottom,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
+pub struct ProcessDetailsTheme {
+    #[serde(default)]
+    pub title: TitleTheme,
+    #[serde(default)]
+    pub border: BorderTheme,
 }
 
 #[cfg(test)]

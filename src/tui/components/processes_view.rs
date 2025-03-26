@@ -38,7 +38,10 @@ impl ProcessesViewComponent {
                 // cloning for sake of simplicity
                 ui_config.process_table.clone(),
             ),
-            process_details_component: ProcessDetailsComponent::new(),
+            //TODO: fix this cloning later
+            process_details_component: ProcessDetailsComponent::new(
+                ui_config.process_details.clone(),
+            ),
             search_bar: SearchBarComponent::new(initial_query),
         };
         component.search_for_processess();

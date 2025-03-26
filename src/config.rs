@@ -109,7 +109,7 @@ mod tests {
         style::{Color, Modifier, Style, Stylize, palette::tailwind},
         widgets::{BorderType, block::Position},
     };
-    use ui::{BorderTheme, CellTheme, RowTheme, TableTheme, TitleTheme};
+    use ui::{BorderTheme, CellTheme, ProcessDetailsTheme, RowTheme, TableTheme, TitleTheme};
 
     use super::*;
 
@@ -155,6 +155,16 @@ mod tests {
                             normal: Style::default(),
                             highlighted: Style::new().bg(Color::Yellow).italic(),
                         }
+                    },
+                    process_details: ProcessDetailsTheme {
+                        title: TitleTheme {
+                            alignment: Alignment::Left,
+                            position: Position::Top
+                        },
+                        border: BorderTheme {
+                            style: Style::default().fg(tailwind::BLUE.c400),
+                            _type: BorderType::Rounded
+                        }
                     }
                 }
             })
@@ -193,6 +203,14 @@ mod tests {
             [ui.process_table.cell]
             normal = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
             highlighted = {fg = "#fff7ed", bg = "#fb923c", add_modifier = "UNDERLINED"}
+
+            [ui.process_details.title]
+            alignment = "center"
+            position = "bottom"
+
+            [ui.process_details.border]
+            type = "double"
+            style = {fg = "#6366f1", add_modifier = "UNDERLINED | ITALIC"}
             "##,
         )
         .unwrap();
@@ -239,6 +257,19 @@ mod tests {
                                 .bg(tailwind::ORANGE.c400)
                                 .underlined(),
                         }
+                    },
+                    process_details: ProcessDetailsTheme {
+                        title: TitleTheme {
+                            alignment: Alignment::Center,
+                            position: Position::Bottom
+                        },
+                        border: BorderTheme {
+                            style: Style::default()
+                                .fg(tailwind::INDIGO.c500)
+                                .italic()
+                                .underlined(),
+                            _type: BorderType::Double
+                        },
                     }
                 }
             }
