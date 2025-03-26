@@ -91,11 +91,12 @@ impl ProcessDetailsComponent {
         frame.render_stateful_widget(
             Scrollbar::default()
                 .orientation(ScrollbarOrientation::VerticalRight)
-                .thumb_symbol("")
-                .track_symbol(Some("?"))
-                .begin_symbol(Some("↑"))
-                .end_symbol(Some("↓")),
-            area,
+                .style(self.theme.scrollbar.style)
+                .thumb_symbol(self.theme.scrollbar.thumb_symbol.as_deref().unwrap_or(""))
+                .track_symbol(self.theme.scrollbar.track_symbol.as_deref())
+                .begin_symbol(self.theme.scrollbar.begin_symbol.as_deref())
+                .end_symbol(self.theme.scrollbar.end_symbol.as_deref()),
+            area.inner(self.theme.scrollbar.margin),
             &mut self.process_details_scroll_state,
         );
     }

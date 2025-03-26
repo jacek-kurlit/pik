@@ -1,6 +1,7 @@
 use ratatui::{
-    layout::Alignment,
+    layout::{Alignment, Margin},
     style::{Color, Modifier, Style, Stylize, palette::tailwind},
+    symbols::block,
     widgets::{BorderType, block::Position},
 };
 use serde::{Deserialize, Serialize};
@@ -149,12 +150,59 @@ pub enum PositionDef {
     Bottom,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ScrollbarTheme {
+    #[serde(default, with = "StyleDef")]
+    pub style: Style,
+    pub thumb_symbol: Option<String>,
+    pub track_symbol: Option<String>,
+    pub begin_symbol: Option<String>,
+    pub end_symbol: Option<String>,
+    #[serde(default)]
+    pub margin: Margin,
+}
+
+impl Default for ScrollbarTheme {
+    fn default() -> Self {
+        Self {
+            style: Style::default(),
+            thumb_symbol: Some(block::HALF.to_string()),
+            track_symbol: Some("║".to_string()),
+            begin_symbol: Some("▲".to_string()),
+            end_symbol: Some("▼".to_string()),
+            margin: Margin::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct ProcessDetailsTheme {
     #[serde(default)]
     pub title: TitleTheme,
     #[serde(default)]
     pub border: BorderTheme,
+    #[serde(default)]
+    pub scrollbar: ScrollbarTheme,
+}
+
+impl Default for ProcessDetailsTheme {
+    fn default() -> Self {
+        Self {
+            title: Default::default(),
+            border: Default::default(),
+            scrollbar: ScrollbarTheme {
+                style: Style::default(),
+                thumb_symbol: Some("│".to_string()),
+                track_symbol: None,
+                begin_symbol: Some("↑".to_string()),
+                end_symbol: Some("↓".to_string()),
+                margin: Margin {
+                    vertical: 1,
+                    horizontal: 0,
+                },
+            },
+        }
+    }
 }
 
 #[cfg(test)]
