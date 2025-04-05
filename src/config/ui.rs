@@ -179,7 +179,7 @@ impl Default for ScrollbarTheme {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
 pub struct ProcessDetailsTheme {
     #[serde(default)]
     pub title: TitleTheme,
@@ -187,26 +187,6 @@ pub struct ProcessDetailsTheme {
     pub border: BorderTheme,
     #[serde(default)]
     pub scrollbar: ScrollbarTheme,
-}
-
-impl Default for ProcessDetailsTheme {
-    fn default() -> Self {
-        Self {
-            title: Default::default(),
-            border: Default::default(),
-            scrollbar: ScrollbarTheme {
-                style: Style::default(),
-                thumb_symbol: Some("│".to_string()),
-                track_symbol: None,
-                begin_symbol: Some("↑".to_string()),
-                end_symbol: Some("↓".to_string()),
-                margin: Margin {
-                    vertical: 1,
-                    horizontal: 0,
-                },
-            },
-        }
-    }
 }
 
 #[cfg(test)]
