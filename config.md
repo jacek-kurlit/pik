@@ -18,8 +18,7 @@ threads = true
 
 ### UI Configuration ###
 [ui]
-# Icons require nerd fonts v3
-icons = "ascii"
+icons = "ascii" # nerd_font_v3 or custom (see below)
 
 [ui.process_table]
 title = { alignment = "left", position = "top" }
@@ -92,7 +91,7 @@ These properties are toml table under `[ui]` section
 ### Icons Configuration
 
 By default no icons is configured which in equal to `ui.icons=ascii`
-You can use nerd font icons by setting `ui.icons=nerd_font_v3`
+You can use nerd font icons by setting `ui.icons=nerd_font_v3`, this of course need nerd font installed
 To set up your custom icons you may use this (nerd_font_v3 setup)
 
 ```toml
