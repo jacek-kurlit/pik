@@ -105,11 +105,14 @@ impl Default for ScreenSize {
 mod tests {
 
     use ratatui::{
-        layout::Alignment,
+        layout::{Alignment, Margin},
         style::{Color, Modifier, Style, Stylize, palette::tailwind},
         widgets::{BorderType, block::Position},
     };
-    use ui::{BorderTheme, CellTheme, RowTheme, TableTheme, TitleTheme};
+    use ui::{
+        BorderTheme, CellTheme, ProcessDetailsTheme, RowTheme, ScrollbarTheme, TableTheme,
+        TitleTheme,
+    };
 
     use super::*;
 
@@ -154,6 +157,38 @@ mod tests {
                         cell: CellTheme {
                             normal: Style::default(),
                             highlighted: Style::new().bg(Color::Yellow).italic(),
+                        },
+                        scrollbar: ScrollbarTheme {
+                            style: Style::default(),
+                            thumb_symbol: None,
+                            track_symbol: Some("│".to_string()),
+                            begin_symbol: Some("↑".to_string()),
+                            end_symbol: Some("↓".to_string()),
+                            margin: Margin {
+                                vertical: 1,
+                                horizontal: 0,
+                            },
+                        }
+                    },
+                    process_details: ProcessDetailsTheme {
+                        title: TitleTheme {
+                            alignment: Alignment::Left,
+                            position: Position::Top
+                        },
+                        border: BorderTheme {
+                            style: Style::default().fg(tailwind::BLUE.c400),
+                            _type: BorderType::Rounded
+                        },
+                        scrollbar: ScrollbarTheme {
+                            style: Style::default(),
+                            thumb_symbol: None,
+                            track_symbol: Some("│".to_string()),
+                            begin_symbol: Some("↑".to_string()),
+                            end_symbol: Some("↓".to_string()),
+                            margin: Margin {
+                                vertical: 1,
+                                horizontal: 0
+                            }
                         }
                     }
                 }
@@ -193,6 +228,30 @@ mod tests {
             [ui.process_table.cell]
             normal = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
             highlighted = {fg = "#fff7ed", bg = "#fb923c", add_modifier = "UNDERLINED"}
+
+            [ui.process_table.scrollbar]
+            style = {fg = "#f472b6", bg = "#4c1d95", add_modifier = "BOLD"}
+            thumb_symbol = "x"
+            track_symbol = "y"
+            begin_symbol = "z"
+            end_symbol = "q"
+            margin = {horizontal = 10, vertical = 20}
+
+            [ui.process_details.title]
+            alignment = "center"
+            position = "bottom"
+
+            [ui.process_details.border]
+            type = "double"
+            style = {fg = "#6366f1", add_modifier = "UNDERLINED | ITALIC"}
+
+            [ui.process_details.scrollbar]
+            style = {fg = "#f472b6", bg = "#4c1d95", add_modifier = "BOLD"}
+            thumb_symbol = "T"
+            track_symbol = "="
+            begin_symbol = "^"
+            end_symbol = "v"
+            margin = {horizontal = 2, vertical = 3}
             "##,
         )
         .unwrap();
@@ -238,6 +297,47 @@ mod tests {
                                 .fg(tailwind::ORANGE.c50)
                                 .bg(tailwind::ORANGE.c400)
                                 .underlined(),
+                        },
+                        scrollbar: ScrollbarTheme {
+                            style: Style::new()
+                                .fg(tailwind::PINK.c400)
+                                .bg(tailwind::VIOLET.c900)
+                                .bold(),
+                            thumb_symbol: Some("x".to_string()),
+                            track_symbol: Some("y".to_string()),
+                            begin_symbol: Some("z".to_string()),
+                            end_symbol: Some("q".to_string()),
+                            margin: Margin {
+                                vertical: 20,
+                                horizontal: 10
+                            }
+                        }
+                    },
+                    process_details: ProcessDetailsTheme {
+                        title: TitleTheme {
+                            alignment: Alignment::Center,
+                            position: Position::Bottom
+                        },
+                        border: BorderTheme {
+                            style: Style::default()
+                                .fg(tailwind::INDIGO.c500)
+                                .italic()
+                                .underlined(),
+                            _type: BorderType::Double
+                        },
+                        scrollbar: ScrollbarTheme {
+                            style: Style::default()
+                                .fg(tailwind::PINK.c400)
+                                .bg(tailwind::VIOLET.c900)
+                                .bold(),
+                            thumb_symbol: Some("T".to_string()),
+                            track_symbol: Some("=".to_string()),
+                            begin_symbol: Some("^".to_string()),
+                            end_symbol: Some("v".to_string()),
+                            margin: Margin {
+                                horizontal: 2,
+                                vertical: 3
+                            }
                         }
                     }
                 }

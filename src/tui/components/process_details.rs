@@ -1,30 +1,29 @@
 use ratatui::{
     prelude::Rect,
     text::Line,
-    widgets::{
-        Block, BorderType, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
-        Wrap,
-    },
+    widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
 };
 
-use crate::{processes::Process, tui::LayoutRects};
+use crate::{config::ui::ProcessDetailsTheme, processes::Process, tui::LayoutRects};
 
 pub struct ProcessDetailsComponent {
     process_details_scroll_state: ScrollbarState,
     process_details_scroll_offset: u16,
     process_details_number_of_lines: u16,
     area_content_height: u16,
+    theme: ProcessDetailsTheme,
 }
 
 #[allow(clippy::new_without_default)]
 impl ProcessDetailsComponent {
-    pub fn new() -> Self {
+    pub fn new(theme: ProcessDetailsTheme) -> Self {
         Self {
             process_details_scroll_offset: 0,
             process_details_number_of_lines: 0,
             //NOTE: we don't update this, value 1 means that this should be rendered
             process_details_scroll_state: ScrollbarState::new(1),
             area_content_height: 0,
+            theme,
         }
     }
 
@@ -74,26 +73,30 @@ impl ProcessDetailsComponent {
         let area = layout.process_details;
         self.area_content_height = area.height - 2;
         let lines = process_details_lines(selected_process);
-        let info_footer = Paragraph::new(lines)
+        let details = Paragraph::new(lines)
             .wrap(Wrap { trim: false })
             .left_aligned()
             .block(
                 Block::default()
+                    .title_position(self.theme.title.position)
+                    .title_alignment(self.theme.title.alignment)
+                    .title(" Process Details ")
                     .borders(Borders::ALL)
-                    .title_top(Line::from(" Process Details ").left_aligned())
-                    .border_type(BorderType::Rounded),
+                    .border_style(self.theme.border.style)
+                    .border_type(self.theme.border._type),
             )
             .scroll((self.process_details_scroll_offset, 0));
-        frame.render_widget(info_footer, area);
+        frame.render_widget(details, area);
         self.update_process_details_number_of_lines(selected_process, area);
         frame.render_stateful_widget(
             Scrollbar::default()
                 .orientation(ScrollbarOrientation::VerticalRight)
-                .thumb_symbol("")
-                .track_symbol(None)
-                .begin_symbol(Some("↑"))
-                .end_symbol(Some("↓")),
-            area,
+                .style(self.theme.scrollbar.style)
+                .thumb_symbol(self.theme.scrollbar.thumb_symbol.as_deref().unwrap_or(""))
+                .track_symbol(self.theme.scrollbar.track_symbol.as_deref())
+                .begin_symbol(self.theme.scrollbar.begin_symbol.as_deref())
+                .end_symbol(self.theme.scrollbar.end_symbol.as_deref()),
+            area.inner(self.theme.scrollbar.margin),
             &mut self.process_details_scroll_state,
         );
     }

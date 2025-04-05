@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::Alignment,
+    layout::{Alignment, Margin},
     style::{Color, Modifier, Style, Stylize, palette::tailwind},
     widgets::{BorderType, block::Position},
 };
@@ -11,6 +11,8 @@ pub struct UIConfig {
     pub use_icons: bool,
     #[serde(default)]
     pub process_table: TableTheme,
+    #[serde(default)]
+    pub process_details: ProcessDetailsTheme,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
@@ -23,6 +25,8 @@ pub struct TableTheme {
     pub row: RowTheme,
     #[serde(default)]
     pub cell: CellTheme,
+    #[serde(default)]
+    pub scrollbar: ScrollbarTheme,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
@@ -145,6 +149,44 @@ pub enum PositionDef {
     Top,
     #[serde(alias = "bottom")]
     Bottom,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct ScrollbarTheme {
+    #[serde(default, with = "StyleDef")]
+    pub style: Style,
+    pub thumb_symbol: Option<String>,
+    pub track_symbol: Option<String>,
+    pub begin_symbol: Option<String>,
+    pub end_symbol: Option<String>,
+    #[serde(default)]
+    pub margin: Margin,
+}
+
+impl Default for ScrollbarTheme {
+    fn default() -> Self {
+        Self {
+            style: Style::default(),
+            thumb_symbol: None,
+            track_symbol: Some("│".to_string()),
+            begin_symbol: Some("↑".to_string()),
+            end_symbol: Some("↓".to_string()),
+            margin: Margin {
+                vertical: 1,
+                horizontal: 0,
+            },
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Default)]
+pub struct ProcessDetailsTheme {
+    #[serde(default)]
+    pub title: TitleTheme,
+    #[serde(default)]
+    pub border: BorderTheme,
+    #[serde(default)]
+    pub scrollbar: ScrollbarTheme,
 }
 
 #[cfg(test)]
