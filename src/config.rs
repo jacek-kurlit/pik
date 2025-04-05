@@ -193,7 +193,7 @@ mod tests {
                         }
                     },
                     search_bar: SearchBarTheme {
-                        style: Style::default().add_modifier(Modifier::UNDERLINED),
+                        style: Style::default(),
                         cursor_style: Style::default().add_modifier(Modifier::REVERSED)
                     }
                 }
