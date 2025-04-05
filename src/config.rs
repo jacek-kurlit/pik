@@ -181,8 +181,8 @@ mod tests {
                         },
                         scrollbar: ScrollbarTheme {
                             style: Style::default(),
-                            thumb_symbol: Some("│".to_string()),
-                            track_symbol: None,
+                            thumb_symbol: None,
+                            track_symbol: Some("│".to_string()),
                             begin_symbol: Some("↑".to_string()),
                             end_symbol: Some("↓".to_string()),
                             margin: Margin {
