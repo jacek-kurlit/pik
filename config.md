@@ -19,7 +19,7 @@ threads = true
 ### UI Configuration ###
 [ui]
 # Icons require nerd fonts v3
-use_icons = false
+icons = "ascii"
 
 [ui.process_table]
 title = { alignment = "left", position = "top" }
@@ -84,10 +84,29 @@ These properties are toml table under `[ui]` section
 
 | Field           | Description                   | Possible values |
 | --------------- | ----------------------------- | --------------- |
-| use_icons       | Use Nerd font v3 icons        | true, false     |
+| icons           | Configure icons               | See below       |
 | process_table   | Process Table Configuration   | See below       |
 | process_details | Process Details Configuration | See below       |
 | search_bar      | Search bar Configuration      | See below       |
+
+### Icons Configuration
+
+By default no icons is configured which in equal to `ui.icons=ascii`
+You can use nerd font icons by setting `ui.icons=nerd_font_v3`
+To set up your custom icons you may use this (nerd_font_v3 setup)
+
+```toml
+[ui.icons.custom]
+user = "󰋦"
+pid = ""
+parent = "󱖁"
+time = ""
+cmd = "󱃸"
+path = ""
+args = "󱃼"
+ports = ""
+search_prompt = ""
+```
 
 ### Process table
 

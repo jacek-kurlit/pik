@@ -309,4 +309,63 @@ mod tests {
         assert_eq!(config.title.position, Position::Bottom);
         assert_eq!(config.border._type, BorderType::QuadrantInside);
     }
+
+    #[test]
+    fn test_icons_struct_ascii() {
+        let icons = IconsStruct::ascii();
+
+        assert_eq!(icons.search_prompt, ">".to_string());
+        assert_eq!(icons.user, "".to_string());
+        assert_eq!(icons.parent, "".to_string());
+        assert_eq!(icons.time, "".to_string());
+        assert_eq!(icons.cmd, "".to_string());
+        assert_eq!(icons.path, "".to_string());
+        assert_eq!(icons.args, "".to_string());
+        assert_eq!(icons.ports, "".to_string());
+    }
+
+    #[test]
+    fn test_icons_struct_nerd_font_v3() {
+        let icons = IconsStruct::nerd_font_v3();
+
+        assert_eq!(icons.user, "󰋦".to_string());
+        assert_eq!(icons.pid, "".to_string());
+        assert_eq!(icons.parent, "󱖁".to_string());
+        assert_eq!(icons.time, "".to_string());
+        assert_eq!(icons.cmd, "󱃸".to_string());
+        assert_eq!(icons.path, "".to_string());
+        assert_eq!(icons.args, "󱃼".to_string());
+        assert_eq!(icons.ports, "".to_string());
+        assert_eq!(icons.search_prompt, "".to_string());
+    }
+
+    #[test]
+    fn test_icon_config_get_icons() {
+        // Test Ascii variant
+        let ascii_config = IconConfig::Ascii;
+        let ascii_icons = ascii_config.get_icons();
+        assert_eq!(ascii_icons, &IconsStruct::ascii());
+
+        // Test NerdFontV3 variant
+        let nerd_font_config = IconConfig::NerdFontV3;
+        let nerd_font_icons = nerd_font_config.get_icons();
+        assert_eq!(nerd_font_icons, &IconsStruct::nerd_font_v3());
+
+        // Test Custom variant
+        let custom_icons = IconsStruct {
+            user: "custom".to_string(),
+            ..Default::default()
+        };
+        let custom_config = IconConfig::Custom(custom_icons.clone());
+        let returned_icons = custom_config.get_icons();
+        assert_eq!(returned_icons, &custom_icons);
+    }
+
+    #[test]
+    fn test_icon_config_default() {
+        // Test that the default for IconConfig is Ascii
+        let default_config = IconConfig::default();
+        assert_eq!(default_config, IconConfig::Ascii);
+    }
+
 }
