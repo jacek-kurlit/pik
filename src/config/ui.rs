@@ -367,5 +367,4 @@ mod tests {
         let default_config = IconConfig::default();
         assert_eq!(default_config, IconConfig::Ascii);
     }
-
 }
