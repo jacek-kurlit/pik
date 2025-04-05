@@ -8,13 +8,13 @@ use ratatui::{
 };
 
 use crate::{
-    config::ui::TableTheme,
+    config::ui::{IconsStruct, TableTheme},
     processes::{MatchedBy, ProcessSearchResults, ResultItem},
     tui::{LayoutRects, highlight::highlight_text},
 };
 
 pub struct ProcessTableComponent {
-    use_icons: bool,
+    headers: Vec<String>,
     theme: TableTheme,
     process_table: TableState,
     process_table_scroll_state: ScrollbarState,
@@ -24,21 +24,6 @@ const MAX_CMD_LEN: usize = 20;
 const MAX_PATH_LEN: usize = 38;
 const MAX_ARGS_LEN: usize = 35;
 const MAX_PORTS_LEN: usize = 20;
-
-const TABLE_HEADERS_ICONS: [&str; 8] = [
-    "USER 󰋦",
-    "PID ",
-    "PARENT 󱖁",
-    "TIME ",
-    "CMD 󱃸",
-    "PATH ",
-    "ARGS 󱃼",
-    "PORTS ",
-];
-
-const TABLE_HEADERS_PLAIN: [&str; 8] = [
-    "USER", "PID", "PARENT", "RUN TIME", "CMD", "PATH", "ARGS", "PORTS",
-];
 
 const TABLE_WIDTHS: [Constraint; 8] = [
     Constraint::Percentage(5),
@@ -52,12 +37,21 @@ const TABLE_WIDTHS: [Constraint; 8] = [
 ];
 
 impl ProcessTableComponent {
-    pub fn new(use_icons: bool, theme: TableTheme) -> Self {
+    pub fn new(icons: &IconsStruct, theme: TableTheme) -> Self {
         Self {
             process_table: TableState::default(),
             process_table_scroll_state: ScrollbarState::new(0),
             theme,
-            use_icons,
+            headers: vec![
+                format!("USER {}", icons.user).trim().to_string(),
+                format!("PID {}", icons.pid).trim().to_string(),
+                format!("PARENT {}", icons.parent).trim().to_string(),
+                format!("TIME {}", icons.time).trim().to_string(),
+                format!("CMD {}", icons.cmd).trim().to_string(),
+                format!("PATH {}", icons.path).trim().to_string(),
+                format!("ARGS {}", icons.args).trim().to_string(),
+                format!("PORTS {}", icons.ports).trim().to_string(),
+            ],
         }
     }
 
@@ -175,13 +169,8 @@ impl ProcessTableComponent {
             ])
             .style(row_style)
         });
-        let headers = if self.use_icons {
-            TABLE_HEADERS_ICONS
-        } else {
-            TABLE_HEADERS_PLAIN
-        };
         let table = Table::new(rows, TABLE_WIDTHS)
-            .header(Row::new(headers))
+            .header(Row::new(self.headers.iter().map(|r| r.as_str())))
             .block(
                 Block::default()
                     .title_position(self.theme.title.position)

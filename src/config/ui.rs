@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 use ratatui::{
     layout::{Alignment, Margin},
     style::{Color, Modifier, Style, Stylize, palette::tailwind},
@@ -8,8 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq)]
 pub struct UIConfig {
     #[serde(default)]
-    //TODO: add warning about removal
-    pub use_icons: bool,
+    pub use_icons: Option<bool>,
     #[serde(default)]
     pub icons: IconConfig,
     #[serde(default)]
@@ -51,7 +52,7 @@ impl IconsStruct {
             path: "".to_string(),
             args: "󱃼".to_string(),
             ports: "".to_string(),
-            search_prompt: "".to_string(),
+            search_prompt: "".to_string(),
         }
     }
 }
@@ -66,12 +67,15 @@ pub enum IconConfig {
     Custom(IconsStruct),
 }
 
+static ASCII_CONFIG: OnceLock<IconsStruct> = OnceLock::new();
+static NERD_FONT_V3_CONFIG: OnceLock<IconsStruct> = OnceLock::new();
+
 impl IconConfig {
-    pub fn get_icons(&self) -> IconsStruct {
+    pub fn get_icons(&self) -> &IconsStruct {
         match self {
-            IconConfig::Ascii => IconsStruct::ascii(),
-            IconConfig::NerdFontV3 => IconsStruct::nerd_font_v3(),
-            IconConfig::Custom(icons) => icons.clone(),
+            IconConfig::Ascii => ASCII_CONFIG.get_or_init(IconsStruct::ascii),
+            IconConfig::NerdFontV3 => NERD_FONT_V3_CONFIG.get_or_init(IconsStruct::nerd_font_v3),
+            IconConfig::Custom(icons) => icons,
         }
     }
 }
@@ -262,7 +266,7 @@ pub struct SearchBarTheme {
 impl Default for SearchBarTheme {
     fn default() -> Self {
         Self {
-            style: Style::default().add_modifier(Modifier::UNDERLINED),
+            style: Style::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
         }
     }

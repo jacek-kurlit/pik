@@ -27,6 +27,7 @@ serde_regex = "1.1"
 fuzzy-matcher = "0.3.7"
 itertools = "0.14"
 regex = "1.11"
+unicode-width = "0.2"
 
 [dev-dependencies]
 http-test-server = "2.1.1"

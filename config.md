@@ -56,7 +56,7 @@ end_symbol = "↓"
 margin = {horizontal = 0, vertical = 1}
 
 [ui.search_bar]
-style = { add_modifier = "UNDERLINED"}
+# style = {}
 cursor_style = {add_modifier = "REVERSED"}
 ```
 
