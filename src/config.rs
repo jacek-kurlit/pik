@@ -110,8 +110,8 @@ mod tests {
         widgets::{BorderType, block::Position},
     };
     use ui::{
-        BorderTheme, CellTheme, ProcessDetailsTheme, RowTheme, ScrollbarTheme, TableTheme,
-        TitleTheme,
+        BorderTheme, CellTheme, ProcessDetailsTheme, RowTheme, ScrollbarTheme, SearchBarTheme,
+        TableTheme, TitleTheme,
     };
 
     use super::*;
@@ -190,6 +190,10 @@ mod tests {
                                 horizontal: 0
                             }
                         }
+                    },
+                    search_bar: SearchBarTheme {
+                        style: Style::default().add_modifier(Modifier::UNDERLINED),
+                        cursor_style: Style::default().add_modifier(Modifier::REVERSED)
                     }
                 }
             })
@@ -252,6 +256,10 @@ mod tests {
             begin_symbol = "^"
             end_symbol = "v"
             margin = {horizontal = 2, vertical = 3}
+
+            [ui.search_bar]
+            style = {fg = "#6366f1", add_modifier = "UNDERLINED | ITALIC"}
+            cursor_style = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
             "##,
         )
         .unwrap();
@@ -339,6 +347,16 @@ mod tests {
                                 vertical: 3
                             }
                         }
+                    },
+                    search_bar: SearchBarTheme {
+                        style: Style::default()
+                            .fg(tailwind::INDIGO.c500)
+                            .italic()
+                            .underlined(),
+                        cursor_style: Style::default()
+                            .fg(tailwind::CYAN.c200)
+                            .bg(tailwind::CYAN.c600)
+                            .crossed_out(),
                     }
                 }
             }

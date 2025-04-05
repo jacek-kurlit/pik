@@ -5,7 +5,7 @@ use ratatui::{
 };
 use tui_textarea::{CursorMove, TextArea};
 
-use crate::tui::LayoutRects;
+use crate::{config::ui::SearchBarTheme, tui::LayoutRects};
 
 pub struct SearchBarComponent {
     search_area: TextArea<'static>,
@@ -13,8 +13,10 @@ pub struct SearchBarComponent {
 
 impl SearchBarComponent {
     #[allow(clippy::new_without_default)]
-    pub fn new(initial_query: String) -> Self {
+    pub fn new(initial_query: String, theme: &SearchBarTheme) -> Self {
         let mut search_area = TextArea::default();
+        search_area.set_cursor_line_style(theme.style);
+        search_area.set_cursor_style(theme.cursor_style);
         search_area.insert_str(&initial_query);
         Self { search_area }
     }
