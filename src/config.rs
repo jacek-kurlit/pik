@@ -157,6 +157,17 @@ mod tests {
                         cell: CellTheme {
                             normal: Style::default(),
                             highlighted: Style::new().bg(Color::Yellow).italic(),
+                        },
+                        scrollbar: ScrollbarTheme {
+                            style: Style::default(),
+                            thumb_symbol: None,
+                            track_symbol: Some("│".to_string()),
+                            begin_symbol: Some("↑".to_string()),
+                            end_symbol: Some("↓".to_string()),
+                            margin: Margin {
+                                vertical: 1,
+                                horizontal: 0,
+                            },
                         }
                     },
                     process_details: ProcessDetailsTheme {
@@ -218,6 +229,14 @@ mod tests {
             normal = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
             highlighted = {fg = "#fff7ed", bg = "#fb923c", add_modifier = "UNDERLINED"}
 
+            [ui.process_table.scrollbar]
+            style = {fg = "#f472b6", bg = "#4c1d95", add_modifier = "BOLD"}
+            thumb_symbol = "x"
+            track_symbol = "y"
+            begin_symbol = "z"
+            end_symbol = "q"
+            margin = {horizontal = 10, vertical = 20}
+
             [ui.process_details.title]
             alignment = "center"
             position = "bottom"
@@ -278,6 +297,20 @@ mod tests {
                                 .fg(tailwind::ORANGE.c50)
                                 .bg(tailwind::ORANGE.c400)
                                 .underlined(),
+                        },
+                        scrollbar: ScrollbarTheme {
+                            style: Style::new()
+                                .fg(tailwind::PINK.c400)
+                                .bg(tailwind::VIOLET.c900)
+                                .bold(),
+                            thumb_symbol: Some("x".to_string()),
+                            track_symbol: Some("y".to_string()),
+                            begin_symbol: Some("z".to_string()),
+                            end_symbol: Some("q".to_string()),
+                            margin: Margin {
+                                vertical: 20,
+                                horizontal: 10
+                            }
                         }
                     },
                     process_details: ProcessDetailsTheme {

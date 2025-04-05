@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::{Constraint, Margin},
+    layout::Constraint,
     text::{Line, Span},
     widgets::{
         Block, Borders, HighlightSpacing, Row, Scrollbar, ScrollbarOrientation, ScrollbarState,
@@ -199,15 +199,16 @@ impl ProcessTableComponent {
             .highlight_symbol(self.theme.row.selected_symbol.as_str())
             .highlight_spacing(HighlightSpacing::Always);
         f.render_stateful_widget(table, area, &mut self.process_table);
+
         f.render_stateful_widget(
             Scrollbar::default()
                 .orientation(ScrollbarOrientation::VerticalRight)
-                .begin_symbol(None)
-                .end_symbol(None),
-            area.inner(Margin {
-                vertical: 1,
-                horizontal: 1,
-            }),
+                .style(self.theme.scrollbar.style)
+                .thumb_symbol(self.theme.scrollbar.thumb_symbol.as_deref().unwrap_or(""))
+                .track_symbol(self.theme.scrollbar.track_symbol.as_deref())
+                .begin_symbol(self.theme.scrollbar.begin_symbol.as_deref())
+                .end_symbol(self.theme.scrollbar.end_symbol.as_deref()),
+            area.inner(self.theme.scrollbar.margin),
             &mut self.process_table_scroll_state,
         );
     }

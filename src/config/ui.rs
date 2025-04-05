@@ -1,7 +1,6 @@
 use ratatui::{
     layout::{Alignment, Margin},
     style::{Color, Modifier, Style, Stylize, palette::tailwind},
-    symbols::block,
     widgets::{BorderType, block::Position},
 };
 use serde::{Deserialize, Serialize};
@@ -26,6 +25,8 @@ pub struct TableTheme {
     pub row: RowTheme,
     #[serde(default)]
     pub cell: CellTheme,
+    #[serde(default)]
+    pub scrollbar: ScrollbarTheme,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
@@ -166,11 +167,14 @@ impl Default for ScrollbarTheme {
     fn default() -> Self {
         Self {
             style: Style::default(),
-            thumb_symbol: Some(block::HALF.to_string()),
-            track_symbol: Some("║".to_string()),
-            begin_symbol: Some("▲".to_string()),
-            end_symbol: Some("▼".to_string()),
-            margin: Margin::default(),
+            thumb_symbol: None,
+            track_symbol: Some("│".to_string()),
+            begin_symbol: Some("↑".to_string()),
+            end_symbol: Some("↓".to_string()),
+            margin: Margin {
+                vertical: 1,
+                horizontal: 0,
+            },
         }
     }
 }
