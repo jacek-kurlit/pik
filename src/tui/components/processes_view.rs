@@ -42,7 +42,7 @@ impl ProcessesViewComponent {
             process_details_component: ProcessDetailsComponent::new(
                 ui_config.process_details.clone(),
             ),
-            search_bar: SearchBarComponent::new(initial_query),
+            search_bar: SearchBarComponent::new(initial_query, &ui_config.search_bar),
         };
         component.search_for_processess();
         Ok(component)

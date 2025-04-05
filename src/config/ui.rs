@@ -13,6 +13,8 @@ pub struct UIConfig {
     pub process_table: TableTheme,
     #[serde(default)]
     pub process_details: ProcessDetailsTheme,
+    #[serde(default)]
+    pub search_bar: SearchBarTheme,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
@@ -31,9 +33,9 @@ pub struct TableTheme {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub struct BorderTheme {
-    #[serde(with = "StyleDef")]
+    #[serde(default, with = "StyleDef")]
     pub style: Style,
-    #[serde(with = "BorderTypeDef", rename = "type")]
+    #[serde(default, with = "BorderTypeDef", rename = "type")]
     pub _type: BorderType,
 }
 
@@ -48,20 +50,21 @@ impl Default for BorderTheme {
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq, Eq, Clone)]
 pub struct TitleTheme {
-    #[serde(with = "AlignmentDef")]
+    #[serde(default, with = "AlignmentDef")]
     pub alignment: Alignment,
-    #[serde(with = "PositionDef")]
+    #[serde(default, with = "PositionDef")]
     pub position: Position,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct RowTheme {
-    #[serde(with = "StyleDef")]
+    #[serde(default, with = "StyleDef")]
     pub even: Style,
-    #[serde(with = "StyleDef")]
+    #[serde(default, with = "StyleDef")]
     pub odd: Style,
-    #[serde(with = "StyleDef")]
+    #[serde(default, with = "StyleDef")]
     pub selected: Style,
+    #[serde(default)]
     pub selected_symbol: String,
 }
 
@@ -86,7 +89,7 @@ impl Default for RowTheme {
 pub struct CellTheme {
     #[serde(default, with = "StyleDef")]
     pub normal: Style,
-    #[serde(with = "StyleDef")]
+    #[serde(default, with = "StyleDef")]
     pub highlighted: Style,
 }
 
@@ -187,6 +190,23 @@ pub struct ProcessDetailsTheme {
     pub border: BorderTheme,
     #[serde(default)]
     pub scrollbar: ScrollbarTheme,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct SearchBarTheme {
+    #[serde(default, with = "StyleDef")]
+    pub style: Style,
+    #[serde(default, with = "StyleDef")]
+    pub cursor_style: Style,
+}
+
+impl Default for SearchBarTheme {
+    fn default() -> Self {
+        Self {
+            style: Style::default().add_modifier(Modifier::UNDERLINED),
+            cursor_style: Style::default().add_modifier(Modifier::REVERSED),
+        }
+    }
 }
 
 #[cfg(test)]
