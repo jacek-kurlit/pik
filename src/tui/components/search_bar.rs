@@ -62,7 +62,7 @@ impl SearchBarComponent {
     pub fn render(&mut self, f: &mut Frame, layout: &LayoutRects) {
         let rects =
             Layout::horizontal([Constraint::Length(2), Constraint::Min(2)]).split(layout.top_bar);
-        f.render_widget(Paragraph::new("> "), rects[0]);
+        f.render_widget(Paragraph::new(">"), rects[0]);
         f.render_widget(&self.search_area, rects[1]);
     }
 }

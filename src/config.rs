@@ -19,6 +19,7 @@ fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
     toml::from_str(&raw_toml)
         .map(|mut config: AppConfig| {
             if let Some(use_icons) = config.use_icons {
+                //TODO: remove
                 println!("### WARNING ####");
                 println!("use_icons is deprecated and will be removed in future. Please use ui.use_icons instead");
                 config.ui.use_icons = use_icons;
@@ -133,6 +134,7 @@ mod tests {
                 },
                 ui: UIConfig {
                     use_icons: false,
+                    icons: ui::IconConfig::Ascii,
                     process_table: TableTheme {
                         title: TitleTheme {
                             alignment: Alignment::Left,
@@ -214,6 +216,7 @@ mod tests {
 
             [ui]
             use_icons = true
+            icons = "nerd_font_v3"
 
             [ui.process_table.title]
             alignment = "right"
@@ -275,6 +278,7 @@ mod tests {
                 },
                 ui: UIConfig {
                     use_icons: true,
+                    icons: ui::IconConfig::NerdFontV3,
                     process_table: TableTheme {
                         title: TitleTheme {
                             alignment: Alignment::Right,

@@ -8,13 +8,72 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq)]
 pub struct UIConfig {
     #[serde(default)]
+    //TODO: add warning about removal
     pub use_icons: bool,
+    #[serde(default)]
+    pub icons: IconConfig,
     #[serde(default)]
     pub process_table: TableTheme,
     #[serde(default)]
     pub process_details: ProcessDetailsTheme,
     #[serde(default)]
     pub search_bar: SearchBarTheme,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
+pub struct IconsStruct {
+    pub user: String,
+    pub pid: String,
+    pub parent: String,
+    pub time: String,
+    pub cmd: String,
+    pub path: String,
+    pub args: String,
+    pub ports: String,
+    pub search_prompt: String,
+}
+
+impl IconsStruct {
+    pub fn ascii() -> Self {
+        Self {
+            search_prompt: ">".to_string(),
+            ..Default::default()
+        }
+    }
+
+    pub fn nerd_font_v3() -> Self {
+        Self {
+            user: "󰋦".to_string(),
+            pid: "".to_string(),
+            parent: "󱖁".to_string(),
+            time: "".to_string(),
+            cmd: "󱃸".to_string(),
+            path: "".to_string(),
+            args: "󱃼".to_string(),
+            ports: "".to_string(),
+            search_prompt: "".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
+pub enum IconConfig {
+    #[default]
+    Ascii,
+    NerdFontV3,
+    Custom(IconsStruct),
+}
+
+impl IconConfig {
+    pub fn get_icons(&self) -> IconsStruct {
+        match self {
+            IconConfig::Ascii => IconsStruct::ascii(),
+            IconConfig::NerdFontV3 => IconsStruct::nerd_font_v3(),
+            IconConfig::Custom(icons) => icons.clone(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
