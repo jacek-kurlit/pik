@@ -18,10 +18,12 @@ fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
         .with_context(|| format!("Failed to load config from file: {:?}", path))?;
     toml::from_str(&raw_toml)
         .map(|mut config: AppConfig| {
-            if let Some(use_icons) = config.use_icons {
+            if config.ui.use_icons.is_some() {
                 println!("### WARNING ####");
-                println!("use_icons is deprecated and will be removed in future. Please use ui.use_icons instead");
-                config.ui.use_icons = use_icons;
+                println!("ui.use_icons is deprecated and will be removed in future. Please use ui.icons instead");
+                if !matches!(config.ui.icons, IconConfig::Custom(_)) {
+                    config.ui.icons = IconConfig::NerdFontV3;
+                }
             }
             config
         })
@@ -30,13 +32,12 @@ fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
 
 use regex::Regex;
 use serde::Deserialize;
-use ui::UIConfig;
+use ui::{IconConfig, UIConfig};
 
 #[derive(Debug, Default, PartialEq, Eq, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
     pub screen_size: ScreenSize,
-    pub use_icons: Option<bool>,
     #[serde(default)]
     pub ignore: IgnoreConfig,
     #[serde(default)]
@@ -125,14 +126,14 @@ mod tests {
             default_settings,
             Ok(AppConfig {
                 screen_size: ScreenSize::Height(DEFAULT_SCREEN_SIZE),
-                use_icons: None,
                 ignore: IgnoreConfig {
                     paths: vec![],
                     other_users: true,
                     threads: true
                 },
                 ui: UIConfig {
-                    use_icons: false,
+                    use_icons: None,
+                    icons: ui::IconConfig::Ascii,
                     process_table: TableTheme {
                         title: TitleTheme {
                             alignment: Alignment::Left,
@@ -192,7 +193,7 @@ mod tests {
                         }
                     },
                     search_bar: SearchBarTheme {
-                        style: Style::default().add_modifier(Modifier::UNDERLINED),
+                        style: Style::default(),
                         cursor_style: Style::default().add_modifier(Modifier::REVERSED)
                     }
                 }
@@ -205,7 +206,6 @@ mod tests {
         let overrided_settings: AppConfig = toml::from_str(
             r##"
             screen_size = "fullscreen"
-            use_icons = true
 
             [ignore]
             paths=["/usr/*"]
@@ -214,6 +214,7 @@ mod tests {
 
             [ui]
             use_icons = true
+            icons = "nerd_font_v3"
 
             [ui.process_table.title]
             alignment = "right"
@@ -267,14 +268,14 @@ mod tests {
             overrided_settings,
             AppConfig {
                 screen_size: ScreenSize::Fullscreen,
-                use_icons: Some(true),
                 ignore: IgnoreConfig {
                     paths: vec![Regex::new("/usr/*").unwrap()],
                     other_users: false,
                     threads: false
                 },
                 ui: UIConfig {
-                    use_icons: true,
+                    use_icons: Some(true),
+                    icons: ui::IconConfig::NerdFontV3,
                     process_table: TableTheme {
                         title: TitleTheme {
                             alignment: Alignment::Right,

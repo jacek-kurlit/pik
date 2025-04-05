@@ -9,16 +9,23 @@ use crate::{config::ui::SearchBarTheme, tui::LayoutRects};
 
 pub struct SearchBarComponent {
     search_area: TextArea<'static>,
+    prompt_box: Paragraph<'static>,
+    prompt_size: u16,
 }
 
 impl SearchBarComponent {
     #[allow(clippy::new_without_default)]
-    pub fn new(initial_query: String, theme: &SearchBarTheme) -> Self {
+    pub fn new(initial_query: String, theme: &SearchBarTheme, prompt_icon: &str) -> Self {
         let mut search_area = TextArea::default();
         search_area.set_cursor_line_style(theme.style);
         search_area.set_cursor_style(theme.cursor_style);
         search_area.insert_str(&initial_query);
-        Self { search_area }
+        let prompt = format!("{} ", prompt_icon);
+        Self {
+            search_area,
+            prompt_size: unicode_width::UnicodeWidthStr::width_cjk(prompt.as_str()) as u16,
+            prompt_box: Paragraph::new(prompt).style(theme.style),
+        }
     }
 
     pub fn move_cursor(&mut self, direction: CursorMove) {
@@ -60,9 +67,9 @@ impl SearchBarComponent {
     }
 
     pub fn render(&mut self, f: &mut Frame, layout: &LayoutRects) {
-        let rects =
-            Layout::horizontal([Constraint::Length(2), Constraint::Min(2)]).split(layout.top_bar);
-        f.render_widget(Paragraph::new("> "), rects[0]);
+        let rects = Layout::horizontal([Constraint::Length(self.prompt_size), Constraint::Min(2)])
+            .split(layout.top_bar);
+        f.render_widget(&self.prompt_box, rects[0]);
         f.render_widget(&self.search_area, rects[1]);
     }
 }

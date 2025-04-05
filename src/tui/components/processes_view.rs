@@ -34,7 +34,7 @@ impl ProcessesViewComponent {
             ignore_options,
             search_results: ProcessSearchResults::empty(),
             process_table_component: ProcessTableComponent::new(
-                ui_config.use_icons,
+                ui_config.icons.get_icons(),
                 // cloning for sake of simplicity
                 ui_config.process_table.clone(),
             ),
@@ -42,7 +42,11 @@ impl ProcessesViewComponent {
             process_details_component: ProcessDetailsComponent::new(
                 ui_config.process_details.clone(),
             ),
-            search_bar: SearchBarComponent::new(initial_query, &ui_config.search_bar),
+            search_bar: SearchBarComponent::new(
+                initial_query,
+                &ui_config.search_bar,
+                ui_config.icons.get_icons().search_prompt.as_str(),
+            ),
         };
         component.search_for_processess();
         Ok(component)
