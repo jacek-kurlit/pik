@@ -34,6 +34,30 @@ selected = { fg = "#60A5FA", add_modifier = "REVERSED" }
 [ui.process_table.cell]
 # normal = {}
 highlighted = { bg = "Yellow", add_modifier = "ITALIC" }
+
+[ui.process_table.scrollbar]
+# style = {}
+# thumb_symbol = None
+track_symbol = "│"
+begin_symbol = "↑"
+end_symbol = "↓"
+margin = {horizontal = 0, vertical = 1}
+
+[ui.process_details]
+title = { alignment = "left", position = "top" }
+border = { type = "rounded", style = {fg = "#60A5FA"}}
+
+[ui.process_details.scrollbar]
+# style = {}
+# thumb_symbol = None
+track_symbol = "│"
+begin_symbol = "↑"
+end_symbol = "↓"
+margin = {horizontal = 0, vertical = 1}
+
+[ui.search_bar]
+style = { add_modifier = "UNDERLINED"}
+cursor_style = {add_modifier = "REVERSED"}
 ```
 
 ## General options
@@ -58,24 +82,47 @@ Regex are defined using the [regex create](https://docs.rs/regex/latest/regex)
 
 These properties are toml table under `[ui]` section
 
-| Field     | Description            | Possible values |
-| --------- | ---------------------- | --------------- |
-| use_icons | Use Nerd font v3 icons | true, false     |
+| Field           | Description                   | Possible values |
+| --------------- | ----------------------------- | --------------- |
+| use_icons       | Use Nerd font v3 icons        | true, false     |
+| process_table   | Process Table Configuration   | See below       |
+| process_details | Process Details Configuration | See below       |
+| search_bar      | Search bar Configuration      | See below       |
 
 ### Process table
 
 These properties are toml table under `[ui.process_table]` section
 
-| Field  | Description                | Possible values |
-| ------ | -------------------------- | --------------- |
-| title  | Title configuration        | See below       |
-| border | Border configuration       | See below       |
-| row    | Row styling configuration  | See below       |
-| cell   | Cell styling configuration | See below       |
+| Field     | Description                     | Possible values |
+| --------- | ------------------------------- | --------------- |
+| title     | Title configuration             | See below       |
+| border    | Border configuration            | See below       |
+| row       | Row styling configuration       | See below       |
+| cell      | Cell styling configuration      | See below       |
+| scrollbar | Scrollbar styling configuration | See below       |
+
+### Process details
+
+These properties are toml table under `[ui.process_details]` section
+
+| Field     | Description                     | Possible values |
+| --------- | ------------------------------- | --------------- |
+| title     | Title configuration             | See below       |
+| border    | Border configuration            | See below       |
+| scrollbar | Scrollbar styling configuration | See below       |
+
+### Search bar
+
+These properties are toml table under `[ui.search_bar]` section
+
+| Field        | Description                | Possible values |
+| ------------ | -------------------------- | --------------- |
+| style        | Style configuration        | See below       |
+| cursor_style | Cursor style configuration | See below       |
 
 #### Title Configuration
 
-These properties are toml table under `[ui.process_table.title]` section
+Title can be configured with these properties:
 
 | Field     | Description                 | Possible values           |
 | --------- | --------------------------- | ------------------------- |
@@ -84,16 +131,16 @@ These properties are toml table under `[ui.process_table.title]` section
 
 #### Border Configuration
 
-These properties are toml table under `[ui.process_table.border]` section
+Border can be configured with these properties:
 
-| Field | Description                 | Possible values                                                            |
-| ----- | --------------------------- | -------------------------------------------------------------------------- |
+| Field | Description                 | Possible values                                                              |
+| ----- | --------------------------- | ---------------------------------------------------------------------------- |
 | type  | Style of border to display  | "plain", "rounded", "double", "thick", "quadrant_inside", "quadrant_outside" |
-| style | Border color and formatting | Style configuration (see below)                                            |
+| style | Border color and formatting | Style configuration (see below)                                              |
 
 #### Row Configuration
 
-These properties are toml table under `[ui.process_table.row]` section
+Row can be configured with these properties:
 
 | Field           | Description                      | Possible values     |
 | --------------- | -------------------------------- | ------------------- |
@@ -104,12 +151,32 @@ These properties are toml table under `[ui.process_table.row]` section
 
 #### Cell Configuration
 
-These properties are toml table under `[ui.process_table.cell]` section
+Cell can be configured with these properties:
 
 | Field       | Description                 | Possible values     |
 | ----------- | --------------------------- | ------------------- |
 | normal      | Base style for cells        | Style configuration |
 | highlighted | Style for highlighted cells | Style configuration |
+
+#### Scrollbar Configuration
+
+Scrollbar can be configured with these properties:
+
+| Field  | Description              | Possible values      |
+| ------ | ------------------------ | -------------------- |
+| style  | Base style for scrollbar | Style configuration  |
+| thumb  | Thumb symbol             | String               |
+| track  | Track symbol             | String               |
+| begin  | Begin symbol             | String               |
+| end    | End symbol               | String               |
+| margin | Margin for scrollbar     | Margin configuration |
+
+<--▮------->
+^ ^ ^ ^
+│ │ │ └ end
+│ │ └──── track
+│ └──────── thumb
+└─────────── begin
 
 #### Style Configuration
 
@@ -122,3 +189,12 @@ Styles can be configured with these properties:
 | add_modifier    | Text modifiers to add     | "BOLD", "DIM", "ITALIC", "UNDERLINED", "SLOW_BLINK", "RAPID_BLINK", "REVERSED", "HIDDEN", "CROSSED_OUT" |
 | sub_modifier    | Text modifiers to remove  | Same as add_modifier                                                                                    |
 | underline_color | Color for underlined text | Color name or hex code                                                                                  |
+
+#### Margin Configuration
+
+Margin can be configured with these properties:
+
+| Field      | Description                        | Possible values |
+| ---------- | ---------------------------------- | --------------- |
+| vertical   | Vertical margin (top and bottom)   | u16             |
+| horizontal | Horizontal margin (left and right) | u16             |
