@@ -1,5 +1,5 @@
-use ratatui::crossterm::event::KeyEvent;
 use ratatui::Frame;
+use ratatui::crossterm::event::KeyEvent;
 
 use super::LayoutRects;
 
