@@ -6,7 +6,7 @@ use components::{
     help_footer::HelpFooterComponent, help_popup::HelpPopupComponent,
     processes_view::ProcessesViewComponent,
 };
-use crossterm::{
+use ratatui::crossterm::{
     event::{self, Event, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode},
 };

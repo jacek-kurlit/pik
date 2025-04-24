@@ -1,4 +1,4 @@
-use crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyEvent;
 use ratatui::Frame;
 
 use super::LayoutRects;
