@@ -1,4 +1,5 @@
 use anyhow::Result;
+use arboard::Clipboard;
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_textarea::CursorMove;
@@ -21,6 +22,7 @@ pub struct ProcessesViewComponent {
     process_table_component: ProcessTableComponent,
     process_details_component: ProcessDetailsComponent,
     search_bar: SearchBarComponent,
+    clipboard: Clipboard,
 }
 
 impl ProcessesViewComponent {
@@ -47,6 +49,7 @@ impl ProcessesViewComponent {
                 &ui_config.search_bar,
                 ui_config.icons.get_icons().search_prompt.as_str(),
             ),
+            clipboard: Clipboard::new()?,
         };
         component.search_for_processess();
         Ok(component)
@@ -136,6 +139,15 @@ impl ProcessesViewComponent {
         self.search_bar.set_search_text(&search_string);
         self.search_for_processess()
     }
+
+    fn copy_pid_to_clipboard(&mut self) -> KeyAction {
+        if let Some(prc) = self.get_selected_process() {
+            self.clipboard
+                .set_text(format!("{}", prc.pid))
+                .expect("Failed to copy pid");
+        }
+        KeyAction::Consumed
+    }
 }
 
 impl Component for ProcessesViewComponent {
@@ -165,6 +177,9 @@ impl Component for ProcessesViewComponent {
             }
             Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 return self.search_for_processess();
+            }
+            Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                return self.copy_pid_to_clipboard();
             }
             Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
                 self.enforce_search_by(ProcessRelatedSearch::Parent);
