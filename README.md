@@ -116,24 +116,24 @@ Most of config fields have cli arg equivalent. If both are set cli arg is prefer
 Run `pik -- --help` to see cli options
 Please refer to [config](config.md) for more details about configuration options
 
-
 ### Key maps
 
-| Key(s)                                   | Action                    |
-| ---------------------------------------- | ------------------------- |
-| `Esc` \| `Ctrl + C`                      | Quit                      |
-| `Ctrl + X`                               | Kill process              |
-| `Ctrl + R`                               | Refresh processes list    |
-| `Ctrl + F`                               | Details forward           |
-| `Ctrl + B`                               | Details backward          |
-| `Tab` \| `Shift + Tab`                   | Select next/previous      |
-| `Arrow Down` \| `Arrow Up`               | Select next/previous      |
-| `Ctrl + J` \| `Ctrl + K`                 | Select next/previous      |
-| `Ctrl + N` \| `Ctrl + P`                 | Select next/previous      |
-| `Ctrl + Arrow Down` \| `Ctrl + Arrow Up` | Select last/first         |
-| `Alt + P`                                | Select parent process     |
-| `Alt + F`                                | Select familly processes  |
-| `Alt + S`                                | Select siblings processes |
+| Key(s)                                   | Action                        |
+| ---------------------------------------- | ----------------------------- |
+| `Esc` \| `Ctrl + C`                      | Quit                          |
+| `Ctrl + X`                               | Kill process                  |
+| `Ctrl + R`                               | Refresh processes list        |
+| `Ctrl + F`                               | Details forward               |
+| `Ctrl + B`                               | Details backward              |
+| `Ctrl + Y`                               | Copy process pid to clipboard |
+| `Tab` \| `Shift + Tab`                   | Select next/previous          |
+| `Arrow Down` \| `Arrow Up`               | Select next/previous          |
+| `Ctrl + J` \| `Ctrl + K`                 | Select next/previous          |
+| `Ctrl + N` \| `Ctrl + P`                 | Select next/previous          |
+| `Ctrl + Arrow Down` \| `Ctrl + Arrow Up` | Select last/first             |
+| `Alt + P`                                | Select parent process         |
+| `Alt + F`                                | Select familly processes      |
+| `Alt + S`                                | Select siblings processes     |
 
 ## Caveats
 
