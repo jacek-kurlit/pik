@@ -795,7 +795,7 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
 name = "pik"
-version = "0.20.0"
+version = "0.21.0"
 dependencies = [
  "anyhow",
  "arboard",
