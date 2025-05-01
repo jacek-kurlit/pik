@@ -24,7 +24,7 @@ impl HelpFooterComponent {
     }
 }
 
-const HELP_TEXT: &str = "ESC/<C+C> quit | <C+X> kill process | <C+R> refresh | <C+F> details forward | <C+B> details backward ";
+const HELP_TEXT: &str = "ESC/<C+C> quit | <C+X> kill process | <C+H> toggle help ";
 
 impl Component for HelpFooterComponent {
     fn render(&mut self, f: &mut ratatui::Frame, layout: &LayoutRects) {

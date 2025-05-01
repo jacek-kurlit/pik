@@ -32,8 +32,8 @@ impl App {
             //Rendering is done in reverse
             //It allows for popups to be rendered on top but they handle input first
             components: vec![
+                Box::new(HelpPopupComponent::new(&app_settings.ui_config)),
                 Box::new(GeneralInputHandlerComponent),
-                Box::new(HelpPopupComponent::default()),
                 Box::new(HelpFooterComponent::default()),
                 Box::new(ProcessesViewComponent::new(
                     &app_settings.ui_config,

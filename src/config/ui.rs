@@ -2,7 +2,10 @@ use std::sync::OnceLock;
 
 use ratatui::{
     layout::{Alignment, Margin},
-    style::{Color, Modifier, Style, Stylize, palette::tailwind},
+    style::{
+        Color, Modifier, Style, Stylize,
+        palette::tailwind::{self, SLATE},
+    },
     widgets::{BorderType, block::Position},
 };
 use serde::{Deserialize, Serialize};
@@ -19,6 +22,8 @@ pub struct UIConfig {
     pub process_details: ProcessDetailsTheme,
     #[serde(default)]
     pub search_bar: SearchBarTheme,
+    #[serde(default)]
+    pub popups: PopupsTheme,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
@@ -268,6 +273,32 @@ impl Default for SearchBarTheme {
         Self {
             style: Style::default(),
             cursor_style: Style::default().add_modifier(Modifier::REVERSED),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct PopupsTheme {
+    #[serde(default)]
+    pub border: BorderTheme,
+    #[serde(default, with = "StyleDef")]
+    pub selected_row: Style,
+    #[serde(default, with = "StyleDef")]
+    pub primary: Style,
+    #[serde(default, with = "StyleDef")]
+    pub secondary: Style,
+}
+
+impl Default for PopupsTheme {
+    fn default() -> Self {
+        Self {
+            border: BorderTheme {
+                style: Style::new().fg(tailwind::GREEN.c400),
+                ..Default::default()
+            },
+            selected_row: Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD),
+            primary: Style::new().fg(tailwind::BLUE.c400),
+            secondary: Style::default(),
         }
     }
 }
