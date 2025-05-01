@@ -118,22 +118,23 @@ Please refer to [config](config.md) for more details about configuration options
 
 ### Key maps
 
-| Key(s)                                   | Action                        |
-| ---------------------------------------- | ----------------------------- |
-| `Esc` \| `Ctrl + C`                      | Quit                          |
-| `Ctrl + X`                               | Kill process                  |
-| `Ctrl + R`                               | Refresh processes list        |
-| `Ctrl + F`                               | Details forward               |
-| `Ctrl + B`                               | Details backward              |
-| `Ctrl + Y`                               | Copy process pid to clipboard |
-| `Tab` \| `Shift + Tab`                   | Select next/previous          |
-| `Arrow Down` \| `Arrow Up`               | Select next/previous          |
-| `Ctrl + J` \| `Ctrl + K`                 | Select next/previous          |
-| `Ctrl + N` \| `Ctrl + P`                 | Select next/previous          |
-| `Ctrl + Arrow Down` \| `Ctrl + Arrow Up` | Select last/first             |
-| `Alt + P`                                | Select parent process         |
-| `Alt + F`                                | Select familly processes      |
-| `Alt + S`                                | Select siblings processes     |
+| Key(s)                                                 | Action                        |
+| ------------------------------------------------------ | ----------------------------- |
+| <kbd>Esc</kbd> \| <kbd>Ctrl+C</kbd>                    | Quit                          |
+| <kbd>Ctrl+X</kbd>                                      | Kill process                  |
+| <kbd>Ctrl+R</kbd>                                      | Refresh processes list        |
+| <kbd>Ctrl+F</kbd>                                      | Details forward               |
+| <kbd>Ctrl+B</kbd>                                      | Details backward              |
+| <kbd>Ctrl+Y</kbd>                                      | Copy process pid to clipboard |
+| <kbd>Tab</kbd> \| <kbd>Shift+Tab</kbd>                 | Select next/previous          |
+| <kbd>Arrow Down</kbd> \| <kbd>Arrow Up</kbd>           | Select next/previous          |
+| <kbd>Ctrl+J</kbd> \| <kbd>Ctrl+K</kbd>                 | Select next/previous          |
+| <kbd>Ctrl+N</kbd> \| <kbd>Ctrl+P</kbd>                 | Select next/previous          |
+| <kbd>Ctrl+Arrow Down</kbd> \| <kbd>Ctrl+Arrow Up</kbd> | Select last/first             |
+| <kbd>Ctrl+End</kbd> \| <kbd>Ctrl+Home</kbd>            | Select last/first             |
+| <kbd>Alt+P</kbd>                                       | Select parent process         |
+| <kbd>Alt+F</kbd>                                       | Select familly processes      |
+| <kbd>Alt+S</kbd>                                       | Select siblings processes     |
 
 ## Caveats
 
