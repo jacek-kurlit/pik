@@ -1,4 +1,5 @@
 use ratatui::{
+    crossterm::event::{KeyCode::*, KeyEvent, KeyModifiers},
     layout::{Constraint, Flex, Layout, Rect},
     style::{
         Modifier, Style,
@@ -8,7 +9,7 @@ use ratatui::{
     widgets::{Block, BorderType, Clear, HighlightSpacing, List, ListState, Padding},
 };
 
-use super::Component;
+use super::{Component, KeyAction};
 
 #[derive(Default)]
 pub struct HelpPopupComponent {
@@ -16,51 +17,87 @@ pub struct HelpPopupComponent {
     list_state: ListState,
 }
 
+impl HelpPopupComponent {
+    pub fn new() -> Self {
+        Self {
+            is_open: false,
+            list_state: ListState::default().with_selected(Some(0)),
+        }
+    }
+}
+
 impl Component for HelpPopupComponent {
+    fn handle_input(&mut self, key: KeyEvent) -> KeyAction {
+        if matches!(key.code, Char('h') if key.modifiers.contains(KeyModifiers::CONTROL)) {
+            self.is_open = !self.is_open;
+            return KeyAction::Consumed;
+        }
+        if !self.is_open {
+            return KeyAction::Unhandled;
+        }
+        match key.code {
+            Up | Home if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.list_state.select_first()
+            }
+            Down | End if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.list_state.select_last()
+            }
+            Up | BackTab => self.list_state.select_previous(),
+            Down | Tab => self.list_state.select_next(),
+            Char('j') | Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.list_state.select_next();
+            }
+            Char('k') | Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.list_state.select_previous();
+            }
+            Esc => {
+                self.is_open = false;
+            }
+            _ => (),
+        }
+        //consume all keys if popup is open
+        KeyAction::Consumed
+    }
+
     fn render(&mut self, frame: &mut ratatui::Frame, _layout: &crate::tui::LayoutRects) {
-        //TODO: TBD
         if !self.is_open {
             return;
         }
         let area = frame.area();
-        self.list_state.select_first();
 
-        //TODO: user may have full screen so this should be dynamic
-        //on full screen we may not need scroll at all
         let block = Block::bordered()
-            .title_top(Line::from("Keybindings").centered())
-            .title_bottom(Line::from("Press <Esc> to close").centered())
+            .title_top(Line::from(" Keybindings ").centered())
+            .title_bottom(Line::from(" Press <Esc> to close ").centered())
             .padding(Padding::left(1))
             .border_style(Style::new().fg(tailwind::GREEN.c400))
             .border_type(BorderType::Rounded);
-        // Create a List from all list items and highlight the currently selected one
-        //TODO: consider to add categories like process table/search bar etc
         let items = key_mapping_list(&[
             ("<C-x>", "Kill selected process"),
             ("<Esc>", "Close/Quit"),
             ("<C-c>", "Close/Quit"),
+            ("<C-h>", "Toggle help popup"),
             ("<C-r>", "Refresh process list"),
             ("<C-f>", "Process details scroll forward"),
             ("<C-b>", "Process details scroll backward"),
-            ("<Tab>", "Select next process"),
-            ("<S-Tab>", "Select previous process"),
-            ("<C-j>", "Select next process"),
-            ("<C-k>", "Select previous process"),
-            ("↓", "Select next process"),
-            ("↑", "Select previous process"),
-            ("<C-↓>", "Select last process"),
-            ("<C-↑>", "Select frist process"),
-            ("<PgDn>", "Jump 10 processes forward"),
-            ("<PgUp>", "Jump 10 processes backward"),
+            ("<Tab>", "Select next"),
+            ("<S-Tab>", "Select previous"),
+            ("<C-j>", "Select next"),
+            ("<C-k>", "Select previous"),
+            ("↓", "Select next"),
+            ("↑", "Select previous"),
+            ("<C-↓>", "Select last"),
+            ("<C-↑>", "Select frist"),
+            ("<C-End>", "Select last"),
+            ("<C-Home>", "Select frist"),
+            ("<PgDn>", "Jump 10 items forward"),
+            ("<PgUp>", "Jump 10 items backward"),
             ("<A-p>", "Select parent process"),
             ("<A-f>", "Select process family"),
             ("<A-s>", "Select siblings processes"),
-            ("<C-h>", "Toggle help popup"),
         ]);
         let list = List::new(items)
             .block(block)
             .highlight_style(Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD))
-            .highlight_symbol(">")
             .highlight_spacing(HighlightSpacing::Always);
 
         let area = popup_area(area, 30, 80);
@@ -70,7 +107,7 @@ impl Component for HelpPopupComponent {
 }
 
 //longest key binding
-const KEY_PADDING: usize = 7;
+const KEY_PADDING: usize = 8;
 fn key_mapping_list(mapping: &[(&'static str, &'static str)]) -> Vec<Line<'static>> {
     let key_style = Style::new().fg(tailwind::BLUE.c400);
     mapping
