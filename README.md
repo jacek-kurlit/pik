@@ -126,6 +126,7 @@ Please refer to [config](config.md) for more details about configuration options
 | <kbd>Ctrl+F</kbd>                                      | Details forward               |
 | <kbd>Ctrl+B</kbd>                                      | Details backward              |
 | <kbd>Ctrl+Y</kbd>                                      | Copy process pid to clipboard |
+| <kbd>Ctrl+H</kbd>                                      | Toggle help popup             |
 | <kbd>Tab</kbd> \| <kbd>Shift+Tab</kbd>                 | Select next/previous          |
 | <kbd>Arrow Down</kbd> \| <kbd>Arrow Up</kbd>           | Select next/previous          |
 | <kbd>Ctrl+J</kbd> \| <kbd>Ctrl+K</kbd>                 | Select next/previous          |

@@ -26,6 +26,7 @@ impl HelpPopupComponent {
             ("<C-x>", "Kill selected process"),
             ("<Esc>", "Close/Quit"),
             ("<C-c>", "Close/Quit"),
+            ("<C-y>", "Copy selected process pid"),
             ("<C-h>", "Toggle help popup"),
             ("<C-r>", "Refresh process list"),
             ("<C-f>", "Process details scroll forward"),
