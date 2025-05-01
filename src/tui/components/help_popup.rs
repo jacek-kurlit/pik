@@ -1,25 +1,27 @@
 use ratatui::{
     crossterm::event::{KeyCode::*, KeyEvent, KeyModifiers},
     layout::{Constraint, Flex, Layout, Rect},
-    style::{
-        Modifier, Style,
-        palette::tailwind::{self, SLATE},
-    },
     text::{Line, Span},
-    widgets::{Block, BorderType, Clear, HighlightSpacing, List, ListState, Padding},
+    widgets::{Block, Clear, HighlightSpacing, List, ListState, Padding},
 };
 
+use crate::config::ui::{PopupsTheme, UIConfig};
+
 use super::{Component, KeyAction};
+
+//longest key binding
+const KEY_PADDING: usize = 8;
 
 #[derive(Default)]
 pub struct HelpPopupComponent {
     is_open: bool,
     list_state: ListState,
     key_mappings: &'static [(&'static str, &'static str)],
+    theme: PopupsTheme,
 }
 
 impl HelpPopupComponent {
-    pub fn new() -> Self {
+    pub fn new(ui_config: &UIConfig) -> Self {
         let key_mappings = &[
             ("<C-x>", "Kill selected process"),
             ("<Esc>", "Close/Quit"),
@@ -48,7 +50,21 @@ impl HelpPopupComponent {
             is_open: false,
             list_state: ListState::default().with_selected(Some(0)),
             key_mappings,
+            theme: ui_config.popups.clone(),
         }
+    }
+
+    fn create_list_items(&self) -> Vec<Line<'static>> {
+        self.key_mappings
+            .iter()
+            .map(|(key, description)| {
+                Line::from(vec![
+                    Span::styled(format!("{:>KEY_PADDING$}  ", key), self.theme.primary),
+                    Span::styled(*description, self.theme.secondary),
+                ])
+                .left_aligned()
+            })
+            .collect()
     }
 }
 
@@ -95,33 +111,17 @@ impl Component for HelpPopupComponent {
             .title_top(Line::from(" Keybindings ").centered())
             .title_bottom(Line::from(" Press <Esc> to close ").centered())
             .padding(Padding::left(1))
-            .border_style(Style::new().fg(tailwind::GREEN.c400))
-            .border_type(BorderType::Rounded);
-        let list = List::new(as_list_lines(self.key_mappings))
+            .border_style(self.theme.border.style)
+            .border_type(self.theme.border._type);
+        let list = List::new(self.create_list_items())
             .block(block)
-            .highlight_style(Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD))
+            .highlight_style(self.theme.selected_row)
             .highlight_spacing(HighlightSpacing::Always);
 
         let area = popup_area(area, 30, 80);
         frame.render_widget(Clear, area); //this clears out the background
         frame.render_stateful_widget(list, area, &mut self.list_state);
     }
-}
-
-//longest key binding
-const KEY_PADDING: usize = 8;
-fn as_list_lines(mapping: &[(&'static str, &'static str)]) -> Vec<Line<'static>> {
-    let key_style = Style::new().fg(tailwind::BLUE.c400);
-    mapping
-        .iter()
-        .map(|(key, description)| {
-            Line::from(vec![
-                Span::styled(format!("{:>KEY_PADDING$}  ", key), key_style),
-                Span::raw(*description),
-            ])
-            .left_aligned()
-        })
-        .collect()
 }
 
 fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {

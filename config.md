@@ -57,6 +57,12 @@ margin = {horizontal = 0, vertical = 1}
 [ui.search_bar]
 # style = {}
 cursor_style = {add_modifier = "REVERSED"}
+
+[ui.popups]
+border = {type = "rounded", style = {fg = "#4ade80"}}
+selected_row = { bg = "#1e293b", add_modifier = "BOLD"}
+primary = { fg = "#60A5FA" }
+# secondary = {}
 ```
 
 ## General options
@@ -87,6 +93,7 @@ These properties are toml table under `[ui]` section
 | process_table   | Process Table Configuration   | See below       |
 | process_details | Process Details Configuration | See below       |
 | search_bar      | Search bar Configuration      | See below       |
+| popups          | Popups Configuration          | See below       |
 
 ### Icons Configuration
 
@@ -137,6 +144,17 @@ These properties are toml table under `[ui.search_bar]` section
 | ------------ | -------------------------- | --------------- |
 | style        | Style configuration        | See below       |
 | cursor_style | Cursor style configuration | See below       |
+
+### Popups
+
+These properties are toml table under `[ui.popups]` section
+
+| Field        | Description          | Possible values |
+| ------------ | -------------------- | --------------- |
+| border       | Border configuration | See below       |
+| selected_row | Style configuration  | See below       |
+| primary      | Style configuration  | See below       |
+| secondary    | Style configuration  | See below       |
 
 #### Title Configuration
 

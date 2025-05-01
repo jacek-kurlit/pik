@@ -107,13 +107,18 @@ mod tests {
 
     use ratatui::{
         layout::{Alignment, Margin},
-        style::{Color, Modifier, Style, Stylize, palette::tailwind},
+        style::{
+            Color, Modifier, Style, Stylize,
+            palette::tailwind::{self, SLATE},
+        },
         widgets::{BorderType, block::Position},
     };
     use ui::{
         BorderTheme, CellTheme, ProcessDetailsTheme, RowTheme, ScrollbarTheme, SearchBarTheme,
         TableTheme, TitleTheme,
     };
+
+    use crate::config::ui::PopupsTheme;
 
     use super::*;
 
@@ -195,6 +200,15 @@ mod tests {
                     search_bar: SearchBarTheme {
                         style: Style::default(),
                         cursor_style: Style::default().add_modifier(Modifier::REVERSED)
+                    },
+                    popups: PopupsTheme {
+                        border: BorderTheme {
+                            style: Style::default().fg(tailwind::GREEN.c400),
+                            _type: BorderType::Rounded
+                        },
+                        selected_row: Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD),
+                        primary: Style::new().fg(tailwind::BLUE.c400),
+                        secondary: Style::default(),
                     }
                 }
             })
@@ -261,6 +275,12 @@ mod tests {
             [ui.search_bar]
             style = {fg = "#6366f1", add_modifier = "UNDERLINED | ITALIC"}
             cursor_style = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
+
+            [ui.popups]
+            border = {type = "plain", style = {fg = "#6366f1", add_modifier = "BOLD | ITALIC"}}
+            selected_row = {fg = "#57534e", bg = "#fafaf9", add_modifier = "ITALIC"}
+            primary = {fg = "#f472b6", bg = "#4c1d95", add_modifier = "BOLD"}
+            secondary = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
             "##,
         )
         .unwrap();
@@ -355,6 +375,24 @@ mod tests {
                             .italic()
                             .underlined(),
                         cursor_style: Style::default()
+                            .fg(tailwind::CYAN.c200)
+                            .bg(tailwind::CYAN.c600)
+                            .crossed_out(),
+                    },
+                    popups: PopupsTheme {
+                        border: BorderTheme {
+                            style: Style::default().fg(tailwind::INDIGO.c500).bold().italic(),
+                            _type: BorderType::Plain
+                        },
+                        selected_row: Style::new()
+                            .fg(tailwind::STONE.c600)
+                            .bg(tailwind::STONE.c50)
+                            .italic(),
+                        primary: Style::default()
+                            .fg(tailwind::PINK.c400)
+                            .bg(tailwind::VIOLET.c900)
+                            .bold(),
+                        secondary: Style::new()
                             .fg(tailwind::CYAN.c200)
                             .bg(tailwind::CYAN.c600)
                             .crossed_out(),
