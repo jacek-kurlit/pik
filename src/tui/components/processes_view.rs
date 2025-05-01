@@ -154,36 +154,16 @@ impl Component for ProcessesViewComponent {
     fn handle_input(&mut self, key: KeyEvent) -> KeyAction {
         use KeyCode::*;
         match key.code {
-            Up | Home
-                if key
-                    .modifiers
-                    .contains(KeyModifiers::CONTROL) =>
-            {
-                self.select_first_row()
-            },
-            Down | End
-                if key
-                    .modifiers
-                    .contains(KeyModifiers::CONTROL) =>
-            {
-                self.select_last_row()
-            },
+            Up | Home if key.modifiers.contains(KeyModifiers::CONTROL) => self.select_first_row(),
+            Down | End if key.modifiers.contains(KeyModifiers::CONTROL) => self.select_last_row(),
             Up | BackTab => self.select_previous_row(1),
             Down | Tab => self.select_next_row(1),
             PageUp => self.select_previous_row(10),
             PageDown => self.select_next_row(10),
-            Char('j') | Char('n')
-                if key
-                    .modifiers
-                    .contains(KeyModifiers::CONTROL) =>
-            {
+            Char('j') | Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.select_next_row(1);
-            },
-            Char('k') | Char('p')
-                if key
-                    .modifiers
-                    .contains(KeyModifiers::CONTROL) =>
-            {
+            }
+            Char('k') | Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.select_previous_row(1);
             }
             Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => {
