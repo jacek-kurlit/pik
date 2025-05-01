@@ -15,13 +15,39 @@ use super::{Component, KeyAction};
 pub struct HelpPopupComponent {
     is_open: bool,
     list_state: ListState,
+    key_mappings: &'static [(&'static str, &'static str)],
 }
 
 impl HelpPopupComponent {
     pub fn new() -> Self {
+        let key_mappings = &[
+            ("<C-x>", "Kill selected process"),
+            ("<Esc>", "Close/Quit"),
+            ("<C-c>", "Close/Quit"),
+            ("<C-h>", "Toggle help popup"),
+            ("<C-r>", "Refresh process list"),
+            ("<C-f>", "Process details scroll forward"),
+            ("<C-b>", "Process details scroll backward"),
+            ("<Tab>", "Select next"),
+            ("<S-Tab>", "Select previous"),
+            ("<C-j>", "Select next"),
+            ("<C-k>", "Select previous"),
+            ("↓", "Select next"),
+            ("↑", "Select previous"),
+            ("<C-↓>", "Select last"),
+            ("<C-↑>", "Select frist"),
+            ("<C-End>", "Select last"),
+            ("<C-Home>", "Select frist"),
+            ("<PgDn>", "Jump 10 items forward"),
+            ("<PgUp>", "Jump 10 items backward"),
+            ("<A-p>", "Select parent process"),
+            ("<A-f>", "Select process family"),
+            ("<A-s>", "Select siblings processes"),
+        ];
         Self {
             is_open: false,
             list_state: ListState::default().with_selected(Some(0)),
+            key_mappings,
         }
     }
 }
@@ -71,31 +97,7 @@ impl Component for HelpPopupComponent {
             .padding(Padding::left(1))
             .border_style(Style::new().fg(tailwind::GREEN.c400))
             .border_type(BorderType::Rounded);
-        let items = key_mapping_list(&[
-            ("<C-x>", "Kill selected process"),
-            ("<Esc>", "Close/Quit"),
-            ("<C-c>", "Close/Quit"),
-            ("<C-h>", "Toggle help popup"),
-            ("<C-r>", "Refresh process list"),
-            ("<C-f>", "Process details scroll forward"),
-            ("<C-b>", "Process details scroll backward"),
-            ("<Tab>", "Select next"),
-            ("<S-Tab>", "Select previous"),
-            ("<C-j>", "Select next"),
-            ("<C-k>", "Select previous"),
-            ("↓", "Select next"),
-            ("↑", "Select previous"),
-            ("<C-↓>", "Select last"),
-            ("<C-↑>", "Select frist"),
-            ("<C-End>", "Select last"),
-            ("<C-Home>", "Select frist"),
-            ("<PgDn>", "Jump 10 items forward"),
-            ("<PgUp>", "Jump 10 items backward"),
-            ("<A-p>", "Select parent process"),
-            ("<A-f>", "Select process family"),
-            ("<A-s>", "Select siblings processes"),
-        ]);
-        let list = List::new(items)
+        let list = List::new(as_list_lines(self.key_mappings))
             .block(block)
             .highlight_style(Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD))
             .highlight_spacing(HighlightSpacing::Always);
@@ -108,7 +110,7 @@ impl Component for HelpPopupComponent {
 
 //longest key binding
 const KEY_PADDING: usize = 8;
-fn key_mapping_list(mapping: &[(&'static str, &'static str)]) -> Vec<Line<'static>> {
+fn as_list_lines(mapping: &[(&'static str, &'static str)]) -> Vec<Line<'static>> {
     let key_style = Style::new().fg(tailwind::BLUE.c400);
     mapping
         .iter()
