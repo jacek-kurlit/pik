@@ -111,7 +111,12 @@ impl Component for HelpPopupComponent {
         let block = Block::bordered()
             .title_top(Line::from(" Keybindings ").centered())
             .title_bottom(Line::from(" Press <Esc> to close ").centered())
-            .padding(Padding::left(1))
+            .padding(Padding {
+                left: 1,
+                right: 1,
+                top: 0,
+                bottom: 0,
+            })
             .border_style(self.theme.border.style)
             .border_type(self.theme.border._type);
         let list = List::new(self.create_list_items())
