@@ -111,7 +111,12 @@ impl Component for HelpPopupComponent {
         let block = Block::bordered()
             .title_top(Line::from(" Keybindings ").centered())
             .title_bottom(Line::from(" Press <Esc> to close ").centered())
-            .padding(Padding::left(1))
+            .padding(Padding {
+                left: 1,
+                right: 1,
+                top: 0,
+                bottom: 0,
+            })
             .border_style(self.theme.border.style)
             .border_type(self.theme.border._type);
         let list = List::new(self.create_list_items())
@@ -119,8 +124,8 @@ impl Component for HelpPopupComponent {
             .highlight_style(self.theme.selected_row)
             .highlight_spacing(HighlightSpacing::Always);
 
-        let area = popup_area(area, 30, 80);
         frame.render_widget(Clear, area); //this clears out the background
+        let area = popup_area(area, 35, 80);
         frame.render_stateful_widget(list, area, &mut self.list_state);
     }
 }
