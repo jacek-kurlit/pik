@@ -124,8 +124,8 @@ impl Component for HelpPopupComponent {
             .highlight_style(self.theme.selected_row)
             .highlight_spacing(HighlightSpacing::Always);
 
-        let area = popup_area(area, 30, 80);
         frame.render_widget(Clear, area); //this clears out the background
+        let area = popup_area(area, 35, 80);
         frame.render_stateful_widget(list, area, &mut self.list_state);
     }
 }
