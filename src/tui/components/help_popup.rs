@@ -22,6 +22,7 @@ pub struct HelpPopupComponent {
 
 impl HelpPopupComponent {
     pub fn new(ui_config: &UIConfig) -> Self {
+        //TODO: must be taken from config!
         let key_mappings = &[
             ("<C-x>", "Kill selected process"),
             ("<Esc>", "Close/Quit"),

@@ -1,4 +1,6 @@
-use anyhow::{Context, Result};
+use std::collections::HashMap;
+
+use anyhow::{Context, Ok, Result};
 
 pub mod keymappings;
 pub mod ui;
@@ -15,29 +17,103 @@ pub fn load_app_config() -> Result<AppConfig> {
 }
 
 fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
-    let raw_toml = std::fs::read_to_string(path)
+    let toml = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to load config from file: {:?}", path))?;
-    let mut config: AppConfig = toml::from_str(&raw_toml)
-        .with_context(|| format!("Failed to deserialize config from file: {:?}", path))?;
+    parse_config(&toml)
+}
 
-    //TODO: remove
-    if config.ui.use_icons.is_some() {
-        println!("### WARNING ####");
-        println!(
-            "ui.use_icons is deprecated and will be removed in future. Please use ui.icons instead"
-        );
-        if !matches!(config.ui.icons, IconConfig::Custom(_)) {
-            config.ui.icons = IconConfig::NerdFontV3;
-        }
-    }
+fn parse_config(toml: &str) -> Result<AppConfig> {
+    let mut config: AppConfig = toml::from_str(toml)
+        .with_context(|| format!("Failed to deserialize config from: {:?}", toml))?;
+
     config.key_mappings = override_default_keymappings(config.key_mappings)?;
     Ok(config)
 }
 
-use keymappings::{KeyMappings, override_default_keymappings};
+fn override_default_keymappings(key_mappings: KeyMappings) -> anyhow::Result<KeyMappings> {
+    let mut final_key_mappings = default_keymappings();
+    final_key_mappings.extend(key_mappings);
+    validate_key_mappings(&final_key_mappings)?;
+    Ok(final_key_mappings)
+}
+
+fn validate_key_mappings(key_mappings: &KeyMappings) -> Result<()> {
+    use crate::config::keymappings::{AppAction, KeyBinding};
+    use ratatui::crossterm::event::{KeyCode, KeyModifiers};
+
+    let mut used_bindings: HashMap<&KeyBinding, &AppAction> = HashMap::new();
+
+    for (action, bindings) in key_mappings.iter() {
+        for binding in bindings.iter() {
+            // Validation 1: Disallow single character keys without modifiers
+            if binding.modifier == KeyModifiers::NONE && matches!(binding.key, KeyCode::Char(_)) {
+                anyhow::bail!(
+                    "Key binding '{}' for action '{:?}' uses a single character without modifiers, which is generally disallowed.",
+                    binding,
+                    action
+                );
+            }
+
+            // Validation 2: Check for duplicate keybindings assigned to different actions
+            if let Some(existing_action) = used_bindings.get(binding) {
+                if *existing_action != action {
+                    anyhow::bail!(
+                        "Duplicate key binding '{}' assigned to actions '{:?}' and '{:?}'.",
+                        binding,
+                        existing_action,
+                        action
+                    );
+                }
+            } else {
+                used_bindings.insert(binding, action);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn default_keymappings() -> KeyMappings {
+    let default_config = r#"
+next_item = ["down","tab", "ctrl+j", "ctrl+n"]
+previous_item = ["up", "shift+tab", "ctrl+k", "ctrl+p"]
+jump_ten_next_items = ["pagedown"]
+jump_ten_previous_items = ["pageup"]
+go_to_first_item = ["ctrl+up", "ctrl+home"]
+go_to_last_item = ["ctrl+down", "ctrl+end"]
+
+close = ["esc"]
+quit = ["ctrl+c"]
+
+kill_process = ["ctrl+x"]
+refresh_process_list = ["ctrl+r"]
+copy_process_pid = ["ctrl+y"]
+
+scroll_process_details_down = ["ctrl+f"]
+scroll_process_details_up = ["ctrl+b"]
+
+select_process_parent = ["alt+p"]
+select_process_family = ["alt+f"]
+select_process_siblings = ["alt+s"]
+
+toggle_help = ["ctrl+h"]
+
+cursor_left = ["left"]
+cursor_right = ["right"]
+cursor_home = ["home"]
+cursor_end = ["end"]
+delete_char = ["backspace"]
+delete_next_char = ["delete"]
+delete_word = ["ctrl+w"]
+delete_to_start = ["ctrl+u"]
+    "#;
+    toml::from_str(default_config).expect("This should always be parse able")
+}
+
+use keymappings::KeyMappings;
 use regex::Regex;
 use serde::Deserialize;
-use ui::{IconConfig, UIConfig};
+use ui::UIConfig;
 
 #[derive(Debug, Default, PartialEq, Eq, Deserialize)]
 pub struct AppConfig {
@@ -137,22 +213,18 @@ mod tests {
 
     #[test]
     fn should_deserialize_empty_configuration() {
-        //TODO: use load_app_config instead to test for defaults overriding
-        let default_settings = toml::from_str("");
-        assert_eq!(default_settings, Ok(AppConfig::default()));
-        // ensure what actual defaults are
+        let default_settings = parse_config("").expect("Parsing empty string should work");
         assert_eq!(
             default_settings,
-            Ok(AppConfig {
+            AppConfig {
                 screen_size: ScreenSize::Height(DEFAULT_SCREEN_SIZE),
                 ignore: IgnoreConfig {
                     paths: vec![],
                     other_users: true,
                     threads: true
                 },
-                key_mappings: KeyMappings::default(),
+                key_mappings: default_keymappings(),
                 ui: UIConfig {
-                    use_icons: None,
                     icons: ui::IconConfig::Ascii,
                     process_table: TableTheme {
                         title: TitleTheme {
@@ -226,13 +298,13 @@ mod tests {
                         secondary: Style::default(),
                     }
                 }
-            })
+            }
         );
     }
 
     #[test]
     fn should_allow_to_override_defaults() {
-        let overrided_settings: AppConfig = toml::from_str(
+        let overrided_settings: AppConfig = parse_config(
             r##"
             screen_size = "fullscreen"
 
@@ -302,13 +374,14 @@ mod tests {
             secondary = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
             "##,
         )
-        .unwrap();
-        let mut key_mappings = HashMap::new();
-        key_mappings.insert(
+        .expect("This should be parseable");
+        let mut overrides = HashMap::new();
+        overrides.insert(
             AppAction::Quit,
             vec![KeyBinding::char_with_mod('c', KeyModifiers::ALT)],
         );
-        key_mappings.insert(AppAction::Close, vec![KeyBinding::key(KeyCode::Enter)]);
+        overrides.insert(AppAction::Close, vec![KeyBinding::key(KeyCode::Enter)]);
+        let key_mappings = override_default_keymappings(overrides).expect("This should be valid");
         assert_eq!(
             overrided_settings,
             AppConfig {
@@ -320,7 +393,6 @@ mod tests {
                 },
                 key_mappings,
                 ui: UIConfig {
-                    use_icons: Some(true),
                     icons: ui::IconConfig::NerdFontV3,
                     process_table: TableTheme {
                         title: TitleTheme {
@@ -425,6 +497,89 @@ mod tests {
                     }
                 }
             }
+        );
+    }
+
+    #[test]
+    fn test_validate_key_mappings_that_are_valid() {
+        let mut key_mappings = HashMap::new();
+        key_mappings.insert(
+            AppAction::Quit,
+            vec![KeyBinding::char_with_mod('c', KeyModifiers::CONTROL)],
+        );
+        key_mappings.insert(
+            AppAction::Close,
+            vec![
+                KeyBinding::key(KeyCode::Esc),
+                KeyBinding::key(KeyCode::Enter),
+            ],
+        );
+        key_mappings.insert(
+            AppAction::NextItem,
+            vec![
+                KeyBinding::key(KeyCode::Down),
+                KeyBinding::key(KeyCode::Tab),
+            ],
+        );
+
+        let result = validate_key_mappings(&key_mappings);
+        assert!(
+            result.is_ok(),
+            "Validation should pass for valid key mappings"
+        );
+    }
+
+    #[test]
+    fn test_validate_key_mappings_single_char_no_modifier_fails() {
+        let mut key_mappings = HashMap::new();
+        // Invalid binding: 'a' without any modifier
+        key_mappings.insert(
+            AppAction::Quit,
+            vec![KeyBinding::char_with_mod('a', KeyModifiers::NONE)],
+        );
+
+        let result = validate_key_mappings(&key_mappings);
+        assert!(
+            result.is_err(),
+            "Validation should fail for single character key without modifiers"
+        );
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Key binding 'a' for action 'Quit' uses a single character without modifiers, which is generally disallowed.",
+        );
+    }
+
+    #[test]
+    fn test_validate_key_mappings_duplicate_binding_different_action_fails() {
+        let mut key_mappings = HashMap::new();
+        let duplicate_binding = KeyBinding::char_with_mod('s', KeyModifiers::CONTROL);
+
+        key_mappings.insert(AppAction::Quit, vec![duplicate_binding]);
+        key_mappings.insert(AppAction::Close, vec![duplicate_binding]); // Same binding for a different action
+
+        let result = validate_key_mappings(&key_mappings);
+        assert!(
+            result.is_err(),
+            "Validation should fail for duplicate binding across different actions"
+        );
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Duplicate key binding 'control+s' assigned to actions"));
+        assert!(err.contains("'Quit'"));
+        assert!(err.contains("'Close'"));
+    }
+
+    #[test]
+    fn test_validate_key_mappings_duplicate_binding_same_action_ok() {
+        let mut key_mappings = HashMap::new();
+        let binding = KeyBinding::char_with_mod('c', KeyModifiers::CONTROL);
+
+        // Same binding listed multiple times for the same action
+        key_mappings.insert(AppAction::Quit, vec![binding, binding]);
+
+        let result = validate_key_mappings(&key_mappings);
+        assert!(
+            result.is_ok(),
+            "Validation should pass for duplicate binding within the same action"
         );
     }
 }

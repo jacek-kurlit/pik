@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use ratatui::crossterm::event::*;
 use serde::Deserialize;
@@ -8,12 +8,41 @@ pub type KeyMappings = HashMap<AppAction, Vec<KeyBinding>>;
 #[derive(Debug, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 pub enum AppAction {
-    Quit,
+    NextItem,
+    PreviousItem,
+    //TODO: consider jump half screen instead
+    JumpTenNextItems,
+    JumpTenPreviousItems,
+    GoToFirstItem,
+    GoToLastItem,
+
     Close,
+    Quit,
+
     KillProcess,
+    RefreshProcessList,
+    CopyProcessPid,
+
+    ScrollProcessDetailsDown,
+    ScrollProcessDetailsUp,
+
+    SelectProcessParent,
+    SelectProcessFamily,
+    SelectProcessSiblings,
+
+    ToggleHelp,
+
+    CursorLeft,
+    CursorRight,
+    CursorHome,
+    CursorEnd,
+    DeleteChar,
+    DeleteNextChar,
+    DeleteWord,
+    DeleteToStart,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub struct KeyBinding {
     pub key: KeyCode,
     pub modifier: KeyModifiers,
@@ -36,23 +65,17 @@ impl KeyBinding {
     }
 }
 
-pub fn override_default_keymappings(key_mappings: KeyMappings) -> anyhow::Result<KeyMappings> {
-    let mut final_key_mappings = default_keymappings();
-    final_key_mappings.extend(key_mappings);
-    //TODO: check for duplicates
-    Ok(final_key_mappings)
-}
-
-fn default_keymappings() -> KeyMappings {
-    let mut keymappings = KeyMappings::new();
-    keymappings.insert(
-        AppAction::Quit,
-        vec![KeyBinding::key_with_mod(
-            KeyCode::Esc,
-            KeyModifiers::CONTROL,
-        )],
-    );
-    keymappings
+impl Display for KeyBinding {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sep = if self.modifier.is_empty() {
+            ""
+        } else {
+            MOD_SEPARATOR
+        };
+        let modi = self.modifier.to_string().to_lowercase();
+        let key = self.key.to_string().to_lowercase();
+        write!(f, "{}{}{}", modi, sep, key)
+    }
 }
 
 const MOD_SEPARATOR: &str = "+";
@@ -80,6 +103,8 @@ fn str_to_modifier(value: &str) -> Result<KeyModifiers, String> {
         "alt" => KeyModifiers::ALT,
         "shift" => KeyModifiers::SHIFT,
         "super" => KeyModifiers::SUPER,
+        "hyper" => KeyModifiers::HYPER,
+        "meta" => KeyModifiers::META,
         invalid => {
             return Err(format!("invalid modifier value '{}'", invalid));
         }
@@ -168,6 +193,8 @@ kill_process = ["alt+z", "ctrl+z"]
         assert_eq!(str_to_modifier("alt"), Ok(KeyModifiers::ALT));
         assert_eq!(str_to_modifier("shift"), Ok(KeyModifiers::SHIFT));
         assert_eq!(str_to_modifier("super"), Ok(KeyModifiers::SUPER));
+        assert_eq!(str_to_modifier("meta"), Ok(KeyModifiers::META));
+        assert_eq!(str_to_modifier("hyper"), Ok(KeyModifiers::HYPER));
         assert_eq!(
             str_to_modifier("invalid"),
             Err("invalid modifier value 'invalid'".to_string())
