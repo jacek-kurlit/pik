@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 
+pub mod keymappings;
 pub mod ui;
 
 pub fn load_app_config() -> Result<AppConfig> {
@@ -16,20 +17,24 @@ pub fn load_app_config() -> Result<AppConfig> {
 fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
     let raw_toml = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to load config from file: {:?}", path))?;
-    toml::from_str(&raw_toml)
-        .map(|mut config: AppConfig| {
-            if config.ui.use_icons.is_some() {
-                println!("### WARNING ####");
-                println!("ui.use_icons is deprecated and will be removed in future. Please use ui.icons instead");
-                if !matches!(config.ui.icons, IconConfig::Custom(_)) {
-                    config.ui.icons = IconConfig::NerdFontV3;
-                }
-            }
-            config
-        })
-        .with_context(|| format!("Failed to deserialize config from file: {:?}", path))
+    let mut config: AppConfig = toml::from_str(&raw_toml)
+        .with_context(|| format!("Failed to deserialize config from file: {:?}", path))?;
+
+    //TODO: remove
+    if config.ui.use_icons.is_some() {
+        println!("### WARNING ####");
+        println!(
+            "ui.use_icons is deprecated and will be removed in future. Please use ui.icons instead"
+        );
+        if !matches!(config.ui.icons, IconConfig::Custom(_)) {
+            config.ui.icons = IconConfig::NerdFontV3;
+        }
+    }
+    config.key_mappings = override_default_keymappings(config.key_mappings)?;
+    Ok(config)
 }
 
+use keymappings::{KeyMappings, override_default_keymappings};
 use regex::Regex;
 use serde::Deserialize;
 use ui::{IconConfig, UIConfig};
@@ -40,6 +45,8 @@ pub struct AppConfig {
     pub screen_size: ScreenSize,
     #[serde(default)]
     pub ignore: IgnoreConfig,
+    #[serde(default)]
+    pub key_mappings: KeyMappings,
     #[serde(default)]
     pub ui: UIConfig,
 }
@@ -105,7 +112,10 @@ impl Default for ScreenSize {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+
     use ratatui::{
+        crossterm::event::{KeyCode, KeyModifiers},
         layout::{Alignment, Margin},
         style::{
             Color, Modifier, Style, Stylize,
@@ -118,12 +128,16 @@ mod tests {
         TableTheme, TitleTheme,
     };
 
-    use crate::config::ui::PopupsTheme;
+    use crate::config::{
+        keymappings::{AppAction, KeyBinding},
+        ui::PopupsTheme,
+    };
 
     use super::*;
 
     #[test]
     fn should_deserialize_empty_configuration() {
+        //TODO: use load_app_config instead to test for defaults overriding
         let default_settings = toml::from_str("");
         assert_eq!(default_settings, Ok(AppConfig::default()));
         // ensure what actual defaults are
@@ -136,6 +150,7 @@ mod tests {
                     other_users: true,
                     threads: true
                 },
+                key_mappings: KeyMappings::default(),
                 ui: UIConfig {
                     use_icons: None,
                     icons: ui::IconConfig::Ascii,
@@ -226,6 +241,10 @@ mod tests {
             other_users = false
             threads = false
 
+            [key_mappings]
+            quit = ["alt+c"]
+            close = ["enter"]
+
             [ui]
             use_icons = true
             icons = "nerd_font_v3"
@@ -284,6 +303,12 @@ mod tests {
             "##,
         )
         .unwrap();
+        let mut key_mappings = HashMap::new();
+        key_mappings.insert(
+            AppAction::Quit,
+            vec![KeyBinding::char_with_mod('c', KeyModifiers::ALT)],
+        );
+        key_mappings.insert(AppAction::Close, vec![KeyBinding::key(KeyCode::Enter)]);
         assert_eq!(
             overrided_settings,
             AppConfig {
@@ -293,6 +318,7 @@ mod tests {
                     other_users: false,
                     threads: false
                 },
+                key_mappings,
                 ui: UIConfig {
                     use_icons: Some(true),
                     icons: ui::IconConfig::NerdFontV3,
