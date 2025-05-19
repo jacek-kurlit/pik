@@ -121,33 +121,33 @@ Regex are defined using the [regex create](https://docs.rs/regex/latest/regex)
 
 These properties are toml table under `[key_mappings]` section
 
-| Action                      | Description                | Possible values |
-| :-------------------------- | :------------------------- | :-------------- |
-| close                       | Closes the current view    | Key binding     |
-| quit                        | Quits the application      | Key binding     |
-| kill_process                | Kills the selected process | Key binding     |
-| refresh_process_list        | Refreshes the process list | Key binding     |
-| copy_process_pid            | Copies the process PID     | Key binding     |
-| scroll_process_details_down | Scrolls details down       | Key binding     |
-| scroll_process_details_up   | Scrolls details up         | Key binding     |
-| select_process_parent       | Selects parent process     | Key binding     |
-| select_process_family       | Selects process family     | Key binding     |
-| select_process_siblings     | Selects process siblings   | Key binding     |
-| toggle_help                 | Toggles help display       | Key binding     |
-| cursor_left                 | Moves cursor left          | Key binding     |
-| cursor_right                | Moves cursor right         | Key binding     |
-| cursor_home                 | Moves cursor to line start | Key binding     |
-| cursor_end                  | Moves cursor to line end   | Key binding     |
-| delete_char                 | Deletes character          | Key binding     |
-| delete_next_char            | Deletes next character     | Key binding     |
-| delete_word                 | Deletes word               | Key binding     |
-| delete_to_start             | Deletes to line start      | Key binding     |
-| next_item                   | Jumps next item            | Key binding     |
-| previous_item               | Jumps previous item        | Key binding     |
-| jump_ten_next_items         | Jumps 10 items down        | Key binding     |
-| jump_ten_previous_items     | Jumps 10 items up          | Key binding     |
-| go_to_first_item            | Jumps to first item        | Key binding     |
-| go_to_last_item             | Jumps to last item         | Key binding     |
+| Action                      | Description                 | Possible values |
+| :-------------------------- | :-------------------------- | :-------------- |
+| close                       | Closes the current view     | Key binding     |
+| quit                        | Quits the application       | Key binding     |
+| kill_process                | Kills the selected process  | Key binding     |
+| refresh_process_list        | Refreshes the process list  | Key binding     |
+| copy_process_pid            | Copies selected process PID | Key binding     |
+| scroll_process_details_down | Scrolls details down        | Key binding     |
+| scroll_process_details_up   | Scrolls details up          | Key binding     |
+| select_process_parent       | Selects parent process      | Key binding     |
+| select_process_family       | Selects process family      | Key binding     |
+| select_process_siblings     | Selects process siblings    | Key binding     |
+| toggle_help                 | Toggles help display        | Key binding     |
+| cursor_left                 | Moves cursor left           | Key binding     |
+| cursor_right                | Moves cursor right          | Key binding     |
+| cursor_home                 | Moves cursor to line start  | Key binding     |
+| cursor_end                  | Moves cursor to line end    | Key binding     |
+| delete_char                 | Deletes character           | Key binding     |
+| delete_next_char            | Deletes next character      | Key binding     |
+| delete_word                 | Deletes word                | Key binding     |
+| delete_to_start             | Deletes to line start       | Key binding     |
+| next_item                   | Jumps to next item             | Key binding     |
+| previous_item               | Jumps to previous item         | Key binding     |
+| jump_ten_next_items         | Jumps 10 items down         | Key binding     |
+| jump_ten_previous_items     | Jumps 10 items up           | Key binding     |
+| go_to_first_item            | Jumps to first item         | Key binding     |
+| go_to_last_item             | Jumps to last item          | Key binding     |
 
 ### Key binding
 

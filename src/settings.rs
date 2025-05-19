@@ -126,7 +126,7 @@ mod tests {
                     paths: vec![]
                 },
                 ui_config: UIConfig::default(),
-                key_mappings: KeyMappings::default(),
+                key_mappings: KeyMappings::new(),
             }
         );
     }

@@ -1,6 +1,8 @@
 use ratatui::Frame;
 use ratatui::crossterm::event::KeyEvent;
 
+use crate::config::keymappings::AppAction;
+
 use super::LayoutRects;
 
 pub mod general_input_handler;
@@ -12,7 +14,7 @@ pub mod processes_view;
 pub mod search_bar;
 
 pub trait Component {
-    fn handle_input(&mut self, _: KeyEvent) -> KeyAction {
+    fn handle_input(&mut self, _original: KeyEvent, _app_action: AppAction) -> KeyAction {
         KeyAction::Unhandled
     }
 

@@ -24,11 +24,12 @@ fn parse_config(toml: &str) -> Result<AppConfig> {
     let mut config: AppConfig = toml::from_str(toml)
         .with_context(|| format!("Failed to deserialize config from: {:?}", toml))?;
 
-    config.key_mappings = override_default_keymappings(config.key_mappings)?;
+    config.key_mappings =
+        KeyMappings::preconfigured_mappings().override_with(config.key_mappings)?;
     Ok(config)
 }
 
-use keymappings::{KeyMappings, override_default_keymappings};
+use keymappings::KeyMappings;
 use regex::Regex;
 use serde::Deserialize;
 use ui::UIConfig;
@@ -121,7 +122,7 @@ mod tests {
     };
 
     use crate::config::{
-        keymappings::{AppAction, KeyBinding, default_keymappings},
+        keymappings::{AppAction, KeyBinding},
         ui::PopupsTheme,
     };
 
@@ -139,7 +140,7 @@ mod tests {
                     other_users: true,
                     threads: true
                 },
-                key_mappings: default_keymappings(),
+                key_mappings: KeyMappings::preconfigured_mappings(),
                 ui: UIConfig {
                     icons: ui::IconConfig::Ascii,
                     process_table: TableTheme {
@@ -300,7 +301,9 @@ mod tests {
             ],
         );
         overrides.insert(AppAction::Close, vec![KeyBinding::key(KeyCode::Enter)]);
-        let key_mappings = override_default_keymappings(overrides).expect("This should be valid");
+        let key_mappings = KeyMappings::preconfigured_mappings()
+            .override_with(overrides)
+            .expect("This should be valid");
         assert_eq!(
             overrided_settings,
             AppConfig {

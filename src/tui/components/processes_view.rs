@@ -4,6 +4,7 @@ use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui_textarea::CursorMove;
 
+use crate::config::keymappings::AppAction;
 use crate::{
     config::ui::UIConfig,
     processes::{IgnoreOptions, Process, ProcessManager, ProcessSearchResults},
@@ -151,7 +152,7 @@ impl ProcessesViewComponent {
 }
 
 impl Component for ProcessesViewComponent {
-    fn handle_input(&mut self, key: KeyEvent) -> KeyAction {
+    fn handle_input(&mut self, key: KeyEvent, _action: AppAction) -> KeyAction {
         use KeyCode::*;
         match key.code {
             Up | Home if key.modifiers.contains(KeyModifiers::CONTROL) => self.select_first_row(),

@@ -1,12 +1,15 @@
 use itertools::Itertools;
 use ratatui::{
-    crossterm::event::{KeyCode::*, KeyEvent, KeyModifiers},
+    crossterm::event::KeyEvent,
     layout::{Constraint, Flex, Layout, Rect},
     text::{Line, Span},
     widgets::{Block, Clear, HighlightSpacing, List, ListState, Padding},
 };
 
-use crate::config::{keymappings::KeyMappings, ui::UIConfig};
+use crate::config::{
+    keymappings::{AppAction, KeyMappings},
+    ui::UIConfig,
+};
 
 use super::{Component, KeyAction};
 
@@ -23,14 +26,9 @@ pub struct HelpPopupComponent {
 impl HelpPopupComponent {
     pub fn new(ui_config: &UIConfig, key_mappings: &KeyMappings) -> Self {
         let theme = &ui_config.popups;
-        let esc_bindings = key_mappings
-            .get(&crate::config::keymappings::AppAction::Close)
-            .expect("close action key mapping not found, please check your config")
-            .iter()
-            .join("/");
+        let esc_bindings = key_mappings.get_joined(AppAction::Close, "/");
         let popup_content = key_mappings
-            .iter()
-            .sorted_by_key(|(key, _)| *key)
+            .sorted()
             .map(|(key, bindings)| {
                 Line::from(vec![
                     Span::styled(format!("{:>KEY_PADDING$}: ", key), theme.primary),
@@ -67,34 +65,33 @@ impl HelpPopupComponent {
 }
 
 impl Component for HelpPopupComponent {
-    fn handle_input(&mut self, key: KeyEvent) -> KeyAction {
-        if matches!(key.code, Char('h') if key.modifiers.contains(KeyModifiers::CONTROL)) {
+    fn handle_input(&mut self, _: KeyEvent, action: AppAction) -> KeyAction {
+        if matches!(action, AppAction::ToggleHelp) {
             self.is_open = !self.is_open;
             return KeyAction::Consumed;
         }
         if !self.is_open {
             return KeyAction::Unhandled;
         }
-        match key.code {
-            Up | Home if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.list_state.select_first()
+        match action {
+            AppAction::GoToFirstItem => {
+                self.list_state.select_first();
             }
-            Down | End if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.list_state.select_last()
+            AppAction::GoToLastItem => {
+                self.list_state.select_last();
             }
-            Up | BackTab => self.list_state.select_previous(),
-            Down | Tab => self.list_state.select_next(),
-            Char('j') | Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            AppAction::NextItem => {
                 self.list_state.select_next();
             }
-            Char('k') | Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            AppAction::PreviousItem => {
                 self.list_state.select_previous();
             }
-            Esc => {
+            AppAction::Close => {
                 self.is_open = false;
             }
             _ => (),
-        }
+        };
+
         //consume all keys if popup is open
         KeyAction::Consumed
     }

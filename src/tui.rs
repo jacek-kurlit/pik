@@ -15,11 +15,12 @@ use ratatui::{TerminalOptions, prelude::*};
 pub mod components;
 mod highlight;
 
-use crate::settings::AppSettings;
+use crate::{config::keymappings::KeyMappings, settings::AppSettings};
 
 struct App {
     components: Vec<Box<dyn Component>>,
     component_events: VecDeque<ComponentEvent>,
+    key_mappings: KeyMappings,
 }
 
 impl App {
@@ -37,7 +38,7 @@ impl App {
                     &app_settings.key_mappings,
                 )),
                 Box::new(GeneralInputHandlerComponent),
-                Box::new(HelpFooterComponent::default()),
+                Box::new(HelpFooterComponent::new(&app_settings.key_mappings)),
                 Box::new(ProcessesViewComponent::new(
                     &app_settings.ui_config,
                     app_settings.filter_opions,
@@ -45,6 +46,7 @@ impl App {
                 )?),
             ],
             component_events,
+            key_mappings: app_settings.key_mappings,
         })
     }
 
@@ -92,8 +94,9 @@ impl App {
         if event::poll(Duration::from_millis(20))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
+                    let action = self.key_mappings.resolve(key);
                     for component in self.components.iter_mut() {
-                        let action = component.handle_input(key);
+                        let action = component.handle_input(key, action);
                         match action {
                             KeyAction::Unhandled => continue,
                             KeyAction::Consumed => {
