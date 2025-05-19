@@ -13,8 +13,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq)]
 pub struct UIConfig {
     #[serde(default)]
-    pub use_icons: Option<bool>,
-    #[serde(default)]
     pub icons: IconConfig,
     #[serde(default)]
     pub process_table: TableTheme,

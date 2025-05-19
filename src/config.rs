@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Ok, Result};
 
+pub mod keymappings;
 pub mod ui;
 
 pub fn load_app_config() -> Result<AppConfig> {
@@ -14,25 +15,24 @@ pub fn load_app_config() -> Result<AppConfig> {
 }
 
 fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
-    let raw_toml = std::fs::read_to_string(path)
+    let toml = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to load config from file: {:?}", path))?;
-    toml::from_str(&raw_toml)
-        .map(|mut config: AppConfig| {
-            if config.ui.use_icons.is_some() {
-                println!("### WARNING ####");
-                println!("ui.use_icons is deprecated and will be removed in future. Please use ui.icons instead");
-                if !matches!(config.ui.icons, IconConfig::Custom(_)) {
-                    config.ui.icons = IconConfig::NerdFontV3;
-                }
-            }
-            config
-        })
-        .with_context(|| format!("Failed to deserialize config from file: {:?}", path))
+    parse_config(&toml)
 }
 
+fn parse_config(toml: &str) -> Result<AppConfig> {
+    let mut config: AppConfig = toml::from_str(toml)
+        .with_context(|| format!("Failed to deserialize config from: {:?}", toml))?;
+
+    config.key_mappings =
+        KeyMappings::preconfigured_mappings().override_with(config.key_mappings)?;
+    Ok(config)
+}
+
+use keymappings::KeyMappings;
 use regex::Regex;
 use serde::Deserialize;
-use ui::{IconConfig, UIConfig};
+use ui::UIConfig;
 
 #[derive(Debug, Default, PartialEq, Eq, Deserialize)]
 pub struct AppConfig {
@@ -40,6 +40,8 @@ pub struct AppConfig {
     pub screen_size: ScreenSize,
     #[serde(default)]
     pub ignore: IgnoreConfig,
+    #[serde(default)]
+    pub key_mappings: KeyMappings,
     #[serde(default)]
     pub ui: UIConfig,
 }
@@ -106,6 +108,7 @@ impl Default for ScreenSize {
 mod tests {
 
     use ratatui::{
+        crossterm::event::{KeyCode, KeyModifiers},
         layout::{Alignment, Margin},
         style::{
             Color, Modifier, Style, Stylize,
@@ -118,26 +121,27 @@ mod tests {
         TableTheme, TitleTheme,
     };
 
-    use crate::config::ui::PopupsTheme;
+    use crate::config::{
+        keymappings::{AppAction, KeyBinding},
+        ui::PopupsTheme,
+    };
 
     use super::*;
 
     #[test]
     fn should_deserialize_empty_configuration() {
-        let default_settings = toml::from_str("");
-        assert_eq!(default_settings, Ok(AppConfig::default()));
-        // ensure what actual defaults are
+        let default_settings = parse_config("").expect("Parsing empty string should work");
         assert_eq!(
             default_settings,
-            Ok(AppConfig {
+            AppConfig {
                 screen_size: ScreenSize::Height(DEFAULT_SCREEN_SIZE),
                 ignore: IgnoreConfig {
                     paths: vec![],
                     other_users: true,
                     threads: true
                 },
+                key_mappings: KeyMappings::preconfigured_mappings(),
                 ui: UIConfig {
-                    use_icons: None,
                     icons: ui::IconConfig::Ascii,
                     process_table: TableTheme {
                         title: TitleTheme {
@@ -211,13 +215,13 @@ mod tests {
                         secondary: Style::default(),
                     }
                 }
-            })
+            }
         );
     }
 
     #[test]
     fn should_allow_to_override_defaults() {
-        let overrided_settings: AppConfig = toml::from_str(
+        let overrided_settings: AppConfig = parse_config(
             r##"
             screen_size = "fullscreen"
 
@@ -225,6 +229,10 @@ mod tests {
             paths=["/usr/*"]
             other_users = false
             threads = false
+
+            [key_mappings]
+            quit = ["ctrl+c", "alt+c"]
+            close = ["enter"]
 
             [ui]
             use_icons = true
@@ -283,7 +291,19 @@ mod tests {
             secondary = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
             "##,
         )
-        .unwrap();
+        .expect("This should be parseable");
+        let mut overrides = KeyMappings::new();
+        overrides.insert(
+            AppAction::Quit,
+            vec![
+                KeyBinding::char_with_mod('c', KeyModifiers::CONTROL),
+                KeyBinding::char_with_mod('c', KeyModifiers::ALT),
+            ],
+        );
+        overrides.insert(AppAction::Close, vec![KeyBinding::key(KeyCode::Enter)]);
+        let key_mappings = KeyMappings::preconfigured_mappings()
+            .override_with(overrides)
+            .expect("This should be valid");
         assert_eq!(
             overrided_settings,
             AppConfig {
@@ -293,8 +313,8 @@ mod tests {
                     other_users: false,
                     threads: false
                 },
+                key_mappings,
                 ui: UIConfig {
-                    use_icons: Some(true),
                     icons: ui::IconConfig::NerdFontV3,
                     process_table: TableTheme {
                         title: TitleTheme {

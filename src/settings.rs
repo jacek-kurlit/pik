@@ -2,7 +2,7 @@ use ratatui::Viewport;
 
 use crate::{
     args::{CliArgs, ScreenSizeOptions},
-    config::{AppConfig, ScreenSize, ui::UIConfig},
+    config::{AppConfig, ScreenSize, keymappings::KeyMappings, ui::UIConfig},
     processes::IgnoreOptions,
 };
 
@@ -12,6 +12,7 @@ pub struct AppSettings {
     pub viewport: Viewport,
     pub filter_opions: IgnoreOptions,
     pub ui_config: UIConfig,
+    pub key_mappings: KeyMappings,
 }
 
 impl AppSettings {
@@ -31,6 +32,7 @@ impl AppSettings {
                 paths: prefer_override(config.ignore.paths, cli_args.ignore.paths),
             },
             ui_config: config.ui,
+            key_mappings: config.key_mappings,
         }
     }
 }
@@ -123,7 +125,8 @@ mod tests {
                     ignore_other_users: false,
                     paths: vec![]
                 },
-                ui_config: UIConfig::default()
+                ui_config: UIConfig::default(),
+                key_mappings: KeyMappings::new(),
             }
         );
     }
