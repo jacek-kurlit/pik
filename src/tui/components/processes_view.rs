@@ -1,7 +1,7 @@
 use anyhow::Result;
 use arboard::Clipboard;
 use ratatui::Frame;
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use tui_textarea::CursorMove;
 
 use crate::config::keymappings::AppAction;
@@ -152,82 +152,91 @@ impl ProcessesViewComponent {
 }
 
 impl Component for ProcessesViewComponent {
-    fn handle_input(&mut self, key: KeyEvent, _action: AppAction) -> KeyAction {
+    fn handle_input(&mut self, key: KeyEvent, action: AppAction) -> KeyAction {
         use KeyCode::*;
-        match key.code {
-            Up | Home if key.modifiers.contains(KeyModifiers::CONTROL) => self.select_first_row(),
-            Down | End if key.modifiers.contains(KeyModifiers::CONTROL) => self.select_last_row(),
-            Up | BackTab => self.select_previous_row(1),
-            Down | Tab => self.select_next_row(1),
-            PageUp => self.select_previous_row(10),
-            PageDown => self.select_next_row(10),
-            Char('j') | Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+        match action {
+            AppAction::GoToFirstItem => {
+                self.select_first_row();
+            }
+            AppAction::GoToLastItem => {
+                self.select_last_row();
+            }
+            AppAction::NextItem => {
                 self.select_next_row(1);
             }
-            Char('k') | Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            AppAction::PreviousItem => {
                 self.select_previous_row(1);
             }
-            Char('x') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            AppAction::JumpTenNextItems => {
+                self.select_next_row(10);
+            }
+            AppAction::JumpTenPreviousItems => {
+                self.select_previous_row(10);
+            }
+            AppAction::KillProcess => {
                 return self.kill_selected_process();
             }
-            Char('r') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            AppAction::RefreshProcessList => {
                 return self.search_for_processess();
             }
-            Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            AppAction::CopyProcessPid => {
                 return self.copy_pid_to_clipboard();
             }
-            Char('p') if key.modifiers.contains(KeyModifiers::ALT) => {
-                self.enforce_search_by(ProcessRelatedSearch::Parent);
+            AppAction::SelectProcessParent => {
+                return self.enforce_search_by(ProcessRelatedSearch::Parent);
             }
-            Char('f') if key.modifiers.contains(KeyModifiers::ALT) => {
-                self.enforce_search_by(ProcessRelatedSearch::Family);
+            AppAction::SelectProcessFamily => {
+                return self.enforce_search_by(ProcessRelatedSearch::Family);
             }
-            Char('s') if key.modifiers.contains(KeyModifiers::ALT) => {
-                self.enforce_search_by(ProcessRelatedSearch::Siblings);
+            AppAction::SelectProcessSiblings => {
+                return self.enforce_search_by(ProcessRelatedSearch::Siblings);
             }
-
-            Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.process_details_component.process_details_down();
-            }
-            Char('b') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            AppAction::ScrollProcessDetailsUp => {
                 self.process_details_component.process_details_up();
             }
-
+            AppAction::ScrollProcessDetailsDown => {
+                self.process_details_component.process_details_down();
+            }
             //search bar
-            Left => {
+            AppAction::CursorLeft => {
                 self.search_bar.move_cursor(CursorMove::Back);
             }
-            Right => {
+            AppAction::CursorRight => {
                 self.search_bar.move_cursor(CursorMove::Forward);
             }
-            Home => {
+            AppAction::CursorHome => {
                 self.search_bar.move_cursor(CursorMove::Head);
             }
-            End => {
+            AppAction::CursorEnd => {
                 self.search_bar.move_cursor(CursorMove::End);
             }
-            Backspace => {
+            AppAction::DeleteChar => {
                 self.search_bar.delete_char();
                 return self.search_for_processess();
             }
-            Delete => {
+            AppAction::DeleteNextChar => {
                 self.search_bar.delete_next_char();
+
                 return self.search_for_processess();
             }
-            Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            AppAction::DeleteWord => {
                 self.search_bar.delete_word();
                 return self.search_for_processess();
             }
-            Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            AppAction::DeleteToStart => {
                 self.search_bar.delete_to_start();
                 return self.search_for_processess();
             }
-            Char(c) => {
-                self.search_bar.insert_char(c);
-                return self.search_for_processess();
+            AppAction::Unmapped => {
+                if let Char(c) = key.code {
+                    self.search_bar.insert_char(c);
+                    return self.search_for_processess();
+                }
             }
-            _ => return KeyAction::Unhandled,
-        };
+            _ => {
+                return KeyAction::Unhandled;
+            }
+        }
         KeyAction::Consumed
     }
 
