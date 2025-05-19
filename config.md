@@ -151,10 +151,11 @@ These properties are toml table under `[key_mappings]` section
 
 ### Key binding
 
-You may define binding as single key mapping `action = "ctrl+x"` or array `action = "ctrl+x", "alt+x"`
-You can prefix mapping with modifier and '+' sign, allowed values are: "ctrl", "alt", "shift", "super", "hyper", "meta"
-You **may not** define mapping as single char like `action = c` but you may use any special key `action = tab`
-If key binding is assigned to more than **one** action validation error will rise
+Key mapping rules:
+- You may define binding as single key mapping `action = "ctrl+x"` or array `action = "ctrl+x", "alt+x"`
+- You can prefix mapping with modifier and '+' sign, allowed values are: "ctrl", "alt", "shift", "super", "hyper", "meta"
+- You **may not** define mapping as single char like `action = c` but you may use any special key `action = tab`
+- If key binding is assigned to more than **one** action validation error will rise
 
 ## UI & Theme
 

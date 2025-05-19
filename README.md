@@ -114,28 +114,7 @@ You may set your preferences in `config.toml` file located in:
 All options are optional, if skipped default values will be used.
 Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
 Run `pik -- --help` to see cli options
-Please refer to [config](config.md) for more details about configuration options
-
-### Key maps
-
-| Key(s)                                                 | Action                        |
-| ------------------------------------------------------ | ----------------------------- |
-| <kbd>Esc</kbd> \| <kbd>Ctrl+C</kbd>                    | Quit                          |
-| <kbd>Ctrl+X</kbd>                                      | Kill process                  |
-| <kbd>Ctrl+R</kbd>                                      | Refresh processes list        |
-| <kbd>Ctrl+F</kbd>                                      | Details forward               |
-| <kbd>Ctrl+B</kbd>                                      | Details backward              |
-| <kbd>Ctrl+Y</kbd>                                      | Copy process pid to clipboard |
-| <kbd>Ctrl+H</kbd>                                      | Toggle help popup             |
-| <kbd>Tab</kbd> \| <kbd>Shift+Tab</kbd>                 | Select next/previous          |
-| <kbd>Arrow Down</kbd> \| <kbd>Arrow Up</kbd>           | Select next/previous          |
-| <kbd>Ctrl+J</kbd> \| <kbd>Ctrl+K</kbd>                 | Select next/previous          |
-| <kbd>Ctrl+N</kbd> \| <kbd>Ctrl+P</kbd>                 | Select next/previous          |
-| <kbd>Ctrl+Arrow Down</kbd> \| <kbd>Ctrl+Arrow Up</kbd> | Select last/first             |
-| <kbd>Ctrl+End</kbd> \| <kbd>Ctrl+Home</kbd>            | Select last/first             |
-| <kbd>Alt+P</kbd>                                       | Select parent process         |
-| <kbd>Alt+F</kbd>                                       | Select familly processes      |
-| <kbd>Alt+S</kbd>                                       | Select siblings processes     |
+Please refer to [config](config.md) for more details how to configure options,theme and key mappings
 
 ## Caveats
 
