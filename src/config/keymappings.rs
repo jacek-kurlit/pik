@@ -7,6 +7,7 @@ pub type KeyMappings = HashMap<AppAction, Vec<KeyBinding>>;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
+// This order is reflected in help popup
 pub enum AppAction {
     NextItem,
     PreviousItem,
