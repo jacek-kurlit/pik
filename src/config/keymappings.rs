@@ -4,7 +4,7 @@ use itertools::Itertools;
 use ratatui::crossterm::event::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Deserialize, PartialEq, Eq)]
 pub struct KeyMappings {
     #[serde(flatten)]
     pub bindings: HashMap<AppAction, Vec<KeyBinding>>,
@@ -131,6 +131,14 @@ delete_to_start = ["ctrl+u"]
                 }
             })
             .unwrap_or(AppAction::Unmapped)
+    }
+}
+
+//TODO: we should think about how to handle this better
+//I don't like the fact that we user do not have config we will parse default config twice
+impl Default for KeyMappings {
+    fn default() -> Self {
+        Self::preconfigured_mappings()
     }
 }
 
