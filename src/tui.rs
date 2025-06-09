@@ -2,9 +2,9 @@ use std::{collections::VecDeque, io, time::Duration};
 
 use anyhow::Result;
 use components::{
-    Component, ComponentEvent, KeyAction, general_input_handler::GeneralInputHandlerComponent,
-    help_footer::HelpFooterComponent, help_popup::HelpPopupComponent,
-    processes_view::ProcessesViewComponent,
+    Component, ComponentEvent, KeyAction, fps_counter::FpsCounter,
+    general_input_handler::GeneralInputHandlerComponent, help_footer::HelpFooterComponent,
+    help_popup::HelpPopupComponent, processes_view::ProcessesViewComponent,
 };
 use ratatui::crossterm::{
     event::{self, Event, KeyEventKind},
@@ -39,6 +39,7 @@ impl App {
                 )),
                 Box::new(GeneralInputHandlerComponent),
                 Box::new(HelpFooterComponent::new(&app_settings.key_mappings)),
+                Box::new(FpsCounter::new()),
                 Box::new(ProcessesViewComponent::new(
                     &app_settings.ui_config,
                     app_settings.filter_opions,
@@ -148,7 +149,8 @@ pub struct LayoutRects {
     pub top_bar: Rect,
     pub process_table: Rect,
     pub process_details: Rect,
-    pub footer: Rect,
+    pub fps_counter: Rect,
+    pub help_text: Rect,
 }
 
 impl LayoutRects {
@@ -160,11 +162,14 @@ impl LayoutRects {
             Constraint::Length(1),
         ])
         .split(frame.area());
+        let footer = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(rects[3]);
         Self {
             top_bar: rects[0],
             process_table: rects[1],
             process_details: rects[2],
-            footer: rects[3],
+            fps_counter: footer[0],
+            help_text: footer[1],
         }
     }
 }

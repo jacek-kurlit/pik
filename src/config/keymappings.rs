@@ -66,6 +66,7 @@ select_process_family = ["alt+f"]
 select_process_siblings = ["alt+s"]
 
 toggle_help = ["ctrl+h"]
+toggle_fps = ["ctrl+."]
 
 cursor_left = ["left"]
 cursor_right = ["right"]
@@ -169,6 +170,7 @@ pub enum AppAction {
     SelectProcessSiblings,
 
     ToggleHelp,
+    ToggleFps,
 
     CursorLeft,
     CursorRight,
