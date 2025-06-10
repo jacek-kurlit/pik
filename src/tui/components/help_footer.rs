@@ -26,7 +26,7 @@ impl HelpFooterComponent {
         let help_bar = Paragraph::new(Line::from(format!(
             "{quit}/{close} quit | {kill_process} kill process | {help_toggle} toggle help"
         )))
-        .right_aligned();
+        .centered();
         Self {
             error_message: None,
             help_bar,
@@ -46,7 +46,7 @@ impl Component for HelpFooterComponent {
     fn render(&mut self, f: &mut ratatui::Frame, layout: &LayoutRects) {
         let rects = Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)])
             .horizontal_margin(1)
-            .split(layout.footer);
+            .split(layout.help_text);
         let error = Paragraph::new(Span::from(self.error_message.unwrap_or("")).fg(Color::Red))
             .left_aligned()
             .block(Block::default().borders(Borders::NONE));
