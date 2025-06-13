@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use anyhow::Result;
 use arboard::Clipboard;
 use ratatui::Frame;
@@ -23,8 +25,14 @@ pub struct ProcessesViewComponent {
     process_table_component: ProcessTableComponent,
     process_details_component: ProcessDetailsComponent,
     search_bar: SearchBarComponent,
-    clipboard: Clipboard,
 }
+
+//NOTE: this is wrapped in a Lazy Mutex because arboard's Clipboard may cause issues when you don't
+//have any clipboard manager installed, and it needs to be initialized only once.
+//FIXME: instead of failing we should send error massage to user
+static CLIPBOARD: std::sync::LazyLock<Mutex<Clipboard>> = std::sync::LazyLock::new(|| {
+    Mutex::new(Clipboard::new().expect("Failed to create clipboard instance"))
+});
 
 impl ProcessesViewComponent {
     pub fn new(
@@ -50,7 +58,6 @@ impl ProcessesViewComponent {
                 &ui_config.search_bar,
                 ui_config.icons.get_icons().search_prompt.as_str(),
             ),
-            clipboard: Clipboard::new()?,
         };
         component.search_for_processess();
         Ok(component)
@@ -143,7 +150,9 @@ impl ProcessesViewComponent {
 
     fn copy_pid_to_clipboard(&mut self) -> KeyAction {
         if let Some(prc) = self.get_selected_process() {
-            self.clipboard
+            CLIPBOARD
+                .lock()
+                .expect("Failed to lock clipboard")
                 .set_text(format!("{}", prc.pid))
                 .expect("Failed to copy pid");
         }
