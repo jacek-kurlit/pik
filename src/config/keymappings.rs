@@ -232,7 +232,7 @@ impl Display for KeyBinding {
         let modi = modifier_to_str(self.modifier);
         let sep = if modi.is_empty() { "" } else { MOD_SEPARATOR };
         let key = self.key.to_string().to_lowercase();
-        write!(f, "{}{}{}", modi, sep, key)
+        write!(f, "{modi}{sep}{key}")
     }
 }
 
@@ -264,7 +264,7 @@ fn str_to_modifier(value: &str) -> Result<KeyModifiers, String> {
         "hyper" => KeyModifiers::HYPER,
         "meta" => KeyModifiers::META,
         invalid => {
-            return Err(format!("invalid modifier value '{}'", invalid));
+            return Err(format!("invalid modifier value '{invalid}'"));
         }
     };
     Ok(modif)
@@ -301,7 +301,7 @@ fn str_to_key(value: &str) -> Result<KeyCode, String> {
         "delete" => KeyCode::Delete,
         char if char.len() == 1 => KeyCode::Char(char.chars().next().unwrap()),
         invalid => {
-            return Err(format!("invalid key value '{}'", invalid));
+            return Err(format!("invalid key value '{invalid}'"));
         }
     };
     Ok(key)

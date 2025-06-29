@@ -20,7 +20,7 @@ impl SearchBarComponent {
         search_area.set_cursor_line_style(theme.style);
         search_area.set_cursor_style(theme.cursor_style);
         search_area.insert_str(&initial_query);
-        let prompt = format!("{} ", prompt_icon);
+        let prompt = format!("{prompt_icon} ");
         Self {
             search_area,
             prompt_size: unicode_width::UnicodeWidthStr::width_cjk(prompt.as_str()) as u16,

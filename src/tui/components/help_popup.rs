@@ -31,7 +31,7 @@ impl HelpPopupComponent {
             .sorted()
             .map(|(key, bindings)| {
                 Line::from(vec![
-                    Span::styled(format!("{:>KEY_PADDING$}: ", key), theme.primary),
+                    Span::styled(format!("{key:>KEY_PADDING$}: "), theme.primary),
                     Span::styled(
                         bindings.iter().map(|b| b.to_string()).join(", "),
                         theme.secondary,

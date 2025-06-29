@@ -7,7 +7,7 @@ use sysinfo::{System, Uid};
 
 use super::ProcessInfo;
 
-// NOTE: Some processes have path to binary as first argument, but also some processes has different name than cmd (for exmaple firefox)
+// NOTE: Some processes have path to binary as first argument, but also some processes has different name than cmd (for example Firefox)
 pub(super) fn get_process_args(prc: &impl ProcessInfo) -> Option<String> {
     let args = prc.args();
     let cmd_path = prc.cmd_path().unwrap_or("");
@@ -29,12 +29,12 @@ pub(super) fn process_run_time(run_duration_since_epoch: u64, now: SystemTime) -
     let hours = seconds_diff / 3600;
     let minutes = (seconds_diff % 3600) / 60;
     if hours > 0 {
-        return format!("{}h {}m {}s", hours, minutes, seconds);
+        return format!("{hours}h {minutes}m {seconds}s");
     }
     if minutes > 0 {
-        return format!("{}m {}s", minutes, seconds);
+        return format!("{minutes}m {seconds}s");
     }
-    format!("{}s", seconds)
+    format!("{seconds}s")
 }
 
 pub(super) fn to_system_local_time(seconds_since_epoch: u64) -> DateTime<Local> {
