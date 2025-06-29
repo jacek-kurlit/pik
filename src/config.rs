@@ -16,13 +16,13 @@ pub fn load_app_config() -> Result<AppConfig> {
 
 fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
     let toml = std::fs::read_to_string(path)
-        .with_context(|| format!("Failed to load config from file: {:?}", path))?;
+        .with_context(|| format!("Failed to load config from file: {path:?}"))?;
     parse_config(&toml)
 }
 
 fn parse_config(toml: &str) -> Result<AppConfig> {
     let mut config: AppConfig = toml::from_str(toml)
-        .with_context(|| format!("Failed to deserialize config from: {:?}", toml))?;
+        .with_context(|| format!("Failed to deserialize config from: {toml:?}"))?;
 
     config.key_mappings =
         KeyMappings::preconfigured_mappings().override_with(config.key_mappings)?;

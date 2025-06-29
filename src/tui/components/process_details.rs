@@ -108,11 +108,11 @@ fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
             let ports = prc
                 .ports
                 .as_deref()
-                .map(|p| format!(" PORTS: {}", p))
+                .map(|p| format!(" PORTS: {p}"))
                 .unwrap_or("".to_string());
             let parent = prc
                 .parent_pid
-                .map(|p| format!(" PARENT: {}", p))
+                .map(|p| format!(" PARENT: {p}"))
                 .unwrap_or("".to_string());
             vec![
                 Line::from(format!(

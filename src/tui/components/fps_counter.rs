@@ -52,7 +52,7 @@ impl Component for FpsCounter {
         // once second passed since last measurements
         if millis_elapsed > ONE_SECOND {
             let fps = self.renders_count as f32 * 1000.0 / millis_elapsed as f32;
-            self.fps_text = Paragraph::new(format!("FPS: {:.2}", fps)).centered();
+            self.fps_text = Paragraph::new(format!("FPS: {fps:.2}")).centered();
             self.last_measurement = now;
             self.renders_count = 0;
         }
