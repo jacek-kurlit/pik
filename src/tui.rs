@@ -2,7 +2,7 @@ use std::{collections::VecDeque, io, time::Duration};
 
 use anyhow::Result;
 use components::{
-    Component, ComponentEvent, KeyAction, fps_counter::FpsCounter,
+    Component, ComponentEvent, KeyAction, debug::DebugComponent,
     general_input_handler::GeneralInputHandlerComponent, help_footer::HelpFooterComponent,
     help_popup::HelpPopupComponent, processes_view::ProcessesViewComponent,
 };
@@ -39,7 +39,7 @@ impl App {
                 )),
                 Box::new(GeneralInputHandlerComponent),
                 Box::new(HelpFooterComponent::new(&app_settings.key_mappings)),
-                Box::new(FpsCounter::new()),
+                Box::new(DebugComponent::new()),
                 Box::new(ProcessesViewComponent::new(
                     &app_settings.ui_config,
                     app_settings.filter_opions,
@@ -149,7 +149,7 @@ pub struct LayoutRects {
     pub top_bar: Rect,
     pub process_table: Rect,
     pub process_details: Rect,
-    pub fps_counter: Rect,
+    pub debug: Rect,
     pub help_text: Rect,
 }
 
@@ -168,7 +168,7 @@ impl LayoutRects {
             top_bar: rects[0],
             process_table: rects[1],
             process_details: rects[2],
-            fps_counter: footer[0],
+            debug: footer[0],
             help_text: footer[1],
         }
     }
