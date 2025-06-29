@@ -6,7 +6,7 @@ use crate::{config::keymappings::AppAction, tui::LayoutRects};
 
 use super::{Component, KeyAction};
 
-pub struct FpsCounter {
+pub struct DebugComponent {
     show: bool,
     renders_count: usize,
     last_measurement: Instant,
@@ -14,7 +14,7 @@ pub struct FpsCounter {
 }
 
 #[allow(clippy::new_without_default)]
-impl FpsCounter {
+impl DebugComponent {
     pub fn new() -> Self {
         Self {
             show: false,
@@ -33,9 +33,9 @@ impl FpsCounter {
 
 const ONE_SECOND: u128 = 1000;
 
-impl Component for FpsCounter {
+impl Component for DebugComponent {
     fn handle_input(&mut self, _: KeyEvent, action: AppAction) -> KeyAction {
-        if matches!(action, AppAction::ToggleFps) {
+        if matches!(action, AppAction::ToggleDebug) {
             self.toggle();
             return KeyAction::Consumed;
         }
@@ -57,6 +57,6 @@ impl Component for FpsCounter {
             self.renders_count = 0;
         }
 
-        frame.render_widget(&self.fps_text, layout.fps_counter);
+        frame.render_widget(&self.fps_text, layout.debug);
     }
 }
