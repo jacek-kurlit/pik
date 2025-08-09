@@ -1,4 +1,8 @@
-use std::{collections::VecDeque, io, time::Duration};
+use std::{
+    collections::VecDeque,
+    io::{self, stdout},
+    time::Duration,
+};
 
 use anyhow::Result;
 use components::{
@@ -8,7 +12,8 @@ use components::{
 };
 use ratatui::crossterm::{
     event::{self, Event, KeyEventKind},
-    terminal::{disable_raw_mode, enable_raw_mode},
+    execute,
+    terminal::EnterAlternateScreen,
 };
 use ratatui::{TerminalOptions, prelude::*};
 
@@ -92,22 +97,21 @@ impl App {
     }
 
     fn handle_input(&mut self) -> Result<(), io::Error> {
-        if event::poll(Duration::from_millis(20))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    let action = self.key_mappings.resolve(key);
-                    for component in self.components.iter_mut() {
-                        let action = component.handle_input(key, action);
-                        match action {
-                            KeyAction::Unhandled => continue,
-                            KeyAction::Consumed => {
-                                break;
-                            }
-                            KeyAction::Event(act) => {
-                                self.component_events.push_back(act);
-                                break;
-                            }
-                        }
+        if event::poll(Duration::from_millis(0))?
+            && let Event::Key(key) = event::read()?
+            && key.kind == KeyEventKind::Press
+        {
+            let action = self.key_mappings.resolve(key);
+            for component in self.components.iter_mut() {
+                let action = component.handle_input(key, action);
+                match action {
+                    KeyAction::Unhandled => continue,
+                    KeyAction::Consumed => {
+                        break;
+                    }
+                    KeyAction::Event(act) => {
+                        self.component_events.push_back(act);
+                        break;
                     }
                 }
             }
@@ -124,18 +128,20 @@ pub enum ProcessRelatedSearch {
 
 pub fn start_app(app_settings: AppSettings) -> Result<()> {
     // setup terminal
-    enable_raw_mode()?;
-    let backend = CrosstermBackend::new(io::stdout());
     let viewport = app_settings.viewport.clone();
-    let mut terminal = Terminal::with_options(backend, TerminalOptions { viewport })?;
+    if matches!(viewport, ratatui::Viewport::Fullscreen) {
+        execute!(stdout(), EnterAlternateScreen)?;
+    }
+
+    let mut terminal = ratatui::init_with_options(TerminalOptions { viewport });
 
     // create app and run it
     let app = App::new(app_settings)?;
     let res = app.run(&mut terminal);
 
     // restore terminal
-    disable_raw_mode()?;
     terminal.clear()?;
+    ratatui::restore();
 
     //FIXME: add error handling, for example some error page should be shown
     if let Err(err) = res {

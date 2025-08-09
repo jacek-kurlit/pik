@@ -41,6 +41,7 @@ impl QueryFilter {
             matcher,
         }
     }
+
     pub(super) fn accept(&self, prc: &impl ProcessInfo, ports: Option<&str>) -> Option<MatchData> {
         match self.search_by {
             SearchBy::Cmd => self.fuzzy_match(prc.cmd(), MatchedBy::Cmd),

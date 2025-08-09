@@ -418,8 +418,10 @@ mod tests {
             process: Process {
                 pid,
                 name: format!("p1{pid}"),
+                path: format!("p1{pid}"),
             },
             socket: format!("127.0.0.1:{port}").parse().unwrap(),
+            protocol: listeners::Protocol::TCP,
         }
     }
 }
