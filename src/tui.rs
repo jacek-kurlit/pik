@@ -97,22 +97,21 @@ impl App {
     }
 
     fn handle_input(&mut self) -> Result<(), io::Error> {
-        if event::poll(Duration::from_millis(0))? {
-            if let Event::Key(key) = event::read()? {
-                if key.kind == KeyEventKind::Press {
-                    let action = self.key_mappings.resolve(key);
-                    for component in self.components.iter_mut() {
-                        let action = component.handle_input(key, action);
-                        match action {
-                            KeyAction::Unhandled => continue,
-                            KeyAction::Consumed => {
-                                break;
-                            }
-                            KeyAction::Event(act) => {
-                                self.component_events.push_back(act);
-                                break;
-                            }
-                        }
+        if event::poll(Duration::from_millis(0))?
+            && let Event::Key(key) = event::read()?
+            && key.kind == KeyEventKind::Press
+        {
+            let action = self.key_mappings.resolve(key);
+            for component in self.components.iter_mut() {
+                let action = component.handle_input(key, action);
+                match action {
+                    KeyAction::Unhandled => continue,
+                    KeyAction::Consumed => {
+                        break;
+                    }
+                    KeyAction::Event(act) => {
+                        self.component_events.push_back(act);
+                        break;
                     }
                 }
             }

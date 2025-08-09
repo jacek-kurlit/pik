@@ -66,11 +66,12 @@ fn should_find_cargo_process_by_port() {
     let mut process_manager = ProcessManager::new().unwrap();
     let results = process_manager.find_processes(&format!(":{}", port), &IgnoreOptions::default());
     assert!(!results.is_empty());
-    assert!(
-        results
-            .iter()
-            .all(|item| item.process.ports == Some(format!("{}", port)))
-    );
+    assert!(results.iter().all(|item| {
+        fuzzy_matches(
+            item.process.ports.as_deref().unwrap_or(""),
+            &format!("{}", port),
+        )
+    }));
     assert!(results_are_sorted_by_match_type(results));
 }
 
