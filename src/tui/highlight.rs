@@ -34,7 +34,7 @@ pub fn highlight_text<'a>(
     }
 }
 
-fn styled_truncated_line(text: &str, style: Style, max_len: usize) -> Line {
+fn styled_truncated_line<'a>(text: &'a str, style: Style, max_len: usize) -> Line<'a> {
     if text.len() > max_len {
         Line::from(vec![
             Span::styled(text.chars().take(max_len).join(""), style),

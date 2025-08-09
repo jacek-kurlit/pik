@@ -102,7 +102,7 @@ impl ProcessDetailsComponent {
     }
 }
 
-fn process_details_lines(selected_process: Option<&Process>) -> Vec<Line> {
+fn process_details_lines<'a>(selected_process: Option<&'a Process>) -> Vec<Line<'a>> {
     match selected_process {
         Some(prc) => {
             let ports = prc
