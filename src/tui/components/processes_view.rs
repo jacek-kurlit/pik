@@ -66,32 +66,25 @@ impl ProcessesViewComponent {
     pub fn select_first_row(&mut self) {
         self.process_table_component
             .select_first_row(self.search_results.len());
-        self.rerender();
-    }
-
-    fn rerender(&mut self) {
-        let selected_index = self.process_table_component.get_selected_process_index();
-        let selected_process = self.search_results.nth(selected_index);
-        self.process_details_component
-            .select_new_process(selected_process);
+        self.process_details_component.reset_details_scroll_offset();
     }
 
     pub fn select_last_row(&mut self) {
         self.process_table_component
             .select_last_row(self.search_results.len());
-        self.rerender();
+        self.process_details_component.reset_details_scroll_offset();
     }
 
     pub fn select_next_row(&mut self, step_size: usize) {
         self.process_table_component
             .select_next_row(step_size, self.search_results.len());
-        self.rerender();
+        self.process_details_component.reset_details_scroll_offset();
     }
 
     pub fn select_previous_row(&mut self, step_size: usize) {
         self.process_table_component
             .select_previous_row(step_size, self.search_results.len());
-        self.rerender();
+        self.process_details_component.reset_details_scroll_offset();
     }
 
     fn get_selected_process(&self) -> Option<&Process> {
@@ -111,9 +104,7 @@ impl ProcessesViewComponent {
         self.search_results = self
             .process_manager
             .find_processes(search_text, &self.ignore_options);
-        //TODO: probably should be moved
         self.update_process_table_state();
-        self.rerender();
         KeyAction::Event(ComponentEvent::ProcessListRefreshed)
     }
 
@@ -259,9 +250,13 @@ impl Component for ProcessesViewComponent {
     }
 
     fn render(&mut self, frame: &mut Frame, layout: &crate::tui::LayoutRects) {
+        let selected_index = self.process_table_component.get_selected_process_index();
+        let selected_process = self.search_results.nth(selected_index);
+
         self.search_bar.render(frame, layout);
         self.process_table_component
             .render(frame, layout, &self.search_results);
-        self.process_details_component.render(frame, layout);
+        self.process_details_component
+            .render(frame, layout, selected_process);
     }
 }
