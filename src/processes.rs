@@ -10,6 +10,7 @@ use sysinfo::{ProcessRefreshKind, RefreshKind};
 
 mod filters;
 mod utils;
+mod daemon;
 
 pub use filters::IgnoreOptions;
 pub use filters::SearchBy;
@@ -143,6 +144,7 @@ impl ProcessManager {
     }
 
     pub fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
+        self.refresh();
         let query_filter = QueryFilter::new(query);
         let ignored_processes_filter = IgnoreProcessesFilter::new(ignore, &self.current_user_id);
 
@@ -166,7 +168,7 @@ impl ProcessManager {
         ProcessSearchResults { items }
     }
 
-    pub fn refresh(&mut self) {
+    fn refresh(&mut self) {
         self.sys.refresh_processes_specifics(
             sysinfo::ProcessesToUpdate::All,
             true,

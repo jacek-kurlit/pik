@@ -23,6 +23,10 @@ pub trait Component {
         None
     }
 
+    fn update_state(&mut self) -> Option<ComponentEvent> {
+        None
+    }
+
     fn render(&mut self, _frame: &mut Frame, _layout: &LayoutRects) {}
 }
 

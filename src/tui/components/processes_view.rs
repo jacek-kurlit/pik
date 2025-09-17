@@ -40,6 +40,7 @@ impl ProcessesViewComponent {
         ignore_options: IgnoreOptions,
         initial_query: String,
     ) -> Result<Self> {
+        //TODO: start daemon here and use async communication
         let mut component = Self {
             process_manager: ProcessManager::new()?,
             ignore_options,
@@ -100,7 +101,6 @@ impl ProcessesViewComponent {
 
     fn search_for_processess(&mut self) -> KeyAction {
         let search_text = self.search_bar.get_search_text();
-        self.process_manager.refresh();
         self.search_results = self
             .process_manager
             .find_processes(search_text, &self.ignore_options);
@@ -247,6 +247,11 @@ impl Component for ProcessesViewComponent {
             }
         }
         KeyAction::Consumed
+    }
+
+    fn update_state(&mut self) -> Option<ComponentEvent> {
+        //TODO: implement
+        None
     }
 
     fn render(&mut self, frame: &mut Frame, layout: &crate::tui::LayoutRects) {

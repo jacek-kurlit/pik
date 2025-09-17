@@ -58,16 +58,44 @@ impl App {
 
     fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
         loop {
-            //NOTE: Why this order?
-            // Reading input is blocking and we want to have initial query rendered right away
-            // along with process table
+            self.handle_input()?;
+            self.update_state();
             if self.handle_events()? {
                 return Ok(());
             }
 
             self.render(terminal)?;
+        }
+    }
 
-            self.handle_input()?;
+    fn handle_input(&mut self) -> Result<(), io::Error> {
+        if event::poll(Duration::from_millis(0))?
+            && let Event::Key(key) = event::read()?
+            && key.kind == KeyEventKind::Press
+        {
+            let action = self.key_mappings.resolve(key);
+            for component in self.components.iter_mut() {
+                let action = component.handle_input(key, action);
+                match action {
+                    KeyAction::Unhandled => continue,
+                    KeyAction::Consumed => {
+                        break;
+                    }
+                    KeyAction::Event(act) => {
+                        self.component_events.push_back(act);
+                        break;
+                    }
+                }
+            }
+        };
+        Ok(())
+    }
+
+    fn update_state(&mut self) {
+        for component in self.components.iter_mut() {
+            if let Some(event) = component.update_state() {
+                self.component_events.push_back(event);
+            }
         }
     }
 
@@ -93,29 +121,6 @@ impl App {
                 component.render(frame, &layout);
             }
         })?;
-        Ok(())
-    }
-
-    fn handle_input(&mut self) -> Result<(), io::Error> {
-        if event::poll(Duration::from_millis(0))?
-            && let Event::Key(key) = event::read()?
-            && key.kind == KeyEventKind::Press
-        {
-            let action = self.key_mappings.resolve(key);
-            for component in self.components.iter_mut() {
-                let action = component.handle_input(key, action);
-                match action {
-                    KeyAction::Unhandled => continue,
-                    KeyAction::Consumed => {
-                        break;
-                    }
-                    KeyAction::Event(act) => {
-                        self.component_events.push_back(act);
-                        break;
-                    }
-                }
-            }
-        };
         Ok(())
     }
 }
