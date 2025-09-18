@@ -285,8 +285,6 @@ impl Component for ProcessesViewComponent {
 
 impl Drop for ProcessesViewComponent {
     fn drop(&mut self) {
-        println!("Shutting down process manager...");
         self.ops_sender.send(Operations::Shutdown).ok();
-        println!("Done");
     }
 }

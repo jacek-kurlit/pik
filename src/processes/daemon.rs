@@ -43,7 +43,7 @@ fn process_loop(
 ) {
     let mut last_query = String::new();
     loop {
-        let operations = try_receive_last_operation(&operations_reveiver);
+        let operations = receive_operations(&operations_reveiver);
         if let Err(err) = operations {
             send_result(
                 OperationResult::Error(format!("Daemon received error from channel : {err}")),
@@ -80,7 +80,8 @@ fn process_loop(
     }
 }
 
-fn try_receive_last_operation(
+// Receive operations from the channel, coalesce multiple search operations into one
+fn receive_operations(
     operations_reveiver: &Receiver<Operations>,
 ) -> Result<VecDeque<Operations>, RecvError> {
     //
