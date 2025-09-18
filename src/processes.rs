@@ -8,13 +8,13 @@ use listeners::Listener;
 use sysinfo::{Pid, System, Uid, Users};
 use sysinfo::{ProcessRefreshKind, RefreshKind};
 
+mod daemon;
 mod filters;
 mod utils;
-mod daemon;
 
+pub use daemon::*;
 pub use filters::IgnoreOptions;
 pub use filters::SearchBy;
-pub use daemon::*;
 
 use filters::QueryFilter;
 
