@@ -1,4 +1,5 @@
 use std::sync::Mutex;
+use std::sync::mpsc::{Receiver, Sender};
 
 use anyhow::Result;
 use arboard::Clipboard;
@@ -7,6 +8,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use tui_textarea::CursorMove;
 
 use crate::config::keymappings::AppAction;
+use crate::processes::{OperationResult, Operations, start};
 use crate::{
     config::ui::UIConfig,
     processes::{IgnoreOptions, Process, ProcessManager, ProcessSearchResults},
@@ -19,8 +21,8 @@ use super::{
 };
 
 pub struct ProcessesViewComponent {
-    process_manager: ProcessManager,
-    ignore_options: IgnoreOptions,
+    ops_sender: Sender<Operations>,
+    results_receiver: Receiver<OperationResult>,
     search_results: ProcessSearchResults,
     process_table_component: ProcessTableComponent,
     process_details_component: ProcessDetailsComponent,
@@ -40,17 +42,17 @@ impl ProcessesViewComponent {
         ignore_options: IgnoreOptions,
         initial_query: String,
     ) -> Result<Self> {
-        //TODO: start daemon here and use async communication
+        let (ops_sender, results_receiver) = start(ProcessManager::new()?, ignore_options);
+        ops_sender.send(Operations::Search(initial_query.clone()))?;
         let mut component = Self {
-            process_manager: ProcessManager::new()?,
-            ignore_options,
+            ops_sender,
+            results_receiver,
             search_results: ProcessSearchResults::empty(),
             process_table_component: ProcessTableComponent::new(
                 ui_config.icons.get_icons(),
                 // cloning for sake of simplicity
                 ui_config.process_table.clone(),
             ),
-            //TODO: fix this cloning later
             process_details_component: ProcessDetailsComponent::new(
                 ui_config.process_details.clone(),
             ),
@@ -100,28 +102,24 @@ impl ProcessesViewComponent {
     }
 
     fn search_for_processess(&mut self) -> KeyAction {
-        let search_text = self.search_bar.get_search_text();
-        self.search_results = self
-            .process_manager
-            .find_processes(search_text, &self.ignore_options);
-        self.update_process_table_state();
-        KeyAction::Event(ComponentEvent::ProcessListRefreshed)
+        let search_text = self.search_bar.get_search_text().to_string();
+        match self.ops_sender.send(Operations::Search(search_text)) {
+            Ok(_) => KeyAction::Event(ComponentEvent::ProcessListRefreshRequested),
+            Err(_) => KeyAction::Event(ComponentEvent::ErrorOccurred(
+                "Failed to send search request to process daemon".to_string(),
+            )),
+        }
     }
 
     fn kill_selected_process(&mut self) -> KeyAction {
         if let Some(prc) = self.get_selected_process() {
             let pid = prc.pid;
-            if self.process_manager.kill_process(pid) {
-                self.search_for_processess();
-                //NOTE: cache refresh takes time and process may reappear in list!
-                self.search_results.remove(pid);
-                //TODO: this must be here because details will show 1/0 when removed!
-                // seems like this can only be fixed by autorefresh!
-                self.update_process_table_state();
-                return KeyAction::Event(ComponentEvent::ProcessKilled);
-            } else {
-                return KeyAction::Event(ComponentEvent::ProcessKillFailed);
-            }
+            return match self.ops_sender.send(Operations::KillProcess(pid)) {
+                Ok(_) => KeyAction::Event(ComponentEvent::ProcessKillRequested),
+                Err(_) => KeyAction::Event(ComponentEvent::ErrorOccurred(
+                    "Failed to send kill request to process daemon".to_string(),
+                )),
+            };
         }
         KeyAction::Event(ComponentEvent::NoProcessToKill)
     }
@@ -161,6 +159,30 @@ impl ProcessesViewComponent {
 }
 
 impl Component for ProcessesViewComponent {
+    fn update_state(&mut self) -> Option<ComponentEvent> {
+        if let Ok(ops_result) = self.results_receiver.try_recv() {
+            match ops_result {
+                OperationResult::SearchCompleted(results) => {
+                    self.search_results = results;
+                    self.update_process_table_state();
+                    return Some(ComponentEvent::ProcessListRefreshed);
+                }
+                OperationResult::ProcessKilled(results) => {
+                    self.search_results = results;
+                    self.update_process_table_state();
+                    return Some(ComponentEvent::ProcessKilled);
+                }
+                OperationResult::ProcessKillFailed => {
+                    return Some(ComponentEvent::ProcessKillFailed);
+                }
+                OperationResult::Error(err) => {
+                    eprintln!("Error in process daemon: {err}");
+                }
+            }
+        }
+        None
+    }
+
     fn handle_input(&mut self, key: KeyEvent, action: AppAction) -> KeyAction {
         use KeyCode::*;
         match action {
@@ -249,11 +271,6 @@ impl Component for ProcessesViewComponent {
         KeyAction::Consumed
     }
 
-    fn update_state(&mut self) -> Option<ComponentEvent> {
-        //TODO: implement
-        None
-    }
-
     fn render(&mut self, frame: &mut Frame, layout: &crate::tui::LayoutRects) {
         let selected_index = self.process_table_component.get_selected_process_index();
         let selected_process = self.search_results.nth(selected_index);
@@ -263,5 +280,13 @@ impl Component for ProcessesViewComponent {
             .render(frame, layout, &self.search_results);
         self.process_details_component
             .render(frame, layout, selected_process);
+    }
+}
+
+impl Drop for ProcessesViewComponent {
+    fn drop(&mut self) {
+        println!("Shutting down process manager...");
+        self.ops_sender.send(Operations::Shutdown).ok();
+        println!("Done");
     }
 }

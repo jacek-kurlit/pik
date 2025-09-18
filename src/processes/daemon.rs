@@ -1,10 +1,13 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::{
+    collections::VecDeque,
+    sync::mpsc::{Receiver, RecvError, Sender},
+};
 
 use super::{IgnoreOptions, ProcessManager, ProcessSearchResults};
 
 pub enum Operations {
     Search(String),
-    KillProcess(u32, String),
+    KillProcess(u32),
     Shutdown,
 }
 
@@ -38,37 +41,62 @@ fn process_loop(
     ignore_options: IgnoreOptions,
     result_sender: Sender<OperationResult>,
 ) {
+    let mut last_query = String::new();
     loop {
-        let operation = operations_reveiver.recv();
-        if let Err(err) = operation {
+        let operations = try_receive_last_operation(&operations_reveiver);
+        if let Err(err) = operations {
             send_result(
                 OperationResult::Error(format!("Daemon received error from channel : {err}")),
                 &result_sender,
             );
             break;
         }
-        match operation.unwrap() {
-            Operations::Search(query) => {
-                let result = process_manager.find_processes(&query, &ignore_options);
-                send_result(OperationResult::SearchCompleted(result), &result_sender);
-            }
-            Operations::KillProcess(pid, query) => {
-                if process_manager.kill_process(pid) {
-                    let mut search_results =
-                        process_manager.find_processes(&query, &ignore_options);
-                    //NOTE: cache refresh takes time and process may reappear in list!
-                    search_results.remove(pid);
-                    send_result(
-                        OperationResult::ProcessKilled(search_results),
-                        &result_sender,
-                    );
-                } else {
-                    send_result(OperationResult::ProcessKillFailed, &result_sender);
+        for operation in operations.unwrap() {
+            match operation {
+                Operations::Search(query) => {
+                    let result = process_manager.find_processes(&query, &ignore_options);
+                    send_result(OperationResult::SearchCompleted(result), &result_sender);
+                    last_query = query;
+                }
+                Operations::KillProcess(pid) => {
+                    if process_manager.kill_process(pid) {
+                        let mut search_results =
+                            process_manager.find_processes(&last_query, &ignore_options);
+                        //NOTE: cache refresh takes time and process may reappear in list!
+                        search_results.remove(pid);
+                        send_result(
+                            OperationResult::ProcessKilled(search_results),
+                            &result_sender,
+                        );
+                    } else {
+                        send_result(OperationResult::ProcessKillFailed, &result_sender);
+                    }
+                }
+                Operations::Shutdown => {
+                    return;
                 }
             }
-            Operations::Shutdown => break,
         }
     }
+}
+
+fn try_receive_last_operation(
+    operations_reveiver: &Receiver<Operations>,
+) -> Result<VecDeque<Operations>, RecvError> {
+    //
+
+    let mut stack = VecDeque::new();
+    stack.push_back(operations_reveiver.recv()?);
+
+    while let Ok(next_operation) = operations_reveiver.try_recv() {
+        if matches!(&stack.back(), Some(Operations::Search(_)))
+            && matches!(&next_operation, Operations::Search(_))
+        {
+            stack.pop_back();
+        }
+        stack.push_back(next_operation);
+    }
+    Ok(stack)
 }
 
 fn send_result(result: OperationResult, result_sender: &Sender<OperationResult>) {

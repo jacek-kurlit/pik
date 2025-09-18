@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use ratatui::{
     layout::{Constraint, Layout},
     style::{Color, Stylize},
@@ -13,7 +15,7 @@ use crate::{
 use super::{Component, ComponentEvent};
 
 pub struct HelpFooterComponent {
-    error_message: Option<&'static str>,
+    error_message: Cow<'static, str>,
     help_bar: Paragraph<'static>,
 }
 
@@ -28,17 +30,17 @@ impl HelpFooterComponent {
         )))
         .centered();
         Self {
-            error_message: None,
+            error_message: Cow::Borrowed(""),
             help_bar,
         }
     }
 
-    pub fn set_error_message(&mut self, message: &'static str) {
-        self.error_message = Some(message);
+    pub fn set_error_message(&mut self, message: Cow<'static, str>) {
+        self.error_message = message;
     }
 
     pub fn reset_error_message(&mut self) {
-        self.error_message = None;
+        self.error_message = Cow::Borrowed("");
     }
 }
 
@@ -47,7 +49,7 @@ impl Component for HelpFooterComponent {
         let rects = Layout::horizontal([Constraint::Percentage(25), Constraint::Percentage(75)])
             .horizontal_margin(1)
             .split(layout.help_text);
-        let error = Paragraph::new(Span::from(self.error_message.unwrap_or("")).fg(Color::Red))
+        let error = Paragraph::new(Span::from(self.error_message.as_ref()).fg(Color::Red))
             .left_aligned()
             .block(Block::default().borders(Borders::NONE));
         f.render_widget(error, rects[0]);
@@ -56,13 +58,16 @@ impl Component for HelpFooterComponent {
 
     fn handle_event(&mut self, event: &ComponentEvent) -> Option<ComponentEvent> {
         match event {
-            ComponentEvent::ProcessListRefreshed => self.reset_error_message(),
+            ComponentEvent::ProcessListRefreshRequested => self.reset_error_message(),
 
-            ComponentEvent::ProcessKilled | ComponentEvent::NoProcessToKill => {
+            ComponentEvent::ProcessKillRequested | ComponentEvent::NoProcessToKill => {
                 self.reset_error_message()
             }
             ComponentEvent::ProcessKillFailed => {
-                self.set_error_message("Failed to kill process. Check permissions");
+                self.set_error_message(Cow::Borrowed("Failed to kill process. Check permissions"));
+            }
+            ComponentEvent::ErrorOccurred(error_message) => {
+                self.set_error_message(Cow::Owned(error_message.to_string()));
             }
             _ => (),
         }

@@ -40,9 +40,12 @@ pub enum KeyAction {
 }
 
 pub enum ComponentEvent {
+    ProcessListRefreshRequested,
     ProcessListRefreshed,
     NoProcessToKill,
+    ProcessKillRequested,
     ProcessKilled,
     ProcessKillFailed,
     QuitRequested,
+    ErrorOccurred(String),
 }

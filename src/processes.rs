@@ -14,6 +14,7 @@ mod daemon;
 
 pub use filters::IgnoreOptions;
 pub use filters::SearchBy;
+pub use daemon::*;
 
 use filters::QueryFilter;
 
