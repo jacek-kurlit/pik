@@ -1,6 +1,6 @@
 [package]
 name = "pik"
-version = "0.25.0"
+version = "0.26.0"
 edition = "2024"
 authors = ["Jacek Kurlit"]
 keywords = ["terminal", "process", "linux", "system", "kill"]
@@ -15,7 +15,7 @@ repository = "https://github.com/jacek-kurlit/pik"
 ratatui = { version = "0.29", features = ["serde"] }
 tui-textarea = "0.7"
 anyhow = "1.0.79"
-sysinfo = "0.36"
+sysinfo = "0.37"
 listeners = "0.3.0"
 chrono = "0.4"
 clap = { version = "4.5", features = ["derive"] }
