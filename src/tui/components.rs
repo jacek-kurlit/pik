@@ -23,6 +23,10 @@ pub trait Component {
         None
     }
 
+    fn update_state(&mut self) -> Option<ComponentEvent> {
+        None
+    }
+
     fn render(&mut self, _frame: &mut Frame, _layout: &LayoutRects) {}
 }
 
@@ -36,9 +40,12 @@ pub enum KeyAction {
 }
 
 pub enum ComponentEvent {
+    ProcessListRefreshRequested,
     ProcessListRefreshed,
     NoProcessToKill,
+    ProcessKillRequested,
     ProcessKilled,
     ProcessKillFailed,
     QuitRequested,
+    ErrorOccurred(String),
 }
