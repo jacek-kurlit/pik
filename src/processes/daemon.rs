@@ -54,14 +54,15 @@ fn process_loop(
         for operation in operations.unwrap() {
             match operation {
                 Operations::Search(query) => {
-                    let result = process_manager.find_processes(&query, &ignore_options);
+                    let result =
+                        process_manager.refresh_and_find_processes(&query, &ignore_options);
                     send_result(OperationResult::SearchCompleted(result), &result_sender);
                     last_query = query;
                 }
                 Operations::KillProcess(pid) => {
                     if process_manager.kill_process(pid) {
-                        let mut search_results =
-                            process_manager.find_processes(&last_query, &ignore_options);
+                        let mut search_results = process_manager
+                            .refresh_and_find_processes(&last_query, &ignore_options);
                         //NOTE: cache refresh takes time and process may reappear in list!
                         search_results.remove(pid);
                         send_result(
