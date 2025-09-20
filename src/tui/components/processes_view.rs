@@ -42,12 +42,13 @@ impl ProcessesViewComponent {
         ignore_options: IgnoreOptions,
         initial_query: String,
     ) -> Result<Self> {
-        let (ops_sender, results_receiver) = start(ProcessManager::new()?, ignore_options);
-        ops_sender.send(Operations::Search(initial_query.clone()))?;
+        let mut process_manager = ProcessManager::new()?;
+        let initial_results = process_manager.initialize(&initial_query, &ignore_options)?;
+        let (ops_sender, results_receiver) = start(process_manager, ignore_options);
         let mut component = Self {
             ops_sender,
             results_receiver,
-            search_results: ProcessSearchResults::empty(),
+            search_results: initial_results,
             process_table_component: ProcessTableComponent::new(
                 ui_config.icons.get_icons(),
                 // cloning for sake of simplicity
@@ -62,7 +63,7 @@ impl ProcessesViewComponent {
                 ui_config.icons.get_icons().search_prompt.as_str(),
             ),
         };
-        component.search_for_processess();
+        component.update_process_table_state();
         Ok(component)
     }
 

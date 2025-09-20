@@ -7,7 +7,7 @@ use fuzzy_matcher::{FuzzyMatcher, skim::SkimMatcherV2};
 #[test]
 fn should_find_cargo_process_by_cmd_name() {
     let mut process_manager = ProcessManager::new().unwrap();
-    let results = process_manager.find_processes("cargo", &IgnoreOptions::default());
+    let results = process_manager.refresh_and_find_processes("cargo", &IgnoreOptions::default());
     assert!(!results.is_empty());
     assert!(
         results
@@ -20,7 +20,7 @@ fn should_find_cargo_process_by_cmd_name() {
 #[test]
 fn should_find_cargo_process_by_cmd_path() {
     let mut process_manager = ProcessManager::new().unwrap();
-    let results = process_manager.find_processes("/cargo", &IgnoreOptions::default());
+    let results = process_manager.refresh_and_find_processes("/cargo", &IgnoreOptions::default());
     assert!(!results.is_empty());
     assert!(
         results
@@ -33,7 +33,7 @@ fn should_find_cargo_process_by_cmd_path() {
 #[test]
 fn should_find_cargo_process_by_name_path_or_args() {
     let mut process_manager = ProcessManager::new().unwrap();
-    let results = process_manager.find_processes("~cargo", &IgnoreOptions::default());
+    let results = process_manager.refresh_and_find_processes("~cargo", &IgnoreOptions::default());
     assert!(!results.is_empty());
     assert!(results.iter().all(|item| fuzzy_matches(
         item.process.cmd_path.as_ref().unwrap(),
@@ -46,7 +46,7 @@ fn should_find_cargo_process_by_name_path_or_args() {
 #[test]
 fn should_find_cargo_process_by_args() {
     let mut process_manager = ProcessManager::new().unwrap();
-    let results = process_manager.find_processes("-test", &IgnoreOptions::default());
+    let results = process_manager.refresh_and_find_processes("-test", &IgnoreOptions::default());
     assert!(!results.is_empty());
     assert!(
         results
@@ -64,7 +64,8 @@ fn should_find_cargo_process_by_port() {
     // NOTE: Sometimes system needs time to notice the port is in use
     thread::sleep(Duration::from_millis(250));
     let mut process_manager = ProcessManager::new().unwrap();
-    let results = process_manager.find_processes(&format!(":{}", port), &IgnoreOptions::default());
+    let results = process_manager
+        .refresh_and_find_processes(&format!(":{}", port), &IgnoreOptions::default());
     assert!(!results.is_empty());
     assert!(results.iter().all(|item| {
         fuzzy_matches(
@@ -78,10 +79,10 @@ fn should_find_cargo_process_by_port() {
 #[test]
 fn should_find_cargo_process_by_pid() {
     let mut process_manager = ProcessManager::new().unwrap();
-    let results = process_manager.find_processes("cargo", &IgnoreOptions::default());
+    let results = process_manager.refresh_and_find_processes("cargo", &IgnoreOptions::default());
     let cargo_process_pid = results.nth(Some(0)).map(|r| r.pid).unwrap();
 
-    let restults = process_manager.find_processes(
+    let restults = process_manager.refresh_and_find_processes(
         &format!("!{}", cargo_process_pid),
         &IgnoreOptions::default(),
     );
@@ -93,10 +94,10 @@ fn should_find_cargo_process_by_pid() {
 #[test]
 fn should_find_cargo_process_by_process_family() {
     let mut process_manager = ProcessManager::new().unwrap();
-    let results = process_manager.find_processes("cargo", &IgnoreOptions::default());
+    let results = process_manager.refresh_and_find_processes("cargo", &IgnoreOptions::default());
     let cargo_process_pid = results.nth(Some(0)).map(|r| r.pid).unwrap();
 
-    let results = process_manager.find_processes(
+    let results = process_manager.refresh_and_find_processes(
         &format!("@{}", cargo_process_pid),
         &IgnoreOptions::default(),
     );
@@ -120,7 +121,7 @@ fn should_ignore_processes_in_usr_dir() {
         paths: vec![Regex::new("/usr/*").unwrap()],
         ..Default::default()
     };
-    let results = process_manager.find_processes("", &ignore);
+    let results = process_manager.refresh_and_find_processes("", &ignore);
     assert!(!results.is_empty());
     assert!(results.iter().all(|item| {
         item.process

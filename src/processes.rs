@@ -1,12 +1,13 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use std::time::SystemTime;
 
-use anyhow::Result;
+use anyhow::{Ok, Result};
 use itertools::Itertools;
 use listeners::Listener;
+use sysinfo::ProcessRefreshKind;
 use sysinfo::{Pid, System, Uid, Users};
-use sysinfo::{ProcessRefreshKind, RefreshKind};
 
 mod daemon;
 mod filters;
@@ -130,22 +131,39 @@ impl ProcessSearchResults {
 
 impl ProcessManager {
     pub fn new() -> Result<Self> {
-        let sys = System::new_with_specifics(
-            RefreshKind::default().with_processes(process_refresh_kind()),
-        );
-        let users = Users::new_with_refreshed_list();
-        let process_ports = refresh_ports();
-        let current_user_id = find_current_process_user(&sys)?;
+        let sys = System::new();
+        let users = Users::new();
+        let process_ports = Default::default();
         Ok(Self {
             sys,
             users,
             process_ports,
-            current_user_id,
+            current_user_id: Uid::from_str("0")?,
         })
     }
 
-    pub fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
+    /// Initializes the process manager by refreshing system information and finding processes
+    /// This also sets the current user id which is used to filter processes when ignore.current_user is set
+    pub fn initialize(
+        &mut self,
+        query: &str,
+        ignore: &IgnoreOptions,
+    ) -> Result<ProcessSearchResults> {
         self.refresh();
+        self.current_user_id = find_current_process_user(&self.sys)?;
+        Ok(self.find_processes(query, ignore))
+    }
+
+    pub fn refresh_and_find_processes(
+        &mut self,
+        query: &str,
+        ignore: &IgnoreOptions,
+    ) -> ProcessSearchResults {
+        self.refresh();
+        self.find_processes(query, ignore)
+    }
+
+    fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
         let query_filter = QueryFilter::new(query);
         let ignored_processes_filter = IgnoreProcessesFilter::new(ignore, &self.current_user_id);
 
@@ -169,15 +187,18 @@ impl ProcessManager {
         ProcessSearchResults { items }
     }
 
+    /// Refreshes the system information, including processes and their associated ports.
+    /// This method spawns a separate thread to refresh the ports, as it speeds up the overall refresh process.
     fn refresh(&mut self) {
+        let ports_refresh = std::thread::spawn(refresh_ports);
         self.sys.refresh_processes_specifics(
             sysinfo::ProcessesToUpdate::All,
             true,
             process_refresh_kind(),
         );
-        // TODO: do we really need to refresh users?
+
         self.users.refresh();
-        self.process_ports = refresh_ports();
+        self.process_ports = ports_refresh.join().unwrap_or_default();
     }
 
     fn create_process_info(&self, prc: &impl ProcessInfo, ports: Option<&String>) -> Process {
@@ -235,12 +256,12 @@ fn process_refresh_kind() -> ProcessRefreshKind {
 
 fn refresh_ports() -> HashMap<u32, String> {
     let ports = listeners::get_all()
-        //NOTE: we ignore errors comming from listeners
+        //NOTE: we ignore errors coming from listeners
         .unwrap_or_default();
     create_sorted_process_ports(ports)
 }
 
-//NOTE: we sort this so order of ports is deterministic and doesn't change durig refresh
+//NOTE: we sort this so order of ports is deterministic and doesn't change during refresh
 fn create_sorted_process_ports(ports: HashSet<Listener>) -> ProcessPorts {
     ports
         .into_iter()
