@@ -44,7 +44,8 @@ impl ProcessesViewComponent {
     ) -> Result<Self> {
         let mut process_manager = ProcessManager::new()?;
         let initial_results = process_manager.inital_search(&initial_query, &ignore_options)?;
-        let (ops_sender, results_receiver) = start(process_manager, ignore_options);
+        let (ops_sender, results_receiver) =
+            start(process_manager, ignore_options, initial_query.clone());
         let mut component = Self {
             ops_sender,
             results_receiver,
