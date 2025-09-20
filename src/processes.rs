@@ -142,9 +142,11 @@ impl ProcessManager {
         })
     }
 
-    /// Initializes the process manager by refreshing system information and finding processes
-    /// This also sets the current user id which is used to filter processes when ignore.current_user is set
-    pub fn initialize(
+    /// Initializes the process manager by refreshing system information and finding processes.
+    /// This also sets the current user id which is used to filter processes.
+    /// To be honest this method only exits so we don't try to find current user id on every search
+    /// but only once at the beginning.
+    pub fn inital_search(
         &mut self,
         query: &str,
         ignore: &IgnoreOptions,

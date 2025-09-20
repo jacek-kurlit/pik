@@ -43,7 +43,7 @@ impl ProcessesViewComponent {
         initial_query: String,
     ) -> Result<Self> {
         let mut process_manager = ProcessManager::new()?;
-        let initial_results = process_manager.initialize(&initial_query, &ignore_options)?;
+        let initial_results = process_manager.inital_search(&initial_query, &ignore_options)?;
         let (ops_sender, results_receiver) = start(process_manager, ignore_options);
         let mut component = Self {
             ops_sender,
