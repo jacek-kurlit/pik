@@ -21,6 +21,7 @@ pub enum OperationResult {
 pub fn start(
     process_manager: ProcessManager,
     ignore_options: IgnoreOptions,
+    initial_query: String,
 ) -> (Sender<Operations>, Receiver<OperationResult>) {
     let (operations_sender, operations_reveiver) = std::sync::mpsc::channel();
     let (result_sender, result_reveiver) = std::sync::mpsc::channel();
@@ -28,8 +29,9 @@ pub fn start(
         process_loop(
             process_manager,
             operations_reveiver,
-            ignore_options,
             result_sender,
+            ignore_options,
+            initial_query,
         );
     });
     (operations_sender, result_reveiver)
@@ -38,10 +40,11 @@ pub fn start(
 fn process_loop(
     mut process_manager: ProcessManager,
     operations_reveiver: Receiver<Operations>,
-    ignore_options: IgnoreOptions,
     result_sender: Sender<OperationResult>,
+    ignore_options: IgnoreOptions,
+    initial_query: String,
 ) {
-    let mut last_query = String::new();
+    let mut last_query = initial_query;
     loop {
         let operations = receive_operations(&operations_reveiver);
         if let Err(err) = operations {
