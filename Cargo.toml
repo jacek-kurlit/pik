@@ -31,3 +31,4 @@ arboard = { version = "3.6", features = ["wayland-data-control"] }
 
 [dev-dependencies]
 http-test-server = "2.1.1"
+faux = "0.1"

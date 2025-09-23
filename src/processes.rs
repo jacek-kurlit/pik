@@ -21,6 +21,7 @@ use filters::QueryFilter;
 
 pub type ProcessPorts = HashMap<u32, String>;
 
+#[cfg_attr(test, faux::create)]
 pub struct ProcessManager {
     sys: System,
     users: Users,
@@ -129,43 +130,24 @@ impl ProcessSearchResults {
     }
 }
 
+#[cfg_attr(test, faux::methods)]
 impl ProcessManager {
     pub fn new() -> Result<Self> {
         let sys = System::new();
         let users = Users::new();
         let process_ports = Default::default();
-        Ok(Self {
+        let mut process_manager = Self {
             sys,
             users,
             process_ports,
             current_user_id: Uid::from_str("0")?,
-        })
+        };
+        process_manager.refresh();
+        process_manager.current_user_id = find_current_process_user(&process_manager.sys)?;
+        Ok(process_manager)
     }
 
-    /// Initializes the process manager by refreshing system information and finding processes.
-    /// This also sets the current user id which is used to filter processes.
-    /// To be honest this method only exits so we don't try to find current user id on every search
-    /// but only once at the beginning.
-    pub fn inital_search(
-        &mut self,
-        query: &str,
-        ignore: &IgnoreOptions,
-    ) -> Result<ProcessSearchResults> {
-        self.refresh();
-        self.current_user_id = find_current_process_user(&self.sys)?;
-        Ok(self.find_processes(query, ignore))
-    }
-
-    pub fn refresh_and_find_processes(
-        &mut self,
-        query: &str,
-        ignore: &IgnoreOptions,
-    ) -> ProcessSearchResults {
-        self.refresh();
-        self.find_processes(query, ignore)
-    }
-
-    fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
+    pub fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
         let query_filter = QueryFilter::new(query);
         let ignored_processes_filter = IgnoreProcessesFilter::new(ignore, &self.current_user_id);
 
@@ -191,7 +173,7 @@ impl ProcessManager {
 
     /// Refreshes the system information, including processes and their associated ports.
     /// This method spawns a separate thread to refresh the ports, as it speeds up the overall refresh process.
-    fn refresh(&mut self) {
+    pub fn refresh(&mut self) {
         let ports_refresh = std::thread::spawn(refresh_ports);
         self.sys.refresh_processes_specifics(
             sysinfo::ProcessesToUpdate::All,
