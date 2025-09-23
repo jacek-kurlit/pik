@@ -42,7 +42,7 @@ impl ProcessesViewComponent {
         ignore_options: IgnoreOptions,
         initial_query: String,
     ) -> Result<Self> {
-        let mut process_service = ProcssAsyncService::new(ProcessManager::new()?,ignore_options);
+        let mut process_service = ProcssAsyncService::new(ProcessManager::new()?, ignore_options);
         let initial_results = process_service.find_processes(&initial_query);
         let (ops_sender, results_receiver) = process_service.run_as_background_process();
         let mut component = Self {
