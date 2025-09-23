@@ -8,10 +8,10 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use tui_textarea::CursorMove;
 
 use crate::config::keymappings::AppAction;
-use crate::processes::{OperationResult, Operations, start};
+use crate::processes::{OperationResult, Operations, ProcessManager, ProcssAsyncService};
 use crate::{
     config::ui::UIConfig,
-    processes::{IgnoreOptions, Process, ProcessManager, ProcessSearchResults},
+    processes::{IgnoreOptions, Process, ProcessSearchResults},
     tui::{ProcessRelatedSearch, components::KeyAction},
 };
 
@@ -42,10 +42,9 @@ impl ProcessesViewComponent {
         ignore_options: IgnoreOptions,
         initial_query: String,
     ) -> Result<Self> {
-        let mut process_manager = ProcessManager::new()?;
-        let initial_results = process_manager.inital_search(&initial_query, &ignore_options)?;
-        let (ops_sender, results_receiver) =
-            start(process_manager, ignore_options, initial_query.clone());
+        let mut process_service = ProcssAsyncService::new(ProcessManager::new()?,ignore_options);
+        let initial_results = process_service.find_processes(&initial_query);
+        let (ops_sender, results_receiver) = process_service.run_as_background_process();
         let mut component = Self {
             ops_sender,
             results_receiver,
