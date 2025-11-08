@@ -5,7 +5,7 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg">
   <source media="(prefers-color-scheme: light)" srcset="logo_light.svg">
-  <img alt="Pik" height="80" src="logo_light.svg"/>
+  <img alt="Pik" height="40" src="logo_light.svg"/>
 </picture>
 </h1>
 
