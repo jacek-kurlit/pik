@@ -140,7 +140,7 @@ impl ProcessManager {
             sys,
             users,
             process_ports,
-            current_user_id: Uid::from_str("0")?,
+            current_user_id: Uid::from_str("0").unwrap(),
         };
         process_manager.refresh();
         process_manager.current_user_id = find_current_process_user(&process_manager.sys)?;
