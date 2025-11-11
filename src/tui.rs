@@ -18,6 +18,8 @@ use ratatui::crossterm::{
 use ratatui::{TerminalOptions, prelude::*};
 
 pub mod components;
+pub mod fx;
+pub mod color_cycle;
 mod highlight;
 
 use crate::{config::keymappings::KeyMappings, settings::AppSettings};

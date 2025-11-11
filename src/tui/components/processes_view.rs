@@ -1,14 +1,20 @@
 use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender};
+use std::time::Instant;
 
 use anyhow::Result;
 use arboard::Clipboard;
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
+use ratatui::layout::{Margin, Rect};
+use ratatui::style::palette::tailwind;
+use tachyonfx::{CellFilter, EffectManager, Interpolation, fx};
 use tui_textarea::CursorMove;
 
 use crate::config::keymappings::AppAction;
 use crate::processes::{OperationResult, Operations, ProcessManager, ProcssAsyncService};
+use crate::tui;
+use crate::tui::fx::UniqueEffectId;
 use crate::{
     config::ui::UIConfig,
     processes::{IgnoreOptions, Process, ProcessSearchResults},
@@ -27,6 +33,11 @@ pub struct ProcessesViewComponent {
     process_table_component: ProcessTableComponent,
     process_details_component: ProcessDetailsComponent,
     search_bar: SearchBarComponent,
+    //TODO: these should not be here
+    table_area: Rect,
+    effects: EffectManager<UniqueEffectId>,
+    anim_started: bool,
+    last_frame: Instant,
 }
 
 //NOTE: this is wrapped in a Lazy Mutex because arboard's Clipboard may cause issues when you don't
@@ -62,6 +73,11 @@ impl ProcessesViewComponent {
                 &ui_config.search_bar,
                 ui_config.icons.get_icons().search_prompt.as_str(),
             ),
+            //TODO: remove
+            table_area: Rect::ZERO,
+            effects: EffectManager::default(),
+            anim_started: false,
+            last_frame: Instant::now(),
         };
         component.update_process_table_state();
         Ok(component)
@@ -103,6 +119,7 @@ impl ProcessesViewComponent {
     }
 
     fn search_for_processess(&mut self) -> KeyAction {
+        self.play_search_animation();
         let search_text = self.search_bar.get_search_text().to_string();
         match self.ops_sender.send(Operations::Search(search_text)) {
             Ok(_) => KeyAction::Event(ComponentEvent::ProcessListRefreshRequested),
@@ -110,6 +127,26 @@ impl ProcessesViewComponent {
                 "Failed to send search request to process daemon".to_string(),
             )),
         }
+    }
+
+    fn play_search_animation(&mut self) {
+        // if self.anim_started {
+        //     return;
+        // }
+        // table area
+        let area = self.table_area;
+        // this should be taken from theme
+        // let color = widget.border_color();
+        let color = tailwind::BLUE.c400;
+        let fx = fx::parallel(&[
+            tui::fx::selected_category(color, area),
+            fx::fade_from_fg(color, (200, Interpolation::BounceInOut))
+                .with_area(area)
+                .with_filter(CellFilter::Outer(Margin::new(1, 1))),
+        ]);
+        self.effects
+            .add_unique_effect(UniqueEffectId::SearchStarted, fx);
+        self.anim_started = true;
     }
 
     fn kill_selected_process(&mut self) -> KeyAction {
@@ -275,12 +312,22 @@ impl Component for ProcessesViewComponent {
     fn render(&mut self, frame: &mut Frame, layout: &crate::tui::LayoutRects) {
         let selected_index = self.process_table_component.get_selected_process_index();
         let selected_process = self.search_results.nth(selected_index);
+        //TODO: remove later
+        self.table_area = layout.process_table;
+        let elapsed = self.last_frame.elapsed();
+        self.last_frame = Instant::now();
 
         self.search_bar.render(frame, layout);
         self.process_table_component
             .render(frame, layout, &self.search_results);
         self.process_details_component
             .render(frame, layout, selected_process);
+
+        let area = frame.area();
+        self.effects
+            //TODO: this probably should be area if we want to have one effect manager for entire
+            //app
+            .process_effects(elapsed.into(), frame.buffer_mut(), area);
     }
 }
 

@@ -28,6 +28,7 @@ itertools = "0.14"
 regex = "1.11"
 unicode-width = "0.2"
 arboard = { version = "3.6", features = ["wayland-data-control"] }
+tachyonfx = { version = "0.20", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 http-test-server = "2.1.1"
