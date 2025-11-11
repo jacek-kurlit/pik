@@ -52,6 +52,14 @@ impl SearchBarComponent {
         self.search_area.delete_line_by_head();
     }
 
+    pub fn delete_to_end(&mut self) {
+        self.search_area.delete_line_by_end();
+    }
+
+    pub fn delete_next_word(&mut self) {
+        self.search_area.delete_next_word();
+    }
+
     pub fn set_search_text(&mut self, text: &str) {
         self.clear_search_area();
         self.search_area.insert_str(text);

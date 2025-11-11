@@ -22,11 +22,16 @@ This tool is still under development
 
 ## Table of Contents
 
+- [Table of Contents](#table-of-contents)
 - [Features](#features)
 - [Installation](#installation)
 - [Configuration](#configuration)
+  - [Application configuration](#application-configuration)
 - [Caveats](#caveats)
 - [Development](#development)
+  - [Supported Systems](#supported-systems)
+  - [Setup](#setup)
+  - [Building](#building)
 
 ## Features
 
@@ -44,6 +49,7 @@ Pik allows to **fuzzy** search processes by:
   ![Example search everywhere](docs/search_everywhere.gif)
 - Select exact process by id - Prefix with '!' for example '!1234'
 - Select process family (process + it's children) - Prefix with '@' for example '@1234'
+- Support the [readline style keybindings](https://readline.kablamo.org/emacs.html) for text input in search bar
 
 After selecting process you can kill it with Ctrl + X
 

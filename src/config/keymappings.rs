@@ -44,8 +44,8 @@ impl KeyMappings {
 
     pub fn preconfigured_mappings() -> KeyMappings {
         let default_config = r#"
-next_item = ["down","tab", "ctrl+j", "ctrl+n"]
-previous_item = ["up", "shift+tab", "ctrl+k", "ctrl+p"]
+next_item = ["down","tab", "ctrl+n"]
+previous_item = ["up", "shift+tab", "ctrl+p"]
 jump_ten_next_items = ["pagedown"]
 jump_ten_previous_items = ["pageup"]
 go_to_first_item = ["ctrl+up", "ctrl+home"]
@@ -58,24 +58,31 @@ kill_process = ["ctrl+x"]
 refresh_process_list = ["ctrl+r"]
 copy_process_pid = ["ctrl+y"]
 
-scroll_process_details_down = ["ctrl+f"]
-scroll_process_details_up = ["ctrl+b"]
+scroll_process_details_down = ["alt+down"]
+scroll_process_details_up = ["alt+up"]
 
 select_process_parent = ["alt+p"]
-select_process_family = ["alt+f"]
+select_process_family = ["ctrl+alt+f"]
 select_process_siblings = ["alt+s"]
 
 toggle_help = ["ctrl+h"]
 toggle_debug = ["alt+d"]
 
-cursor_left = ["left"]
-cursor_right = ["right"]
-cursor_home = ["home"]
-cursor_end = ["end"]
+# Readline-style cursor movement
+cursor_left = ["left", "ctrl+b"]
+cursor_right = ["right", "ctrl+f"]
+cursor_home = ["home", "ctrl+a"]
+cursor_end = ["end", "ctrl+e"]
+cursor_word_left = ["alt+b"]
+cursor_word_right = ["alt+f"]
+
+# Readline-style deletion
 delete_char = ["backspace"]
-delete_next_char = ["delete"]
+delete_next_char = ["delete", "ctrl+d"]
 delete_word = ["ctrl+w"]
+delete_next_word = ["alt+d"]
 delete_to_start = ["ctrl+u"]
+delete_to_end = ["ctrl+k"]
     "#;
 
         toml::from_str(default_config).expect("This should always be parseable")
@@ -176,10 +183,14 @@ pub enum AppAction {
     CursorRight,
     CursorHome,
     CursorEnd,
+    CursorWordLeft,
+    CursorWordRight,
     DeleteChar,
     DeleteNextChar,
     DeleteWord,
+    DeleteNextWord,
     DeleteToStart,
+    DeleteToEnd,
 
     //Special case
     Unmapped,
@@ -229,10 +240,33 @@ impl KeyBinding {
 
 impl Display for KeyBinding {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let modi = modifier_to_str(self.modifier);
-        let sep = if modi.is_empty() { "" } else { MOD_SEPARATOR };
+        let mut parts = Vec::new();
+
+        // Add modifiers in a consistent order
+        if self.modifier.contains(KeyModifiers::CONTROL) {
+            parts.push("ctrl");
+        }
+        if self.modifier.contains(KeyModifiers::ALT) {
+            parts.push("alt");
+        }
+        if self.modifier.contains(KeyModifiers::SHIFT) {
+            parts.push("shift");
+        }
+        if self.modifier.contains(KeyModifiers::SUPER) {
+            parts.push("super");
+        }
+        if self.modifier.contains(KeyModifiers::HYPER) {
+            parts.push("hyper");
+        }
+        if self.modifier.contains(KeyModifiers::META) {
+            parts.push("meta");
+        }
+
+        // Add the key
         let key = self.key.to_string().to_lowercase();
-        write!(f, "{modi}{sep}{key}")
+        parts.push(&key);
+
+        write!(f, "{}", parts.join(MOD_SEPARATOR))
     }
 }
 
@@ -244,13 +278,25 @@ impl<'de> Deserialize<'de> for KeyBinding {
         D: serde::Deserializer<'de>,
     {
         let value: String = Deserialize::deserialize(deserializer)?;
-        let (modifier, key) = value
-            .split_once(MOD_SEPARATOR)
-            .unwrap_or_else(|| ("", &value));
-        Ok(KeyBinding {
-            key: str_to_key(key).map_err(serde::de::Error::custom)?,
-            modifier: str_to_modifier(modifier).map_err(serde::de::Error::custom)?,
-        })
+        let parts: Vec<&str> = value.split(MOD_SEPARATOR).collect();
+
+        if parts.is_empty() {
+            return Err(serde::de::Error::custom("empty key binding"));
+        }
+
+        // The last part is always the key
+        let key_str = parts[parts.len() - 1];
+        let key = str_to_key(key_str).map_err(serde::de::Error::custom)?;
+
+        // All preceding parts are modifiers
+        let mut modifier = KeyModifiers::empty();
+        for i in 0..parts.len() - 1 {
+            let mod_str = parts[i];
+            let mod_val = str_to_modifier(mod_str).map_err(serde::de::Error::custom)?;
+            modifier |= mod_val;
+        }
+
+        Ok(KeyBinding { key, modifier })
     }
 }
 
@@ -270,6 +316,7 @@ fn str_to_modifier(value: &str) -> Result<KeyModifiers, String> {
     Ok(modif)
 }
 
+#[allow(dead_code)]
 fn modifier_to_str(value: KeyModifiers) -> &'static str {
     match value {
         KeyModifiers::CONTROL => "ctrl",
@@ -299,6 +346,19 @@ fn str_to_key(value: &str) -> Result<KeyCode, String> {
         "end" => KeyCode::End,
         "insert" => KeyCode::Insert,
         "delete" => KeyCode::Delete,
+        // Add function keys F1 to F12, if we need more features extend this later
+        "f1" => KeyCode::F(1),
+        "f2" => KeyCode::F(2),
+        "f3" => KeyCode::F(3),
+        "f4" => KeyCode::F(4),
+        "f5" => KeyCode::F(5),
+        "f6" => KeyCode::F(6),
+        "f7" => KeyCode::F(7),
+        "f8" => KeyCode::F(8),
+        "f9" => KeyCode::F(9),
+        "f10" => KeyCode::F(10),
+        "f11" => KeyCode::F(11),
+        "f12" => KeyCode::F(12),
         char if char.len() == 1 => KeyCode::Char(char.chars().next().unwrap()),
         invalid => {
             return Err(format!("invalid key value '{invalid}'"));
@@ -352,6 +412,33 @@ mod test {
 quit = ["esc"]
 close = ["ctrl+c"]
 kill_process = ["alt+z", "ctrl+z"]
+"#,
+        )
+        .unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_deserialize_key_binding_with_multiple_modifiers() {
+        let mut expected = BTreeMap::new();
+        expected.insert(
+            AppAction::ToggleHelp,
+            vec![KeyBinding {
+                key: KeyCode::Char('h'),
+                modifier: KeyModifiers::CONTROL | KeyModifiers::ALT,
+            }],
+        );
+        expected.insert(
+            AppAction::ToggleDebug,
+            vec![KeyBinding {
+                key: KeyCode::Char('d'),
+                modifier: KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SHIFT,
+            }],
+        );
+        let actual: BTreeMap<AppAction, Vec<KeyBinding>> = toml::from_str(
+            r#"
+toggle_help = ["ctrl+alt+h"]
+toggle_debug = ["ctrl+alt+shift+d"]
 "#,
         )
         .unwrap();
