@@ -133,25 +133,25 @@ impl ProcessSearchResults {
 impl ProcessManager {
     pub fn new() -> Result<Self> {
         let mut sys = System::new();
-        let users = Users::new();
-        let process_ports = Default::default();
+        let mut users = Users::new();
         
+        let ports_refresh = std::thread::spawn(refresh_ports);
         sys.refresh_processes_specifics(
             sysinfo::ProcessesToUpdate::All,
             true,
             process_refresh_kind(),
         );
+        users.refresh();
         
         let current_user_id = find_current_process_user(&sys)?;
+        let process_ports = ports_refresh.join().unwrap_or_default();
         
-        let mut process_manager = Self {
+        Ok(Self {
             sys,
             users,
             process_ports,
             current_user_id,
-        };
-        process_manager.refresh();
-        Ok(process_manager)
+        })
     }
 
     pub fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
