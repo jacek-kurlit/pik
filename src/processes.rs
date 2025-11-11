@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
 use std::time::SystemTime;
 
 use anyhow::{Ok, Result};
@@ -133,17 +132,25 @@ impl ProcessSearchResults {
 #[cfg_attr(test, faux::methods)]
 impl ProcessManager {
     pub fn new() -> Result<Self> {
-        let sys = System::new();
+        let mut sys = System::new();
         let users = Users::new();
         let process_ports = Default::default();
+        
+        sys.refresh_processes_specifics(
+            sysinfo::ProcessesToUpdate::All,
+            true,
+            process_refresh_kind(),
+        );
+        
+        let current_user_id = find_current_process_user(&sys)?;
+        
         let mut process_manager = Self {
             sys,
             users,
             process_ports,
-            current_user_id: Uid::from_str("0").unwrap(),
+            current_user_id,
         };
         process_manager.refresh();
-        process_manager.current_user_id = find_current_process_user(&process_manager.sys)?;
         Ok(process_manager)
     }
 
