@@ -22,11 +22,18 @@ This tool is still under development
 
 ## Table of Contents
 
+- [Table of Contents](#table-of-contents)
 - [Features](#features)
 - [Installation](#installation)
 - [Configuration](#configuration)
+  - [Application configuration](#application-configuration)
+  - [Multiple meta key names support](#multiple-meta-key-names-support)
+  - [Readline style support](#readline-style-support)
 - [Caveats](#caveats)
 - [Development](#development)
+  - [Supported Systems](#supported-systems)
+  - [Setup](#setup)
+  - [Building](#building)
 
 ## Features
 
@@ -115,6 +122,46 @@ All options are optional, if skipped default values will be used.
 Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
 Run `pik -- --help` to see cli options
 Please refer to [config](config.md) for more details how to configure options,theme and key mappings
+
+### Multiple meta key names support
+
+Pik supports combining multiple modifier keys (meta keys) in key bindings. You can use any combination of "ctrl", "alt", "shift", "super", "hyper", and "meta" modifiers together.
+
+**Examples:**
+```toml
+# Single modifier
+quit = "ctrl+c"
+
+# Combined modifiers
+toggle_help = "ctrl+alt+h"
+toggle_debug = "ctrl+shift+d"
+
+# Multiple bindings with different modifier combinations for the same action
+toggle_help = ["ctrl+alt+h", "ctrl+shift+h", "f1"]
+```
+
+This allows for flexible keybinding configurations that can accommodate different user preferences and avoid conflicts with terminal or OS shortcuts.
+
+### Readline style support
+
+You may configure pik to use readline style key mappings. Here is example config snippet that you may add to your `config.toml` file to enable basic readline style editing:
+
+```toml
+cursor_left = ["left", "ctrl+b"]
+cursor_right = ["right", "ctrl+f"]
+cursor_home = ["home", "ctrl+a"]
+cursor_end = ["end", "ctrl+e"]
+cursor_word_left = ["alt+b"]
+cursor_word_right = ["alt+f"]
+delete_char = ["backspace", "ctrl+h"]
+delete_next_char = ["delete", "ctrl+d"]
+delete_word = ["ctrl+w"]
+delete_next_word = ["alt+d"]
+delete_to_start = ["ctrl+u"]
+delete_to_end = ["ctrl+k"]
+```
+
+Notice that you may need to adjust the other key mappings as well to avoid conflicts, and some key combinations may not work depending on your terminal emulator.
 
 ## Caveats
 

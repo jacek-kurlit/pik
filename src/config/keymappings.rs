@@ -176,10 +176,14 @@ pub enum AppAction {
     CursorRight,
     CursorHome,
     CursorEnd,
+    CursorWordLeft,
+    CursorWordRight,
     DeleteChar,
     DeleteNextChar,
     DeleteWord,
+    DeleteNextWord,
     DeleteToStart,
+    DeleteToEnd,
 
     //Special case
     Unmapped,
@@ -229,10 +233,33 @@ impl KeyBinding {
 
 impl Display for KeyBinding {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let modi = modifier_to_str(self.modifier);
-        let sep = if modi.is_empty() { "" } else { MOD_SEPARATOR };
+        let mut parts = Vec::new();
+
+        // Add modifiers in a consistent order
+        if self.modifier.contains(KeyModifiers::CONTROL) {
+            parts.push("ctrl");
+        }
+        if self.modifier.contains(KeyModifiers::ALT) {
+            parts.push("alt");
+        }
+        if self.modifier.contains(KeyModifiers::SHIFT) {
+            parts.push("shift");
+        }
+        if self.modifier.contains(KeyModifiers::SUPER) {
+            parts.push("super");
+        }
+        if self.modifier.contains(KeyModifiers::HYPER) {
+            parts.push("hyper");
+        }
+        if self.modifier.contains(KeyModifiers::META) {
+            parts.push("meta");
+        }
+
+        // Add the key
         let key = self.key.to_string().to_lowercase();
-        write!(f, "{modi}{sep}{key}")
+        parts.push(&key);
+
+        write!(f, "{}", parts.join(MOD_SEPARATOR))
     }
 }
 
@@ -244,13 +271,26 @@ impl<'de> Deserialize<'de> for KeyBinding {
         D: serde::Deserializer<'de>,
     {
         let value: String = Deserialize::deserialize(deserializer)?;
-        let (modifier, key) = value
-            .split_once(MOD_SEPARATOR)
-            .unwrap_or_else(|| ("", &value));
-        Ok(KeyBinding {
-            key: str_to_key(key).map_err(serde::de::Error::custom)?,
-            modifier: str_to_modifier(modifier).map_err(serde::de::Error::custom)?,
-        })
+        let parts: Vec<&str> = value.split(MOD_SEPARATOR).collect();
+
+        if parts.is_empty() {
+            return Err(serde::de::Error::custom("empty key binding"));
+        }
+
+        // The last part is always the key
+        let key_str = parts[parts.len() - 1];
+        let key = str_to_key(key_str).map_err(serde::de::Error::custom)?;
+
+        // All preceding parts are modifiers
+        let mut modifier = KeyModifiers::empty();
+
+        // Iterate over all but the last part
+        for mod_str in &parts[..parts.len() - 1] {
+            let mod_val = str_to_modifier(mod_str).map_err(serde::de::Error::custom)?;
+            modifier |= mod_val;
+        }
+
+        Ok(KeyBinding { key, modifier })
     }
 }
 
@@ -270,18 +310,6 @@ fn str_to_modifier(value: &str) -> Result<KeyModifiers, String> {
     Ok(modif)
 }
 
-fn modifier_to_str(value: KeyModifiers) -> &'static str {
-    match value {
-        KeyModifiers::CONTROL => "ctrl",
-        KeyModifiers::ALT => "alt",
-        KeyModifiers::SHIFT => "shift",
-        KeyModifiers::SUPER => "super",
-        KeyModifiers::HYPER => "hyper",
-        KeyModifiers::META => "meta",
-        _ => "",
-    }
-}
-
 fn str_to_key(value: &str) -> Result<KeyCode, String> {
     let key = match value {
         "esc" => KeyCode::Esc,
@@ -299,6 +327,20 @@ fn str_to_key(value: &str) -> Result<KeyCode, String> {
         "end" => KeyCode::End,
         "insert" => KeyCode::Insert,
         "delete" => KeyCode::Delete,
+        // Add function keys F1 to F12,
+        // if we need more features extend this later
+        "f1" => KeyCode::F(1),
+        "f2" => KeyCode::F(2),
+        "f3" => KeyCode::F(3),
+        "f4" => KeyCode::F(4),
+        "f5" => KeyCode::F(5),
+        "f6" => KeyCode::F(6),
+        "f7" => KeyCode::F(7),
+        "f8" => KeyCode::F(8),
+        "f9" => KeyCode::F(9),
+        "f10" => KeyCode::F(10),
+        "f11" => KeyCode::F(11),
+        "f12" => KeyCode::F(12),
         char if char.len() == 1 => KeyCode::Char(char.chars().next().unwrap()),
         invalid => {
             return Err(format!("invalid key value '{invalid}'"));
@@ -314,7 +356,7 @@ mod test {
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
     use crate::config::keymappings::{
-        AppAction, KeyBinding, KeyMappings, modifier_to_str, str_to_key, str_to_modifier,
+        AppAction, KeyBinding, KeyMappings, str_to_key, str_to_modifier,
     };
 
     #[test]
@@ -359,6 +401,33 @@ kill_process = ["alt+z", "ctrl+z"]
     }
 
     #[test]
+    fn test_deserialize_key_binding_with_multiple_modifiers() {
+        let mut expected = BTreeMap::new();
+        expected.insert(
+            AppAction::ToggleHelp,
+            vec![KeyBinding {
+                key: KeyCode::Char('h'),
+                modifier: KeyModifiers::CONTROL | KeyModifiers::ALT,
+            }],
+        );
+        expected.insert(
+            AppAction::ToggleDebug,
+            vec![KeyBinding {
+                key: KeyCode::Char('d'),
+                modifier: KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SHIFT,
+            }],
+        );
+        let actual: BTreeMap<AppAction, Vec<KeyBinding>> = toml::from_str(
+            r#"
+toggle_help = ["ctrl+alt+h"]
+toggle_debug = ["ctrl+alt+shift+d"]
+"#,
+        )
+        .unwrap();
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
     fn test_str_to_modifier() {
         assert_eq!(str_to_modifier(""), Ok(KeyModifiers::empty()));
         assert_eq!(str_to_modifier("ctrl"), Ok(KeyModifiers::CONTROL));
@@ -378,14 +447,35 @@ kill_process = ["alt+z", "ctrl+z"]
     }
 
     #[test]
-    fn test_modifier_to_str() {
-        assert_eq!(modifier_to_str(KeyModifiers::empty()), "");
-        assert_eq!(modifier_to_str(KeyModifiers::CONTROL), "ctrl");
-        assert_eq!(modifier_to_str(KeyModifiers::ALT), "alt");
-        assert_eq!(modifier_to_str(KeyModifiers::SHIFT), "shift");
-        assert_eq!(modifier_to_str(KeyModifiers::SUPER), "super");
-        assert_eq!(modifier_to_str(KeyModifiers::META), "meta");
-        assert_eq!(modifier_to_str(KeyModifiers::HYPER), "hyper");
+    fn test_modifier_combinations() {
+        // Test two modifiers
+        let binding = KeyBinding {
+            key: KeyCode::Char('a'),
+            modifier: KeyModifiers::CONTROL | KeyModifiers::ALT,
+        };
+        let serialized = binding.to_string();
+        assert_eq!(serialized, "ctrl+alt+a");
+
+        // Test three modifiers
+        let binding = KeyBinding {
+            key: KeyCode::Char('b'),
+            modifier: KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SHIFT,
+        };
+        let serialized = binding.to_string();
+        assert_eq!(serialized, "ctrl+alt+shift+b");
+
+        // Test all modifiers
+        let binding = KeyBinding {
+            key: KeyCode::Char('c'),
+            modifier: KeyModifiers::CONTROL
+                | KeyModifiers::ALT
+                | KeyModifiers::SHIFT
+                | KeyModifiers::SUPER
+                | KeyModifiers::META
+                | KeyModifiers::HYPER,
+        };
+        let serialized = binding.to_string();
+        assert_eq!(serialized, "ctrl+alt+shift+super+hyper+meta+c");
     }
 
     #[test]
@@ -659,6 +749,49 @@ kill_process = ["alt+z", "ctrl+z"]
                 key: KeyCode::Delete,
                 modifier: KeyModifiers::CONTROL | KeyModifiers::ALT,
             }
+        );
+    }
+
+    #[test]
+    fn test_combined_modifier_key_resolve() {
+        // Test the exact example from README: ctrl+alt+h and ctrl+shift+h for toggle_help
+        let mut key_mappings = KeyMappings::new();
+        key_mappings.insert(
+            AppAction::ToggleHelp,
+            vec![
+                KeyBinding::key_with_mod(
+                    KeyCode::Char('h'),
+                    KeyModifiers::CONTROL | KeyModifiers::ALT,
+                ),
+                KeyBinding::key_with_mod(
+                    KeyCode::Char('h'),
+                    KeyModifiers::CONTROL | KeyModifiers::SHIFT,
+                ),
+            ],
+        );
+
+        // Test ctrl+alt+h resolves to ToggleHelp
+        assert_eq!(
+            key_mappings.resolve(KeyEvent::new(
+                KeyCode::Char('h'),
+                KeyModifiers::CONTROL | KeyModifiers::ALT
+            )),
+            AppAction::ToggleHelp
+        );
+
+        // Test ctrl+shift+h also resolves to ToggleHelp
+        assert_eq!(
+            key_mappings.resolve(KeyEvent::new(
+                KeyCode::Char('h'),
+                KeyModifiers::CONTROL | KeyModifiers::SHIFT
+            )),
+            AppAction::ToggleHelp
+        );
+
+        // Test ctrl+h alone does NOT resolve to ToggleHelp
+        assert_eq!(
+            key_mappings.resolve(KeyEvent::new(KeyCode::Char('h'), KeyModifiers::CONTROL)),
+            AppAction::Unmapped
         );
     }
 }
