@@ -1,16 +1,13 @@
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
-use std::str::FromStr;
 use std::time::SystemTime;
 
 use anyhow::{Ok, Result};
-use itertools::Itertools;
-use listeners::Listener;
 use sysinfo::ProcessRefreshKind;
 use sysinfo::{Pid, System, Uid, Users};
 
 mod daemon;
 mod filters;
+mod ports;
 mod utils;
 
 pub use daemon::*;
@@ -19,8 +16,6 @@ pub use filters::SearchBy;
 
 use filters::QueryFilter;
 
-pub type ProcessPorts = HashMap<u32, String>;
-
 #[cfg_attr(test, faux::create)]
 pub struct ProcessManager {
     sys: System,
@@ -28,6 +23,8 @@ pub struct ProcessManager {
     process_ports: ProcessPorts,
     current_user_id: Uid,
 }
+
+use crate::processes::ports::ProcessPorts;
 
 use self::filters::IgnoreProcessesFilter;
 use self::utils::{
@@ -133,18 +130,17 @@ impl ProcessSearchResults {
 #[cfg_attr(test, faux::methods)]
 impl ProcessManager {
     pub fn new() -> Result<Self> {
-        let sys = System::new();
-        let users = Users::new();
-        let process_ports = Default::default();
-        let mut process_manager = Self {
+        let mut sys = System::new();
+        let mut users = Users::new_with_refreshed_list();
+        let process_ports = optimized_refresh(&mut sys, &mut users);
+        let current_user_id = find_current_process_user(&sys)?;
+
+        Ok(Self {
             sys,
             users,
             process_ports,
-            current_user_id: Uid::from_str("0")?,
-        };
-        process_manager.refresh();
-        process_manager.current_user_id = find_current_process_user(&process_manager.sys)?;
-        Ok(process_manager)
+            current_user_id,
+        })
     }
 
     pub fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
@@ -171,18 +167,8 @@ impl ProcessManager {
         ProcessSearchResults { items }
     }
 
-    /// Refreshes the system information, including processes and their associated ports.
-    /// This method spawns a separate thread to refresh the ports, as it speeds up the overall refresh process.
     pub fn refresh(&mut self) {
-        let ports_refresh = std::thread::spawn(refresh_ports);
-        self.sys.refresh_processes_specifics(
-            sysinfo::ProcessesToUpdate::All,
-            true,
-            process_refresh_kind(),
-        );
-
-        self.users.refresh();
-        self.process_ports = ports_refresh.join().unwrap_or_default();
+        self.process_ports = optimized_refresh(&mut self.sys, &mut self.users);
     }
 
     fn create_process_info(&self, prc: &impl ProcessInfo, ports: Option<&String>) -> Process {
@@ -236,24 +222,6 @@ fn process_refresh_kind() -> ProcessRefreshKind {
         .with_cmd(sysinfo::UpdateKind::OnlyIfNotSet)
         .with_exe(sysinfo::UpdateKind::OnlyIfNotSet)
         .with_user(sysinfo::UpdateKind::OnlyIfNotSet)
-}
-
-fn refresh_ports() -> HashMap<u32, String> {
-    let ports = listeners::get_all()
-        //NOTE: we ignore errors coming from listeners
-        .unwrap_or_default();
-    create_sorted_process_ports(ports)
-}
-
-//NOTE: we sort this so order of ports is deterministic and doesn't change during refresh
-fn create_sorted_process_ports(ports: HashSet<Listener>) -> ProcessPorts {
-    ports
-        .into_iter()
-        .map(|l| (l.process.pid, l.socket.port()))
-        .into_group_map()
-        .into_iter()
-        .map(|(pid, ports)| (pid, ports.into_iter().sorted_by(|a, b| a.cmp(b)).join(", ")))
-        .collect()
 }
 
 #[derive(Debug, Clone)]
@@ -361,25 +329,25 @@ impl Ord for MatchType {
     }
 }
 
+/// Refreshes the system information, including processes and their associated ports.
+/// This method spawns a separate thread to refresh the ports, as it speeds up the overall refresh process.
+/// It makes overall refreshes ~2x faster (initial refresh is slower though).
+fn optimized_refresh(sys: &mut System, users: &mut Users) -> ProcessPorts {
+    let ports_refresh = std::thread::spawn(ProcessPorts::new_refreshed);
+    sys.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::All,
+        true,
+        process_refresh_kind(),
+    );
+
+    users.refresh();
+    ports_refresh.join().unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
-    use listeners::{Listener, Process};
 
     use super::*;
-
-    #[test]
-    fn should_create_sorted_process_ports() {
-        let value = [
-            create_listener(1, 8080),
-            create_listener(1, 100),
-            create_listener(1, 50),
-            create_listener(2, 1234),
-        ];
-        let process_ports = create_sorted_process_ports(HashSet::from(value));
-        assert_eq!(process_ports.len(), 2);
-        assert_eq!(process_ports.get(&1).unwrap(), "50, 100, 8080");
-        assert_eq!(process_ports.get(&2).unwrap(), "1234");
-    }
 
     #[test]
     fn match_type_sort_in_correct_order() {
@@ -419,17 +387,5 @@ mod tests {
                 MatchType::Exists,
             ]
         );
-    }
-
-    fn create_listener(pid: u32, port: u16) -> Listener {
-        Listener {
-            process: Process {
-                pid,
-                name: format!("p1{pid}"),
-                path: format!("p1{pid}"),
-            },
-            socket: format!("127.0.0.1:{port}").parse().unwrap(),
-            protocol: listeners::Protocol::TCP,
-        }
     }
 }
