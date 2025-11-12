@@ -8,12 +8,16 @@ use serde::{Deserialize, Serialize};
 pub struct KeyMappings {
     #[serde(flatten)]
     pub bindings: HashMap<AppAction, Vec<KeyBinding>>,
+    /// Reverse mapping for efficient key resolution. Not serialized.
+    #[serde(skip)]
+    reverse_bindings: HashMap<KeyBinding, AppAction>,
 }
 
 impl KeyMappings {
     pub fn new() -> Self {
         Self {
             bindings: HashMap::new(),
+            reverse_bindings: HashMap::new(),
         }
     }
 
@@ -34,11 +38,23 @@ impl KeyMappings {
     // test only
     pub fn insert(&mut self, action: AppAction, key_mappings: Vec<KeyBinding>) {
         self.bindings.insert(action, key_mappings);
+        self.build_reverse_mapping();
+    }
+
+    /// Build the reverse mapping from the bindings. Should be called after any modifications.
+    fn build_reverse_mapping(&mut self) {
+        self.reverse_bindings.clear();
+        for (action, bindings) in self.bindings.iter() {
+            for binding in bindings.iter() {
+                self.reverse_bindings.insert(*binding, *action);
+            }
+        }
     }
 
     pub fn override_with(mut self, key_mappings: KeyMappings) -> anyhow::Result<KeyMappings> {
         self.bindings.extend(key_mappings.bindings);
         self.validate_key_mappings()?;
+        self.build_reverse_mapping();
         Ok(self)
     }
 
@@ -78,7 +94,9 @@ delete_word = ["ctrl+w"]
 delete_to_start = ["ctrl+u"]
     "#;
 
-        toml::from_str(default_config).expect("This should always be parseable")
+        let mut mappings: KeyMappings = toml::from_str(default_config).expect("This should always be parseable");
+        mappings.build_reverse_mapping();
+        mappings
     }
 
     fn validate_key_mappings(&self) -> anyhow::Result<()> {
@@ -122,24 +140,15 @@ delete_to_start = ["ctrl+u"]
     pub fn resolve(&self, event: KeyEvent) -> AppAction {
         let looking_for = KeyBinding::from(event);
 
-        self.bindings
-            .iter()
-            .find_map(|(action, bindings)| {
-                if bindings.contains(&looking_for) {
-                    Some(*action)
-                } else {
-                    None
-                }
-            })
+        self.reverse_bindings
+            .get(&looking_for)
+            .copied()
             .unwrap_or(AppAction::Unmapped)
     }
 }
-
-//TODO: we should think about how to handle this better
-//I don't like the fact that we user do not have config we will parse default config twice
 impl Default for KeyMappings {
     fn default() -> Self {
-        Self::preconfigured_mappings()
+        Self::new()
     }
 }
 

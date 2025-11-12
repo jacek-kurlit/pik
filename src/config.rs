@@ -24,8 +24,14 @@ fn parse_config(toml: &str) -> Result<AppConfig> {
     let mut config: AppConfig = toml::from_str(toml)
         .with_context(|| format!("Failed to deserialize config from: {toml:?}"))?;
 
-    config.key_mappings =
-        KeyMappings::preconfigured_mappings().override_with(config.key_mappings)?;
+    // Handle key mappings separately to allow merging with preconfigured mappings
+    config.key_mappings = Some(match config.key_mappings.take() {
+        Some(custom_mappings) => {
+            KeyMappings::preconfigured_mappings().override_with(custom_mappings)?
+        }
+        None => KeyMappings::preconfigured_mappings(),
+    });
+
     Ok(config)
 }
 
@@ -34,16 +40,28 @@ use regex::Regex;
 use serde::Deserialize;
 use ui::UIConfig;
 
-#[derive(Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
     pub screen_size: ScreenSize,
     #[serde(default)]
     pub ignore: IgnoreConfig,
     #[serde(default)]
-    pub key_mappings: KeyMappings,
+    pub key_mappings: Option<KeyMappings>,
     #[serde(default)]
     pub ui: UIConfig,
+}
+
+// Provide default values for AppConfig
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            screen_size: ScreenSize::default(),
+            ignore: IgnoreConfig::default(),
+            key_mappings: Some(KeyMappings::preconfigured_mappings()),
+            ui: UIConfig::default(),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -140,7 +158,7 @@ mod tests {
                     other_users: true,
                     threads: true
                 },
-                key_mappings: KeyMappings::preconfigured_mappings(),
+                key_mappings: Some(KeyMappings::preconfigured_mappings()),
                 ui: UIConfig {
                     icons: ui::IconConfig::Ascii,
                     process_table: TableTheme {
@@ -313,7 +331,7 @@ mod tests {
                     other_users: false,
                     threads: false
                 },
-                key_mappings,
+                key_mappings: Some(key_mappings),
                 ui: UIConfig {
                     icons: ui::IconConfig::NerdFontV3,
                     process_table: TableTheme {

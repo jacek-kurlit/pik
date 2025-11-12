@@ -32,7 +32,7 @@ impl AppSettings {
                 paths: prefer_override(config.ignore.paths, cli_args.ignore.paths),
             },
             ui_config: config.ui,
-            key_mappings: config.key_mappings,
+            key_mappings: config.key_mappings.expect("key_mappings should be set by parse_config"),
         }
     }
 }
@@ -126,7 +126,7 @@ mod tests {
                     paths: vec![]
                 },
                 ui_config: UIConfig::default(),
-                key_mappings: KeyMappings::default(),
+                key_mappings: KeyMappings::preconfigured_mappings(),
             }
         );
     }
