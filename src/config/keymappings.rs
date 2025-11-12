@@ -94,7 +94,8 @@ delete_word = ["ctrl+w"]
 delete_to_start = ["ctrl+u"]
     "#;
 
-        let mut mappings: KeyMappings = toml::from_str(default_config).expect("This should always be parseable");
+        // Load perconfigured mappings if parsing fails return default empty mappings
+        let mut mappings: KeyMappings = toml::from_str(default_config).unwrap_or_default();
         mappings.build_reverse_mapping();
         mappings
     }

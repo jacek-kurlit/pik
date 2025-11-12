@@ -32,7 +32,7 @@ impl AppSettings {
                 paths: prefer_override(config.ignore.paths, cli_args.ignore.paths),
             },
             ui_config: config.ui,
-            key_mappings: config.key_mappings.expect("key_mappings should be set by parse_config"),
+            key_mappings: config.key_mappings.unwrap_or_default(),
         }
     }
 }
@@ -68,7 +68,6 @@ impl From<ScreenSizeOptions> for Viewport {
 
 #[cfg(test)]
 mod tests {
-
     use regex::Regex;
 
     use crate::{
