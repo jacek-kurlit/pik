@@ -242,6 +242,12 @@ impl Component for ProcessesViewComponent {
             AppAction::CursorEnd => {
                 self.search_bar.move_cursor(CursorMove::End);
             }
+            AppAction::CursorWordLeft => {
+                self.search_bar.move_cursor(CursorMove::WordBack);
+            }
+            AppAction::CursorWordRight => {
+                self.search_bar.move_cursor(CursorMove::WordForward);
+            }
             AppAction::DeleteChar => {
                 self.search_bar.delete_char();
                 return self.search_for_processess();
@@ -257,6 +263,14 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteToStart => {
                 self.search_bar.delete_to_start();
+                return self.search_for_processess();
+            }
+            AppAction::DeleteToEnd => {
+                self.search_bar.delete_to_end();
+                return self.search_for_processess();
+            }
+            AppAction::DeleteNextWord => {
+                self.search_bar.delete_next_word();
                 return self.search_for_processess();
             }
             AppAction::Unmapped => {

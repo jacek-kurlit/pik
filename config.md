@@ -153,10 +153,27 @@ These properties are toml table under `[key_mappings]` section
 ### Key binding
 
 Key mapping rules:
-- You may define binding as single key mapping `action = "ctrl+x"` or array `action = "ctrl+x", "alt+x"`
+- You may define binding as single key mapping `action = "ctrl+x"` or array `action = ["ctrl+x", "alt+x"]`
 - You can prefix mapping with modifier and '+' sign, allowed values are: "ctrl", "alt", "shift", "super", "hyper", "meta"
-- You **may not** define mapping as single char like `action = c` but you may use any special key `action = tab`
+- You can combine multiple modifiers: `action = "ctrl+alt+h"` or `action = "ctrl+shift+h"`
+- Multiple modifiers with multiple bindings: `action = ["ctrl+alt+h", "ctrl+shift+h"]`
+- You **may not** define mapping as single char like `action = "c"` but you may use any special key `action = "tab"`
 - If key binding is assigned to more than **one** action validation error will rise
+
+**Examples:**
+```toml
+# Single binding
+quit = "ctrl+c"
+
+# Multiple bindings for the same action
+toggle_help = ["ctrl+h", "f1"]
+
+# Combined modifiers
+toggle_debug = "ctrl+alt+d"
+
+# Multiple bindings with combined modifiers
+toggle_help = ["ctrl+alt+h", "ctrl+shift+h"]
+```
 
 ## UI & Theme
 
