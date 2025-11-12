@@ -28,6 +28,12 @@ struct App {
     key_mappings: KeyMappings,
 }
 
+// on linux and Mac OS
+#[cfg(target_family = "unix")]
+const KEY_READ_DELAY: u64 = 0;
+// Windows needs a small delay to avoid UI lag
+#[cfg(target_family = "windows")]
+const KEY_READ_DELAY: u64 = 16;
 impl App {
     fn new(app_settings: AppSettings) -> Result<App> {
         let component_events = VecDeque::new();
@@ -69,7 +75,7 @@ impl App {
     }
 
     fn handle_input(&mut self) -> Result<(), io::Error> {
-        if event::poll(Duration::from_millis(0))?
+        if event::poll(Duration::from_millis(KEY_READ_DELAY))?
             && let Event::Key(key) = event::read()?
             && key.kind == KeyEventKind::Press
         {
