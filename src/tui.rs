@@ -28,10 +28,10 @@ struct App {
     key_mappings: KeyMappings,
 }
 
-// on linux and Mac OS 
+// on linux and Mac OS
 #[cfg(target_family = "unix")]
 const KEY_READ_DELAY: u64 = 0;
-// on windows
+// Windows needs a small delay to avoid UI lag
 #[cfg(target_family = "windows")]
 const KEY_READ_DELAY: u64 = 16;
 impl App {
