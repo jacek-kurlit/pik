@@ -69,7 +69,7 @@ impl App {
     }
 
     fn handle_input(&mut self) -> Result<(), io::Error> {
-        if event::poll(Duration::from_millis(0))?
+        if event::poll(Duration::from_millis(16))?
             && let Event::Key(key) = event::read()?
             && key.kind == KeyEventKind::Press
         {
