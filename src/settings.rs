@@ -32,7 +32,7 @@ impl AppSettings {
                 paths: prefer_override(config.ignore.paths, cli_args.ignore.paths),
             },
             ui_config: config.ui,
-            key_mappings: config.key_mappings,
+            key_mappings: config.key_mappings.unwrap_or_default(),
         }
     }
 }
@@ -68,7 +68,6 @@ impl From<ScreenSizeOptions> for Viewport {
 
 #[cfg(test)]
 mod tests {
-
     use regex::Regex;
 
     use crate::{
@@ -126,7 +125,7 @@ mod tests {
                     paths: vec![]
                 },
                 ui_config: UIConfig::default(),
-                key_mappings: KeyMappings::default(),
+                key_mappings: KeyMappings::preconfigured_mappings(),
             }
         );
     }
