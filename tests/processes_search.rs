@@ -82,7 +82,7 @@ fn should_find_cargo_process_by_pid() {
     let cargo_process_pid = results.nth(Some(0)).map(|r| r.pid).unwrap();
 
     let restults =
-        process_manager.find_processes(&format!("!{cargo_process_pid}"), &IgnoreOptions::default());
+        process_manager.find_processes(&format!("={cargo_process_pid}"), &IgnoreOptions::default());
     assert_eq!(restults.len(), 1);
     assert_eq!(restults.nth(Some(0)).unwrap().pid, cargo_process_pid);
     assert!(results_are_sorted_by_match_type(results));
