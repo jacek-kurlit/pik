@@ -29,7 +29,7 @@ impl QueryFilter {
             Some('/') => (SearchBy::Path, &query[1..]),
             Some('-') => (SearchBy::Args, &query[1..]),
             Some('~') => (SearchBy::Everywhere, &query[1..]),
-            Some('!') => (SearchBy::Pid, &query[1..]),
+            Some('=') => (SearchBy::Pid, &query[1..]),
             Some('@') => (SearchBy::ProcessFamily, &query[1..]),
             Some(_) => (SearchBy::Cmd, query),
             None => (SearchBy::None, query),
@@ -200,7 +200,7 @@ pub mod tests {
         assert_eq!(filter.search_by, SearchBy::Everywhere);
         assert_eq!(filter.query, "foo");
 
-        let filter = QueryFilter::new("!1234");
+        let filter = QueryFilter::new("=1234");
         assert_eq!(filter.search_by, SearchBy::Pid);
         assert_eq!(filter.query, "1234");
 
@@ -341,7 +341,7 @@ pub mod tests {
 
     #[test]
     fn query_filter_search_by_pid() {
-        let filter = QueryFilter::new("!1234");
+        let filter = QueryFilter::new("=1234");
         let mut process = MockProcessInfo {
             pid: 1234,
             ..Default::default()
