@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use components::{
     Component, ComponentEvent, KeyAction, debug::DebugComponent,
     general_input_handler::GeneralInputHandlerComponent, help_footer::HelpFooterComponent,
@@ -62,7 +62,7 @@ impl App {
         })
     }
 
-    fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> io::Result<()> {
+    fn run<B: Backend>(mut self, terminal: &mut Terminal<B>) -> Result<()> {
         loop {
             self.handle_input()?;
             self.update_state();
@@ -120,13 +120,15 @@ impl App {
         Ok(false)
     }
 
-    fn render<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<(), io::Error> {
-        terminal.draw(|frame| {
-            let layout = LayoutRects::new(frame);
-            for component in self.components.iter_mut().rev() {
-                component.render(frame, &layout);
-            }
-        })?;
+    fn render<B: Backend>(&mut self, terminal: &mut Terminal<B>) -> Result<()> {
+        terminal
+            .draw(|frame| {
+                let layout = LayoutRects::new(frame);
+                for component in self.components.iter_mut().rev() {
+                    component.render(frame, &layout);
+                }
+            })
+            .map_err(|e| anyhow!("Failed to render on terminal {e}"))?;
         Ok(())
     }
 }

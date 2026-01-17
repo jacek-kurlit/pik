@@ -111,10 +111,10 @@ mod tests {
         crossterm::event::{KeyCode, KeyModifiers},
         layout::{Alignment, Margin},
         style::{
-            Color, Modifier, Style, Stylize,
+            Color, Modifier, Style,
             palette::tailwind::{self, SLATE},
         },
-        widgets::{BorderType, block::Position},
+        widgets::{BorderType, TitlePosition},
     };
     use ui::{
         BorderTheme, CellTheme, ProcessDetailsTheme, RowTheme, ScrollbarTheme, SearchBarTheme,
@@ -146,7 +146,7 @@ mod tests {
                     process_table: TableTheme {
                         title: TitleTheme {
                             alignment: Alignment::Left,
-                            position: Position::Top
+                            position: TitlePosition::Top
                         },
                         border: BorderTheme {
                             style: Style::default().fg(tailwind::BLUE.c400),
@@ -183,7 +183,7 @@ mod tests {
                     process_details: ProcessDetailsTheme {
                         title: TitleTheme {
                             alignment: Alignment::Left,
-                            position: Position::Top
+                            position: TitlePosition::Top
                         },
                         border: BorderTheme {
                             style: Style::default().fg(tailwind::BLUE.c400),
@@ -319,7 +319,7 @@ mod tests {
                     process_table: TableTheme {
                         title: TitleTheme {
                             alignment: Alignment::Right,
-                            position: Position::Bottom
+                            position: TitlePosition::Bottom
                         },
                         border: BorderTheme {
                             style: Style::default().fg(tailwind::INDIGO.c500).bold().italic(),
@@ -365,7 +365,7 @@ mod tests {
                     process_details: ProcessDetailsTheme {
                         title: TitleTheme {
                             alignment: Alignment::Center,
-                            position: Position::Bottom
+                            position: TitlePosition::Bottom
                         },
                         border: BorderTheme {
                             style: Style::default()
