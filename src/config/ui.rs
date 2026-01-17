@@ -3,10 +3,10 @@ use std::sync::OnceLock;
 use ratatui::{
     layout::{Alignment, Margin},
     style::{
-        Color, Modifier, Style, Stylize,
+        Color, Modifier, Style,
         palette::tailwind::{self, SLATE},
     },
-    widgets::{BorderType, block::Position},
+    widgets::{BorderType, TitlePosition},
 };
 use serde::{Deserialize, Serialize};
 
@@ -118,8 +118,8 @@ impl Default for BorderTheme {
 pub struct TitleTheme {
     #[serde(default, with = "AlignmentDef")]
     pub alignment: Alignment,
-    #[serde(default, with = "PositionDef")]
-    pub position: Position,
+    #[serde(default, with = "TitlePositionDef")]
+    pub position: TitlePosition,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -192,6 +192,18 @@ pub enum BorderTypeDef {
     Double,
     #[serde(alias = "thick")]
     Thick,
+    #[serde(alias = "light_double_dashed")]
+    LightDoubleDashed,
+    #[serde(alias = "heavy_double_dashed")]
+    HeavyDoubleDashed,
+    #[serde(alias = "light_triple_dashed")]
+    LightTripleDashed,
+    #[serde(alias = "heavy_triple_dashed")]
+    HeavyTripleDashed,
+    #[serde(alias = "light_quadruple_dashed")]
+    LightQuadrupleDashed,
+    #[serde(alias = "heavy_quadruple_dashed")]
+    HeavyQuadrupleDashed,
     #[serde(alias = "quadrant_inside")]
     QuadrantInside,
     #[serde(alias = "quadrant_outside")]
@@ -211,8 +223,8 @@ pub enum AlignmentDef {
 }
 
 #[derive(Serialize, Deserialize, Default)]
-#[serde(remote = "Position")]
-pub enum PositionDef {
+#[serde(remote = "TitlePosition")]
+pub enum TitlePositionDef {
     #[default]
     #[serde(alias = "top")]
     Top,
@@ -318,7 +330,7 @@ mod tests {
 
         let config: TableTheme = toml::from_str(toml).unwrap();
         assert_eq!(config.title.alignment, Alignment::Right);
-        assert_eq!(config.title.position, Position::Bottom);
+        assert_eq!(config.title.position, TitlePosition::Bottom);
         assert_eq!(config.border._type, BorderType::QuadrantInside);
     }
 
@@ -335,7 +347,7 @@ mod tests {
 
         let config: TableTheme = toml::from_str(toml).unwrap();
         assert_eq!(config.title.alignment, Alignment::Right);
-        assert_eq!(config.title.position, Position::Bottom);
+        assert_eq!(config.title.position, TitlePosition::Bottom);
         assert_eq!(config.border._type, BorderType::QuadrantInside);
     }
 
