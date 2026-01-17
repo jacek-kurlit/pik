@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use components::{
     Component, ComponentEvent, KeyAction, debug::DebugComponent,
     general_input_handler::GeneralInputHandlerComponent, help_footer::HelpFooterComponent,
@@ -74,7 +74,7 @@ impl App {
         }
     }
 
-    fn handle_input(&mut self) -> Result<(), io::Error> {
+    fn handle_input(&mut self) -> Result<()> {
         if event::poll(Duration::from_millis(KEY_READ_DELAY))?
             && let Event::Key(key) = event::read()?
             && key.kind == KeyEventKind::Press
@@ -105,7 +105,7 @@ impl App {
         }
     }
 
-    fn handle_events(&mut self) -> Result<bool, io::Error> {
+    fn handle_events(&mut self) -> Result<bool> {
         while let Some(event) = self.component_events.pop_front() {
             if let ComponentEvent::QuitRequested = event {
                 return Ok(true);
@@ -146,6 +146,8 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
         execute!(stdout(), EnterAlternateScreen)?;
     }
 
+    set_cursor_color(app_settings.ui_config.search_bar.cursor_style.bg)?;
+
     let mut terminal = ratatui::init_with_options(TerminalOptions { viewport });
 
     // create app and run it
@@ -155,6 +157,7 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
     // restore terminal
     terminal.clear()?;
     ratatui::restore();
+    reset_cursor_color()?;
 
     //FIXME: add error handling, for example some error page should be shown
     if let Err(err) = res {
@@ -162,6 +165,23 @@ pub fn start_app(app_settings: AppSettings) -> Result<()> {
     }
 
     Ok(())
+}
+
+use std::io::Write;
+
+fn set_cursor_color(color: Option<Color>) -> Result<()> {
+    if let Some(color) = color {
+        // OSC 12 ; color BEL
+        write!(io::stdout(), "\x1b]12;{}\x07", color).context("failed to set cursor color")?;
+        io::stdout().flush().context("failed to set cursor color")?;
+    }
+    Ok(())
+}
+
+fn reset_cursor_color() -> Result<()> {
+    // OSC 112 resets cursor color
+    write!(io::stdout(), "\x1b]112\x07").context("failed to reset cursor color")?;
+    io::stdout().flush().context("failed to reset cursor color")
 }
 
 pub struct LayoutRects {

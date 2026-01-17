@@ -5,10 +5,11 @@ use anyhow::Result;
 use arboard::Clipboard;
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
-use tui_textarea::CursorMove;
+use tui_input::InputRequest;
 
 use crate::config::keymappings::AppAction;
 use crate::processes::{OperationResult, Operations, ProcessManager, ProcssAsyncService};
+use crate::tui::components::search_bar::CursorMove;
 use crate::{
     config::ui::UIConfig,
     processes::{IgnoreOptions, Process, ProcessSearchResults},
@@ -231,6 +232,8 @@ impl Component for ProcessesViewComponent {
             }
             //search bar
             AppAction::CursorLeft => {
+                self.search_bar
+                    .request_input_change(InputRequest::GoToPrevChar);
                 self.search_bar.move_cursor(CursorMove::Back);
             }
             AppAction::CursorRight => {
