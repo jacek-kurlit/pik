@@ -1384,7 +1384,7 @@ dependencies = [
  "serde_regex",
  "sysinfo",
  "toml",
- "tui-textarea",
+ "tui-input",
  "unicode-width",
 ]
 
@@ -2076,13 +2076,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "tui-textarea"
-version = "0.7.0"
-source = "git+https://github.com/jacek-kurlit/tui-textarea.git#2e957f3390bb40b8cf196934c6889d21b23f61cd"
+name = "tui-input"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "79c1ee964298f136020f5f69e0e601f4d3a1f610a7baf1af9fcb96152e8a2c45"
 dependencies = [
- "crossterm 0.29.0",
- "ratatui-core",
- "ratatui-widgets",
+ "ratatui",
  "unicode-width",
 ]
 
@@ -2123,9 +2122,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-width"
-version = "0.2.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1fc81956842c57dac11422a97c3b8195a1ff727f06e85c84ed2e8aa277c9a0fd"
+checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
 name = "utf8parse"
