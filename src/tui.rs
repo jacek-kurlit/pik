@@ -28,12 +28,11 @@ struct App {
     key_mappings: KeyMappings,
 }
 
-// on linux and Mac OS
-#[cfg(target_family = "unix")]
-const KEY_READ_DELAY: u64 = 0;
-// Windows needs a small delay to avoid UI lag
-#[cfg(target_family = "windows")]
-const KEY_READ_DELAY: u64 = 16;
+// NOTE: Simple FPS limiter based on input read delay (it's not stable, typing really fast will increase FPS for short time)
+const FPS: u64 = 60;
+//setting this to 0 will make the app run as fast as possible causing high CPU usage for rendering
+const KEY_READ_DELAY: u64 = 1000 / FPS;
+
 impl App {
     fn new(app_settings: AppSettings) -> Result<App> {
         let component_events = VecDeque::new();
