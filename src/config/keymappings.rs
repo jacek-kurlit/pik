@@ -55,6 +55,7 @@ close = ["esc"]
 quit = ["ctrl+c"]
 
 kill_process = ["ctrl+x"]
+force_kill_process = ["shift+ctrl+x"]
 refresh_process_list = ["ctrl+r"]
 copy_process_pid = ["ctrl+y"]
 
@@ -159,6 +160,7 @@ pub enum AppAction {
     Quit,
 
     KillProcess,
+    ForceKillProcess,
     RefreshProcessList,
     CopyProcessPid,
 

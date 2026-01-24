@@ -113,10 +113,13 @@ impl ProcessesViewComponent {
         }
     }
 
-    fn kill_selected_process(&mut self) -> KeyAction {
+    fn kill_selected_process(&mut self, graceful: bool) -> KeyAction {
         if let Some(prc) = self.get_selected_process() {
             let pid = prc.pid;
-            return match self.ops_sender.send(Operations::KillProcess(pid)) {
+            return match self
+                .ops_sender
+                .send(Operations::KillProcess { pid, graceful })
+            {
                 Ok(_) => KeyAction::Event(ComponentEvent::ProcessKillRequested),
                 Err(_) => KeyAction::Event(ComponentEvent::ErrorOccurred(
                     "Failed to send kill request to process daemon".to_string(),
@@ -207,7 +210,10 @@ impl Component for ProcessesViewComponent {
                 self.select_previous_row(10);
             }
             AppAction::KillProcess => {
-                return self.kill_selected_process();
+                return self.kill_selected_process(true);
+            }
+            AppAction::ForceKillProcess => {
+                return self.kill_selected_process(false);
             }
             AppAction::RefreshProcessList => {
                 return self.search_for_processess();

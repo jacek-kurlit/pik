@@ -51,7 +51,7 @@ impl ProcssAsyncService {
 
 pub enum Operations {
     Search(String),
-    KillProcess(u32),
+    KillProcess { pid: u32, graceful: bool },
     Shutdown,
 }
 
@@ -83,8 +83,8 @@ fn process_loop(
                     let result = service.refresh_and_find_processes(&query);
                     send_result(OperationResult::SearchCompleted(result), &result_sender);
                 }
-                Operations::KillProcess(pid) => {
-                    if service.process_manager.kill_process(pid) {
+                Operations::KillProcess { pid, graceful } => {
+                    if service.process_manager.kill_process(pid, graceful) {
                         let mut search_results = service.rerun_last_search();
                         //NOTE: cache refresh takes time and process may reappear in list!
                         search_results.remove(pid);
@@ -229,7 +229,8 @@ mod tests {
         let ignore_options = IgnoreOptions::default();
         let mut process_manager = ProcessManager::faux();
         let pid = 1000;
-        faux::when!(process_manager.kill_process(pid)).then_return(true);
+        let graceful = true;
+        faux::when!(process_manager.kill_process(pid, graceful)).then_return(true);
         faux::when!(process_manager.find_processes("", ignore_options))
             .then(|_| ProcessSearchResults::empty());
         faux::when!(process_manager.refresh()).once().then(|_| {});
@@ -240,7 +241,7 @@ mod tests {
 
         // when
         operation_sender
-            .send(crate::processes::Operations::KillProcess(pid))
+            .send(crate::processes::Operations::KillProcess { pid, graceful })
             .unwrap();
 
         // then
@@ -258,7 +259,8 @@ mod tests {
         // given
         let mut process_manager = ProcessManager::faux();
         let pid = 1000;
-        faux::when!(process_manager.kill_process(pid)).then_return(false);
+        let graceful = false;
+        faux::when!(process_manager.kill_process(pid, graceful)).then_return(false);
 
         let (operation_sender, result_receiver) =
             ProcssAsyncService::new(process_manager, IgnoreOptions::default())
@@ -266,7 +268,7 @@ mod tests {
 
         // when
         operation_sender
-            .send(crate::processes::Operations::KillProcess(pid))
+            .send(crate::processes::Operations::KillProcess { pid, graceful })
             .unwrap();
 
         // then
