@@ -2,8 +2,8 @@ use std::cmp::Ordering;
 use std::time::SystemTime;
 
 use anyhow::{Ok, Result};
-use sysinfo::ProcessRefreshKind;
-use sysinfo::{Pid, System, Uid, Users};
+use sysinfo::{Pid, SUPPORTED_SIGNALS, System, Uid, Users};
+use sysinfo::{ProcessRefreshKind, Signal};
 
 mod daemon;
 mod filters;
@@ -201,17 +201,23 @@ impl ProcessManager {
         }
     }
 
-    pub fn kill_process(&self, pid: u32) -> bool {
+    pub fn kill_process(&self, pid: u32, graceful: bool) -> bool {
         match self.sys.process(Pid::from_u32(pid)) {
             Some(prc) => {
-                if sysinfo::SUPPORTED_SIGNALS.contains(&sysinfo::Signal::Term) {
-                    prc.kill_with(sysinfo::Signal::Term).unwrap_or(false)
-                } else {
-                    prc.kill()
-                }
+                let signal = determine_kill_signal(graceful);
+                prc.kill_with(signal).unwrap_or(false)
             }
             None => false,
         }
+    }
+}
+
+fn determine_kill_signal(graceful: bool) -> Signal {
+    //windows does not support graceful kill
+    if graceful && SUPPORTED_SIGNALS.contains(&Signal::Term) {
+        Signal::Term
+    } else {
+        Signal::Kill
     }
 }
 
@@ -387,5 +393,19 @@ mod tests {
                 MatchType::Exists,
             ]
         );
+    }
+
+    #[cfg(target_family = "unix")]
+    #[test]
+    fn should_determine_correct_kill_signal_for_unix() {
+        assert_eq!(determine_kill_signal(true), Signal::Term);
+        assert_eq!(determine_kill_signal(false), Signal::Kill);
+    }
+
+    #[cfg(target_family = "windows")]
+    #[test]
+    fn should_determine_correct_kill_signal_for_windows() {
+        assert_eq!(determine_kill_signal(true), Signal::Kill);
+        assert_eq!(determine_kill_signal(false), Signal::Kill);
     }
 }
