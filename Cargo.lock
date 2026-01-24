@@ -1366,7 +1366,7 @@ dependencies = [
 
 [[package]]
 name = "pik"
-version = "0.28.0"
+version = "0.28.1"
 dependencies = [
  "anyhow",
  "arboard",

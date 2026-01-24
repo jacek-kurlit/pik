@@ -1,6 +1,6 @@
 [package]
 name = "pik"
-version = "0.28.0"
+version = "0.28.1"
 edition = "2024"
 authors = ["Jacek Kurlit"]
 keywords = ["terminal", "process", "linux", "system", "kill"]

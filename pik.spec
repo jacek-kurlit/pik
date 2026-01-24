@@ -1,5 +1,5 @@
 Name: pik
-Version: 0.28.0
+Version: 0.28.1
 Release: 1%{?dist}
 License: MIT
 Summary: Process Interactive Kill is a tool that helps to find and kill process
