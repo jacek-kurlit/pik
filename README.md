@@ -94,12 +94,12 @@ brew tap jacek-kurlit/tap
 brew install pik
 ```
 
-With **[dra](https://github.com/devmatteini/dra)**
+On **Ubuntu** with [Snap](https://snapcraft.io/pik)
 
 ```sh
-dra download --install jacek-kurlit/pik
-```
+snap install pik-tui
 
+```
 If you're a **Rust programmer**, pik can be installed with `cargo`.
 
 ```sh
@@ -135,6 +135,7 @@ Please refer to [config](config.md) for more details how to configure options,th
 Pik supports combining multiple modifier keys (meta keys) in key bindings. You can use any combination of "ctrl", "alt", "shift", "super", "hyper", and "meta" modifiers together.
 
 **Examples:**
+
 ```toml
 # Single modifier
 quit = "ctrl+c"
