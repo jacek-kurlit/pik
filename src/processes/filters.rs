@@ -174,7 +174,7 @@ pub mod tests {
 
     use std::str::FromStr;
 
-    use crate::processes::utils::tests::MockProcessInfo;
+    use crate::processes::utils::tests::{MockProcessInfo, make_uid};
 
     use super::*;
 
@@ -433,7 +433,7 @@ pub mod tests {
 
     #[test]
     fn ignore_filter_should_ignore_thread_processes() {
-        let current_user_id = Uid::from_str("1").unwrap();
+        let current_user_id = make_uid(1);
         let ignore = IgnoreOptions {
             ignore_threads: true,
             ..Default::default()
@@ -449,7 +449,7 @@ pub mod tests {
 
     #[test]
     fn ignore_filter_should_accept_threads_processes() {
-        let current_user_id = Uid::from_str("1").unwrap();
+        let current_user_id = make_uid(1);
         let ignore = IgnoreOptions {
             ignore_threads: false,
             ..Default::default()
@@ -465,7 +465,7 @@ pub mod tests {
 
     #[test]
     fn ignore_filter_should_accept_only_current_user_processes() {
-        let current_user_id = Uid::from_str("1000").unwrap();
+        let current_user_id = make_uid(1000);
         let ignore = IgnoreOptions {
             ignore_other_users: true,
             ..Default::default()
@@ -477,13 +477,13 @@ pub mod tests {
         };
         assert!(filter.accept(&prc));
 
-        prc.user_id = Uid::from_str("1001").unwrap();
+        prc.user_id = make_uid(1001);
         assert!(!filter.accept(&prc));
     }
 
     #[test]
     fn ignore_filter_should_accept_other_users_processes() {
-        let current_user_id = Uid::from_str("1000").unwrap();
+        let current_user_id = make_uid(1000);
         let ignore = IgnoreOptions {
             ignore_other_users: false,
             ..Default::default()
@@ -495,13 +495,13 @@ pub mod tests {
         };
         assert!(filter.accept(&prc));
 
-        prc.user_id = Uid::from_str("1001").unwrap();
+        prc.user_id = make_uid(1001);
         assert!(filter.accept(&prc));
     }
 
     #[test]
     fn ignore_filter_should_ignore_processes_with_paths() {
-        let current_user_id = Uid::from_str("1").unwrap();
+        let current_user_id = make_uid(1);
         let ignore = IgnoreOptions {
             paths: vec![
                 Regex::new("/usr/bin/*").unwrap(),
@@ -524,7 +524,7 @@ pub mod tests {
 
     #[test]
     fn ignore_filter_should_accept_processes_that_does_not_match_path() {
-        let current_user_id = Uid::from_str("1").unwrap();
+        let current_user_id = make_uid(1);
         let ignore = IgnoreOptions {
             paths: vec![Regex::new("/usr/bin/*").unwrap()],
             ..Default::default()

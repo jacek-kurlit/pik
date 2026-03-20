@@ -57,6 +57,15 @@ pub mod tests {
 
     use super::*;
 
+    /// Creates a `Uid` from a number, using a platform-appropriate format.
+    /// On Windows, UIDs are SID strings (e.g. `S-1-5-1000`); on Unix they are numeric.
+    pub fn make_uid(n: u32) -> Uid {
+        #[cfg(windows)]
+        return Uid::from_str(&format!("S-1-5-{n}")).unwrap();
+        #[cfg(not(windows))]
+        return Uid::from_str(&n.to_string()).unwrap();
+    }
+
     pub struct MockProcessInfo {
         pub pid: u32,
         pub parent_pid: Option<u32>,
@@ -117,7 +126,7 @@ pub mod tests {
             MockProcessInfo {
                 pid: 1,
                 parent_pid: None,
-                user_id: Uid::from_str("1").unwrap(),
+                user_id: make_uid(1),
                 is_thread: false,
                 cmd: "xxx".to_string(),
                 cmd_path: Some("xxx".to_string()),
