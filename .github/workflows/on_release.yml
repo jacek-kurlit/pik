@@ -103,11 +103,27 @@ jobs:
             echo "ASSET=$dirname.tar.gz" >> $GITHUB_ENV
           fi
 
+      - name: Generate SHA256 checksum
+        shell: bash
+        run: shasum -a 256 "${{ env.ASSET }}" > "${{ env.ASSET }}.sha256"
+
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             ${{ env.ASSET }}
+            ${{ env.ASSET }}.sha256
+
+  update-homebrew-tap:
+    name: Update Homebrew tap
+    runs-on: ubuntu-latest
+    needs: ['build-and-upload']
+    steps:
+      - uses: dawidd6/action-homebrew-bump-formula@v3
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          tap: jacek-kurlit/tap
+          formula: pik
 
   publish-to-crates-io:
     name: Publish

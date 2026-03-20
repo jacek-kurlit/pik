@@ -56,7 +56,7 @@ After selecting process you can kill it with Ctrl + X
 
 ## Installation
 
-**[Archives of precompiled binaries for pik are available for Linux and macOS.](https://github.com/jacek-kurlit/pik/releases)**
+**[Archives of precompiled binaries for pik are available for Linux, macOS and Windows.](https://github.com/jacek-kurlit/pik/releases)**
 
 On **Arch Linux**
 
@@ -85,6 +85,13 @@ It is available via `lamdness` overlay
 sudo eselect repository enable lamdness
 sudo emaint -r lamdness sync
 sudo emerge -av sys-process/pik
+```
+
+On **macOS** with [Homebrew](https://brew.sh)
+
+```sh
+brew tap jacek-kurlit/tap
+brew install pik
 ```
 
 With **[dra](https://github.com/devmatteini/dra)**
