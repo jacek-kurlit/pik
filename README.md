@@ -97,7 +97,7 @@ brew install pik
 On **Ubuntu** with [Snap](https://snapcraft.io/pik)
 
 ```sh
-snap install pik
+snap install pik-tui
 
 ```
 If you're a **Rust programmer**, pik can be installed with `cargo`.
