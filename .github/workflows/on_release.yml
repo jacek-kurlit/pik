@@ -105,7 +105,12 @@ jobs:
 
       - name: Generate SHA256 checksum
         shell: bash
-        run: shasum -a 256 "${{ env.ASSET }}" > "${{ env.ASSET }}.sha256"
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            certutil -hashfile "${{ env.ASSET }}" SHA256 | grep -v "^CertUtil" | grep -v "^SHA256" > "${{ env.ASSET }}.sha256"
+          else
+            shasum -a 256 "${{ env.ASSET }}" > "${{ env.ASSET }}.sha256"
+          fi
 
       - name: Release
         uses: softprops/action-gh-release@v2
