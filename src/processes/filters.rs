@@ -172,8 +172,6 @@ impl<'a> IgnoreProcessesFilter<'a> {
 #[cfg(test)]
 pub mod tests {
 
-    use std::str::FromStr;
-
     use crate::processes::utils::tests::{MockProcessInfo, make_uid};
 
     use super::*;
