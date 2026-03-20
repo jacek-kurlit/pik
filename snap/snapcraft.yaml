@@ -1,0 +1,22 @@
+name: pik
+version: git
+summary: Process interactive kill
+description: |
+  pik is a terminal UI tool for finding and killing processes interactively.
+  Search by process name, arguments, port, or PID and kill with a keypress.
+
+base: core24
+confinement: strict
+grade: stable
+
+apps:
+  pik:
+    command: bin/pik
+    plugs:
+      - process-control
+      - system-observe
+
+parts:
+  pik:
+    plugin: rust
+    source: .
