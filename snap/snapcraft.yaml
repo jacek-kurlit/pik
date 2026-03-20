@@ -1,4 +1,4 @@
-name: pik
+name: pik-tui
 version: git
 summary: Process interactive kill
 description: |
