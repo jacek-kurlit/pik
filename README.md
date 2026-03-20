@@ -60,10 +60,10 @@ After selecting process you can kill it with Ctrl + X
 
 | Package Manager | Version |
 |---|---|
-| ![Arch Linux](https://img.shields.io/badge/Arch_Linux-pacman-blue) | [![AUR version](https://repology.org/badge/version-for-repo/aur/pik.svg)](https://repology.org/project/pik/versions) |
-| ![Fedora](https://img.shields.io/badge/Fedora-dnf-blue) | ![Crates.io version](https://img.shields.io/crates/v/pik) |
+| ![Arch Linux](https://img.shields.io/badge/Arch_Linux-pacman-blue) | [![Extra version](https://repology.org/badge/version-for-repo/arch/pik.svg)](https://repology.org/project/pik/versions) |
+| ![Fedora](https://img.shields.io/badge/Fedora-dnf-blue) | ![Copr](https://img.shields.io/crates/v/pik) |
 | ![Tumbleweed](https://img.shields.io/badge/Tumbleweed-zypper-blue) | [![Tumbleweed version](https://repology.org/badge/version-for-repo/opensuse_tumbleweed/pik.svg)](https://repology.org/project/pik/versions) |
-| ![Homebrew](https://img.shields.io/badge/macOS-homebrew-brown) | ![Crates.io version](https://img.shields.io/crates/v/pik) |
+| ![Homebrew](https://img.shields.io/badge/macOS-homebrew-brown) | ![Tap](https://img.shields.io/crates/v/pik) |
 | ![Cargo](https://img.shields.io/badge/Cargo-crates.io-orange) | ![Crates.io version](https://img.shields.io/crates/v/pik) |
 
 On **Arch Linux**
