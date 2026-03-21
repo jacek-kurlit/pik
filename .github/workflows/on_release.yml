@@ -181,6 +181,14 @@ jobs:
           git commit -am "pik ${VERSION}"
           git push
 
+  trigger-copr-build:
+    name: Trigger COPR build
+    runs-on: ubuntu-latest
+    needs: ['build-and-upload']
+    steps:
+      - name: Trigger COPR webhook
+        run: curl -X POST ${{ secrets.COPR_WEBHOOK }}
+
   publish-to-snap:
     name: Publish to Snap Store
     runs-on: ubuntu-latest
