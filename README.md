@@ -87,6 +87,13 @@ sudo emaint -r lamdness sync
 sudo emerge -av sys-process/pik
 ```
 
+On **Windows** with [Scoop](https://scoop.sh)
+
+```sh
+scoop bucket add jacek-kurlit https://github.com/jacek-kurlit/scoop-bucket
+scoop install pik
+```
+
 On **macOS** with [Homebrew](https://brew.sh)
 
 ```sh
