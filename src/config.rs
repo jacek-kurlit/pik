@@ -11,7 +11,7 @@ pub fn load_app_config() -> Result<AppConfig> {
         Some(path) => Some(path),
         None => directories::ProjectDirs::from("", "", "pik")
             .map(|dirs| dirs.config_dir().join("config.toml"))
-            .filter(|path| path.exists())
+            .filter(|path| path.exists()),
     };
 
     match config_path {
