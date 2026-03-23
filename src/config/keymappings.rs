@@ -44,8 +44,8 @@ impl KeyMappings {
 
     pub fn preconfigured_mappings() -> KeyMappings {
         let default_config = r#"
-next_item = ["down","tab", "ctrl+j", "ctrl+n"]
-previous_item = ["up", "shift+tab", "ctrl+k", "ctrl+p"]
+next_item = ["down", "tab", "ctrl+j", "ctrl+n"]
+previous_item = ["up", "shift+backtab", "ctrl+k", "ctrl+p"]
 jump_ten_next_items = ["pagedown"]
 jump_ten_previous_items = ["pageup"]
 go_to_first_item = ["ctrl+up", "ctrl+home"]
@@ -317,6 +317,7 @@ fn str_to_key(value: &str) -> Result<KeyCode, String> {
         "esc" => KeyCode::Esc,
         "enter" => KeyCode::Enter,
         "tab" => KeyCode::Tab,
+        "backtab" => KeyCode::BackTab,
         "backspace" => KeyCode::Backspace,
         "up" => KeyCode::Up,
         "down" => KeyCode::Down,
@@ -662,6 +663,15 @@ toggle_debug = ["ctrl+alt+shift+d"]
             keymapping
                 .get(AppAction::PreviousItem)
                 .contains(&KeyBinding::key(KeyCode::Up)),
+            "Should contain default key mapping for PreviousItem"
+        );
+        assert!(
+            keymapping
+                .get(AppAction::PreviousItem)
+                .contains(&KeyBinding::key_with_mod(
+                    KeyCode::BackTab,
+                    KeyModifiers::SHIFT
+                )),
             "Should contain default key mapping for PreviousItem"
         );
     }
