@@ -668,7 +668,10 @@ toggle_debug = ["ctrl+alt+shift+d"]
         assert!(
             keymapping
                 .get(AppAction::PreviousItem)
-                .contains(&KeyBinding::key_with_mod(KeyCode::BackTab, KeyModifiers::SHIFT)),
+                .contains(&KeyBinding::key_with_mod(
+                    KeyCode::BackTab,
+                    KeyModifiers::SHIFT
+                )),
             "Should contain default key mapping for PreviousItem"
         );
     }
