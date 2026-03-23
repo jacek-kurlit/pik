@@ -4,9 +4,15 @@ pub mod keymappings;
 pub mod ui;
 
 pub fn load_app_config() -> Result<AppConfig> {
-    let config_path = directories::ProjectDirs::from("", "", "pik")
-        .map(|dirs| dirs.config_dir().join("config.toml"))
+    let config_path_in_home_dir = directories::UserDirs::new()
+        .map(|dirs| dirs.home_dir().join(".config/pik/config.toml"))
         .filter(|path| path.exists());
+    let config_path = match config_path_in_home_dir {
+        Some(path) => Some(path),
+        None => directories::ProjectDirs::from("", "", "pik")
+            .map(|dirs| dirs.config_dir().join("config.toml"))
+            .filter(|path| path.exists())
+    };
 
     match config_path {
         Some(path) => load_config_from_file(&path),
