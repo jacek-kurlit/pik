@@ -49,7 +49,7 @@ impl QueryFilter {
             SearchBy::Args => {
                 self.fuzzy_match_opt(get_process_args(prc).as_deref(), MatchedBy::Args)
             }
-            SearchBy::Port => self.fuzzy_match_opt(ports, MatchedBy::Port),
+            SearchBy::Port => self.contains_match_opt(ports, MatchedBy::Port),
             SearchBy::Pid => self.exact_match_u32(prc.pid(), MatchedBy::Pid),
             SearchBy::ProcessFamily => self.exact_match_process_family(prc),
             SearchBy::Everywhere => self
@@ -101,6 +101,27 @@ impl QueryFilter {
             return Some(MatchData::new(MatchedBy::ParentPid, MatchType::Exact));
         }
         None
+    }
+
+    fn contains_match(&self, s: &str, matched_by: MatchedBy) -> Option<MatchData> {
+        if self.query.is_empty() {
+            return Some(MatchData::new(matched_by, MatchType::Exists))
+        }
+
+        let indices: Vec<_> = s
+            .match_indices(&self.query)
+            .map(|(start, _)| start..start + self.query.len())
+            .collect();
+
+        if indices.is_empty() {
+            None
+        } else {
+            Some(MatchData::new(matched_by, MatchType::Contains { indices } ))
+        }
+    }
+    
+    fn contains_match_opt(&self, s: Option<&str>, matched_by: MatchedBy) -> Option<MatchData> {
+        s.and_then(|s| self.contains_match(s, matched_by))
     }
 }
 
