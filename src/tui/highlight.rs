@@ -1,3 +1,4 @@
+use std::ops::Range;
 use itertools::Itertools;
 use ratatui::{
     style::Style,
@@ -30,8 +31,19 @@ pub fn highlight_text<'a>(
             score: _,
             positions,
         } => highlight_fuzzy(text, positions, highlighted_style, default_style, max_len),
+        MatchType::Contains {
+            indices,
+        } => highlight_fuzzy(text, &*expand_indices(indices), highlighted_style, default_style, max_len),
         MatchType::Exists => styled_truncated_line(text, default_style, max_len),
     }
+}
+
+/// Auxiliary function to alow reusing the "highlight_fuzzy" for the contains match type
+fn expand_indices(ranges: &[Range<usize>]) -> Vec<usize> {
+    ranges
+        .iter()
+        .flat_map(|r| r.clone())
+        .collect()
 }
 
 fn styled_truncated_line<'a>(text: &'a str, style: Style, max_len: usize) -> Line<'a> {
