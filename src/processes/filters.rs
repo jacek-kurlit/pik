@@ -192,7 +192,6 @@ impl<'a> IgnoreProcessesFilter<'a> {
 
 #[cfg(test)]
 pub mod tests {
-    use anyhow::ensure;
     use crate::processes::utils::tests::{MockProcessInfo, make_uid};
 
     use super::*;
