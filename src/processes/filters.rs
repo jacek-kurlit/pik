@@ -119,7 +119,7 @@ impl QueryFilter {
             Some(MatchData::new(matched_by, MatchType::Contains { indices } ))
         }
     }
-    
+
     fn contains_match_opt(&self, s: Option<&str>, matched_by: MatchedBy) -> Option<MatchData> {
         s.and_then(|s| self.contains_match(s, matched_by))
     }
@@ -192,7 +192,7 @@ impl<'a> IgnoreProcessesFilter<'a> {
 
 #[cfg(test)]
 pub mod tests {
-
+    use anyhow::ensure;
     use crate::processes::utils::tests::{MockProcessInfo, make_uid};
 
     use super::*;
@@ -339,13 +339,13 @@ pub mod tests {
         let filter = QueryFilter::new(":12");
         let process = MockProcessInfo::default();
 
-        assert_fuzzy_match(filter.accept(&process, Some("1234")), MatchedBy::Port);
+        assert_contains_match(filter.accept(&process, Some("1234")), MatchedBy::Port);
 
-        assert_fuzzy_match(filter.accept(&process, Some("3312")), MatchedBy::Port);
+        assert_contains_match(filter.accept(&process, Some("3312")), MatchedBy::Port);
 
-        assert_fuzzy_match(filter.accept(&process, Some("5125")), MatchedBy::Port);
+        assert_contains_match(filter.accept(&process, Some("5125")), MatchedBy::Port);
 
-        assert_fuzzy_match(
+        assert_contains_match(
             filter.accept(&process, Some("1111, 2222, 1234")),
             MatchedBy::Port,
         );
@@ -559,6 +559,11 @@ pub mod tests {
     fn assert_fuzzy_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
         let matched = ensure_matched_by(match_data, expected_matched_by);
         assert!(matches!(matched.match_type, MatchType::Fuzzy { .. }));
+    }
+
+    fn assert_contains_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
+        assert!(matches!(matched.match_type, MatchType::Contains { .. }));
     }
 
     fn ensure_matched_by(
