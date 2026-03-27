@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::ops::Range;
 use std::time::SystemTime;
 
 use anyhow::{Ok, Result};
@@ -310,7 +309,7 @@ pub enum MatchType {
     Exact,
     Fuzzy { score: i64, positions: Vec<usize> },
     Exists,
-    Contains { indices : Vec<Range<usize>>}
+    Contains { positions: Vec<usize>}
 }
 
 impl PartialOrd for MatchType {
@@ -333,7 +332,7 @@ impl Ord for MatchType {
             (MatchType::Fuzzy { .. }, _) => Ordering::Less,
             (_, MatchType::Fuzzy { .. }) => Ordering::Greater,
 
-            (MatchType::Contains { indices: i1}, MatchType::Contains { indices: i2}) => i2.len().cmp(&i1.len()),
+            (MatchType::Contains { positions: i1}, MatchType::Contains { positions: i2}) => i2.len().cmp(&i1.len()),
             (MatchType::Contains { .. }, _) => Ordering::Less,
             (_, MatchType::Contains { .. }) => Ordering::Greater,
 

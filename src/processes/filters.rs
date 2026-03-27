@@ -107,16 +107,16 @@ impl QueryFilter {
         if self.query.is_empty() {
             return Some(MatchData::new(matched_by, MatchType::Exists))
         }
+        
+        let positions: Vec<_> = s
+            .find(&self.query)
+            .map(|start| (start..start + self.query.len()).collect())
+            .unwrap_or_default();
 
-        let indices: Vec<_> = s
-            .match_indices(&self.query)
-            .map(|(start, _)| start..start + self.query.len())
-            .collect();
-
-        if indices.is_empty() {
+        if positions.is_empty() {
             None
         } else {
-            Some(MatchData::new(matched_by, MatchType::Contains { indices } ))
+            Some(MatchData::new(matched_by, MatchType::Contains { positions } ))
         }
     }
 
