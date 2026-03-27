@@ -49,7 +49,7 @@ impl QueryFilter {
             SearchBy::Args => {
                 self.fuzzy_match_opt(get_process_args(prc).as_deref(), MatchedBy::Args)
             }
-            SearchBy::Port => self.fuzzy_match_opt(ports, MatchedBy::Port),
+            SearchBy::Port => self.contains_match_opt(ports, MatchedBy::Port),
             SearchBy::Pid => self.exact_match_u32(prc.pid(), MatchedBy::Pid),
             SearchBy::ProcessFamily => self.exact_match_process_family(prc),
             SearchBy::Everywhere => self
@@ -101,6 +101,30 @@ impl QueryFilter {
             return Some(MatchData::new(MatchedBy::ParentPid, MatchType::Exact));
         }
         None
+    }
+
+    fn contains_match(&self, s: &str, matched_by: MatchedBy) -> Option<MatchData> {
+        if self.query.is_empty() {
+            return Some(MatchData::new(matched_by, MatchType::Exists));
+        }
+
+        let positions: Vec<_> = s
+            .find(&self.query)
+            .map(|start| (start..start + self.query.len()).collect())
+            .unwrap_or_default();
+
+        if positions.is_empty() {
+            None
+        } else {
+            Some(MatchData::new(
+                matched_by,
+                MatchType::Contains { positions },
+            ))
+        }
+    }
+
+    fn contains_match_opt(&self, s: Option<&str>, matched_by: MatchedBy) -> Option<MatchData> {
+        s.and_then(|s| self.contains_match(s, matched_by))
     }
 }
 
@@ -171,7 +195,6 @@ impl<'a> IgnoreProcessesFilter<'a> {
 
 #[cfg(test)]
 pub mod tests {
-
     use crate::processes::utils::tests::{MockProcessInfo, make_uid};
 
     use super::*;
@@ -318,13 +341,13 @@ pub mod tests {
         let filter = QueryFilter::new(":12");
         let process = MockProcessInfo::default();
 
-        assert_fuzzy_match(filter.accept(&process, Some("1234")), MatchedBy::Port);
+        assert_contains_match(filter.accept(&process, Some("1234")), MatchedBy::Port);
 
-        assert_fuzzy_match(filter.accept(&process, Some("3312")), MatchedBy::Port);
+        assert_contains_match(filter.accept(&process, Some("3312")), MatchedBy::Port);
 
-        assert_fuzzy_match(filter.accept(&process, Some("5125")), MatchedBy::Port);
+        assert_contains_match(filter.accept(&process, Some("5125")), MatchedBy::Port);
 
-        assert_fuzzy_match(
+        assert_contains_match(
             filter.accept(&process, Some("1111, 2222, 1234")),
             MatchedBy::Port,
         );
@@ -538,6 +561,11 @@ pub mod tests {
     fn assert_fuzzy_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
         let matched = ensure_matched_by(match_data, expected_matched_by);
         assert!(matches!(matched.match_type, MatchType::Fuzzy { .. }));
+    }
+
+    fn assert_contains_match(match_data: Option<MatchData>, expected_matched_by: MatchedBy) {
+        let matched = ensure_matched_by(match_data, expected_matched_by);
+        assert!(matches!(matched.match_type, MatchType::Contains { .. }));
     }
 
     fn ensure_matched_by(

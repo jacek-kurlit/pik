@@ -30,6 +30,9 @@ pub fn highlight_text<'a>(
             score: _,
             positions,
         } => highlight_fuzzy(text, positions, highlighted_style, default_style, max_len),
+        MatchType::Contains { positions } => {
+            highlight_fuzzy(text, positions, highlighted_style, default_style, max_len)
+        }
         MatchType::Exists => styled_truncated_line(text, default_style, max_len),
     }
 }

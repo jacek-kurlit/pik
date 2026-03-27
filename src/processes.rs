@@ -309,6 +309,7 @@ pub enum MatchType {
     Exact,
     Fuzzy { score: i64, positions: Vec<usize> },
     Exists,
+    Contains { positions: Vec<usize> },
 }
 
 impl PartialOrd for MatchType {
@@ -319,6 +320,7 @@ impl PartialOrd for MatchType {
 
 /// This is needed as we sort by match type. Exact matches should go first, Exists should go last
 /// and fuzzy matches should be sorted by score
+/// contains sorts by number of occurrences
 impl Ord for MatchType {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
@@ -329,6 +331,12 @@ impl Ord for MatchType {
             (MatchType::Fuzzy { score: s1, .. }, MatchType::Fuzzy { score: s2, .. }) => s2.cmp(s1),
             (MatchType::Fuzzy { .. }, _) => Ordering::Less,
             (_, MatchType::Fuzzy { .. }) => Ordering::Greater,
+
+            (MatchType::Contains { positions: i1 }, MatchType::Contains { positions: i2 }) => {
+                i1[0].cmp(&i2[0])
+            }
+            (MatchType::Contains { .. }, _) => Ordering::Less,
+            (_, MatchType::Contains { .. }) => Ordering::Greater,
 
             (MatchType::Exists, MatchType::Exists) => Ordering::Equal,
         }
