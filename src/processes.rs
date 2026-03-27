@@ -309,7 +309,7 @@ pub enum MatchType {
     Exact,
     Fuzzy { score: i64, positions: Vec<usize> },
     Exists,
-    Contains { positions: Vec<usize>}
+    Contains { positions: Vec<usize> },
 }
 
 impl PartialOrd for MatchType {
@@ -332,7 +332,9 @@ impl Ord for MatchType {
             (MatchType::Fuzzy { .. }, _) => Ordering::Less,
             (_, MatchType::Fuzzy { .. }) => Ordering::Greater,
 
-            (MatchType::Contains { positions: i1}, MatchType::Contains { positions: i2}) => i1[0].cmp(&i2[0]),
+            (MatchType::Contains { positions: i1 }, MatchType::Contains { positions: i2 }) => {
+                i1[0].cmp(&i2[0])
+            }
             (MatchType::Contains { .. }, _) => Ordering::Less,
             (_, MatchType::Contains { .. }) => Ordering::Greater,
 

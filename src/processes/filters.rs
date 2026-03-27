@@ -105,9 +105,9 @@ impl QueryFilter {
 
     fn contains_match(&self, s: &str, matched_by: MatchedBy) -> Option<MatchData> {
         if self.query.is_empty() {
-            return Some(MatchData::new(matched_by, MatchType::Exists))
+            return Some(MatchData::new(matched_by, MatchType::Exists));
         }
-        
+
         let positions: Vec<_> = s
             .find(&self.query)
             .map(|start| (start..start + self.query.len()).collect())
@@ -116,7 +116,10 @@ impl QueryFilter {
         if positions.is_empty() {
             None
         } else {
-            Some(MatchData::new(matched_by, MatchType::Contains { positions } ))
+            Some(MatchData::new(
+                matched_by,
+                MatchType::Contains { positions },
+            ))
         }
     }
 
