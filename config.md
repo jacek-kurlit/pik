@@ -1,104 +1,18 @@
 # Configuration
 
-You can find default values below
+The full default configuration is defined in [`default_config.toml`](default_config.toml).
+
+Pik embeds that file into the binary at compile time, and your local `config.toml` is deep-merged on top of it. This means you can override only the fields you care about, including nested UI fields such as scrollbar symbols, styles, and margins.
+
+Example partial override:
 
 ```toml
-# Size of the viewport
-screen_size = { height = 20 } # run pik in 20 lines of the terminal
-# screen_size = "fullscreen" # run pik in fullscreen
-
-[ignore]
-# ignore processes that path matches any of given regex
-paths = []
-# paths = ["/System/.*", "Applications/.*"]
-# ignore other users processes
-other_users = true
-# ignore thread processes (on linux)
-threads = true
-
-### Key mappings
-[key_mappings]
-next_item = ["down","tab", "ctrl+j", "ctrl+n"]
-previous_item = ["up", "shift+tab", "ctrl+k", "ctrl+p"]
-jump_ten_next_items = ["pagedown"]
-jump_ten_previous_items = ["pageup"]
-go_to_first_item = ["ctrl+up", "ctrl+home"]
-go_to_last_item = ["ctrl+down", "ctrl+end"]
-
-close = ["esc"]
-quit = ["ctrl+c"]
-
-kill_process = ["ctrl+x"]
-refresh_process_list = ["ctrl+r"]
-copy_process_pid = ["ctrl+y"]
-
-scroll_process_details_down = ["ctrl+f"]
-scroll_process_details_up = ["ctrl+b"]
-
-select_process_parent = ["alt+p"]
-select_process_family = ["alt+f"]
-select_process_siblings = ["alt+s"]
-
-toggle_help = ["ctrl+h"]
-toggle_debug = ["alt+d"]
-
-cursor_left = ["left"]
-cursor_right = ["right"]
-cursor_home = ["home"]
-cursor_end = ["end"]
-delete_char = ["backspace"]
-delete_next_char = ["delete"]
-delete_word = ["ctrl+w"]
-delete_to_start = ["ctrl+u"]
-
-### UI Configuration ###
-[ui]
-icons = "ascii" # nerd_font_v3 or custom (see below)
-
-[ui.process_table]
-title = { alignment = "left", position = "top" }
-border = { type = "rounded", style = { fg = "#60A5FA" } }
-
-[ui.process_table.row]
-selected_symbol = " "
-even = { fg = "#E2E8F0", bg = "#0F172A" }
-odd = { fg = "#E2E8F0", bg = "#020617" }
-selected = { fg = "#60A5FA", add_modifier = "REVERSED" }
-
-[ui.process_table.cell]
-# normal = {}
-highlighted = { bg = "Yellow", add_modifier = "ITALIC" }
-
-[ui.process_table.scrollbar]
-# style = {}
-# thumb_symbol = None
-track_symbol = "│"
-begin_symbol = "↑"
-end_symbol = "↓"
-margin = {horizontal = 0, vertical = 1}
-
-[ui.process_details]
-title = { alignment = "left", position = "top" }
-border = { type = "rounded", style = {fg = "#60A5FA"}}
-
 [ui.process_details.scrollbar]
-# style = {}
-# thumb_symbol = None
-track_symbol = "│"
-begin_symbol = "↑"
-end_symbol = "↓"
-margin = {horizontal = 0, vertical = 1}
-
-[ui.search_bar]
-# style = {}
-cursor_style = {add_modifier = "REVERSED"}
-
-[ui.popups]
-border = {type = "rounded", style = {fg = "#4ade80"}}
-selected_row = { bg = "#1e293b", add_modifier = "BOLD"}
-primary = { fg = "#60A5FA" }
-# secondary = {}
+thumb_symbol = "T"
+margin = { horizontal = 2 }
 ```
+
+In that example, all omitted scrollbar fields still come from `default_config.toml`.
 
 ## General options
 

@@ -1,5 +1,7 @@
 use anyhow::{Context, Ok, Result};
 
+pub(crate) const DEFAULT_CONFIG_TOML: &str = include_str!("../default_config.toml");
+
 pub mod keymappings;
 pub mod ui;
 
@@ -16,7 +18,7 @@ pub fn load_app_config() -> Result<AppConfig> {
 
     match config_path {
         Some(path) => load_config_from_file(&path),
-        None => Ok(AppConfig::default()),
+        None => parse_config(""),
     }
 }
 
@@ -26,13 +28,51 @@ fn load_config_from_file(path: &std::path::PathBuf) -> Result<AppConfig> {
     parse_config(&toml)
 }
 
-fn parse_config(toml: &str) -> Result<AppConfig> {
-    let mut config: AppConfig = toml::from_str(toml)
+pub fn parse_config(toml: &str) -> Result<AppConfig> {
+    let mut merged = default_config_value()?;
+    let user_config = parse_config_value(toml)
         .with_context(|| format!("Failed to deserialize config from: {toml:?}"))?;
 
-    config.key_mappings =
-        KeyMappings::preconfigured_mappings().override_with(config.key_mappings)?;
+    deep_merge(&mut merged, user_config);
+
+    let config: AppConfig = merged
+        .try_into()
+        .context("Failed to deserialize merged config")?;
+    config.key_mappings.validate()?;
     Ok(config)
+}
+
+pub fn default_config() -> Result<AppConfig> {
+    parse_config("")
+}
+
+fn default_config_value() -> Result<toml::Value> {
+    parse_config_value(DEFAULT_CONFIG_TOML)
+        .context("Failed to deserialize embedded default configuration")
+}
+
+fn parse_config_value(toml: &str) -> Result<toml::Value> {
+    if toml.trim().is_empty() {
+        return Ok(toml::Value::Table(Default::default()));
+    }
+
+    toml::from_str(toml).map_err(Into::into)
+}
+
+fn deep_merge(base: &mut toml::Value, overlay: toml::Value) {
+    match (base, overlay) {
+        (toml::Value::Table(base_table), toml::Value::Table(overlay_table)) => {
+            for (key, value) in overlay_table {
+                match base_table.get_mut(&key) {
+                    Some(base_value) => deep_merge(base_value, value),
+                    None => {
+                        base_table.insert(key, value);
+                    }
+                }
+            }
+        }
+        (base, overlay) => *base = overlay,
+    }
 }
 
 use keymappings::KeyMappings;
@@ -340,7 +380,7 @@ mod tests {
                                 .fg(tailwind::EMERALD.c50)
                                 .bg(tailwind::EMERALD.c600)
                                 .italic(),
-                            selected: Style::new().fg(tailwind::RED.c400),
+                            selected: Style::new().fg(tailwind::RED.c400).reversed(),
                             selected_symbol: ">".to_string(),
                         },
                         cell: CellTheme {

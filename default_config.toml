@@ -1,0 +1,91 @@
+screen_size = { height = 25 }
+
+[ignore]
+paths = []
+other_users = true
+threads = true
+
+[key_mappings]
+next_item = ["down", "tab", "ctrl+j", "ctrl+n"]
+previous_item = ["up", "shift+backtab", "ctrl+k", "ctrl+p"]
+jump_ten_next_items = ["pagedown"]
+jump_ten_previous_items = ["pageup"]
+go_to_first_item = ["ctrl+up", "ctrl+home"]
+go_to_last_item = ["ctrl+down", "ctrl+end"]
+close = ["esc"]
+quit = ["ctrl+c"]
+kill_process = ["ctrl+x"]
+force_kill_process = ["shift+ctrl+x"]
+refresh_process_list = ["ctrl+r"]
+copy_process_pid = ["ctrl+y"]
+scroll_process_details_down = ["ctrl+f"]
+scroll_process_details_up = ["ctrl+b"]
+select_process_parent = ["alt+p"]
+select_process_family = ["alt+f"]
+select_process_siblings = ["alt+s"]
+toggle_help = ["ctrl+h"]
+toggle_debug = ["alt+d"]
+cursor_left = ["left"]
+cursor_right = ["right"]
+cursor_home = ["home"]
+cursor_end = ["end"]
+delete_char = ["backspace"]
+delete_next_char = ["delete"]
+delete_word = ["ctrl+w"]
+delete_to_start = ["ctrl+u"]
+
+[ui]
+icons = "ascii"
+
+[ui.process_table.title]
+alignment = "left"
+position = "top"
+
+[ui.process_table.border]
+type = "rounded"
+style = { fg = "#60A5FA" }
+
+[ui.process_table.row]
+selected_symbol = " "
+even = { fg = "#E2E8F0", bg = "#020617" }
+odd = { fg = "#E2E8F0", bg = "#0F172A" }
+selected = { fg = "#60A5FA", add_modifier = "REVERSED" }
+
+[ui.process_table.cell]
+normal = {}
+highlighted = { bg = "Yellow", add_modifier = "ITALIC" }
+
+[ui.process_table.scrollbar]
+style = {}
+track_symbol = "│"
+begin_symbol = "↑"
+end_symbol = "↓"
+margin = { horizontal = 0, vertical = 1 }
+
+[ui.process_details.title]
+alignment = "left"
+position = "top"
+
+[ui.process_details.border]
+type = "rounded"
+style = { fg = "#60A5FA" }
+
+[ui.process_details.scrollbar]
+style = {}
+track_symbol = "│"
+begin_symbol = "↑"
+end_symbol = "↓"
+margin = { horizontal = 0, vertical = 1 }
+
+[ui.search_bar]
+style = {}
+cursor_style = { add_modifier = "REVERSED" }
+
+[ui.popups.border]
+type = "rounded"
+style = { fg = "#4ade80" }
+
+[ui.popups]
+selected_row = { bg = "#1e293b", add_modifier = "BOLD" }
+primary = { fg = "#60A5FA" }
+secondary = {}

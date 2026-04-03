@@ -135,7 +135,8 @@ You may set your preferences in `config.toml` file located in:
 All options are optional, if skipped default values will be used.
 Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
 Run `pik -- --help` to see cli options
-Please refer to [config](config.md) for more details how to configure options,theme and key mappings
+The authoritative default configuration lives in [`default_config.toml`](default_config.toml).
+Please refer to [config](config.md) for more details how to configure options,theme and key mappings.
 
 ### Multiple meta key names support
 

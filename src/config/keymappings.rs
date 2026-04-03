@@ -38,51 +38,17 @@ impl KeyMappings {
 
     pub fn override_with(mut self, key_mappings: KeyMappings) -> anyhow::Result<KeyMappings> {
         self.bindings.extend(key_mappings.bindings);
-        self.validate_key_mappings()?;
+        self.validate()?;
         Ok(self)
     }
 
     pub fn preconfigured_mappings() -> KeyMappings {
-        let default_config = r#"
-next_item = ["down", "tab", "ctrl+j", "ctrl+n"]
-previous_item = ["up", "shift+backtab", "ctrl+k", "ctrl+p"]
-jump_ten_next_items = ["pagedown"]
-jump_ten_previous_items = ["pageup"]
-go_to_first_item = ["ctrl+up", "ctrl+home"]
-go_to_last_item = ["ctrl+down", "ctrl+end"]
-
-close = ["esc"]
-quit = ["ctrl+c"]
-
-kill_process = ["ctrl+x"]
-force_kill_process = ["shift+ctrl+x"]
-refresh_process_list = ["ctrl+r"]
-copy_process_pid = ["ctrl+y"]
-
-scroll_process_details_down = ["ctrl+f"]
-scroll_process_details_up = ["ctrl+b"]
-
-select_process_parent = ["alt+p"]
-select_process_family = ["alt+f"]
-select_process_siblings = ["alt+s"]
-
-toggle_help = ["ctrl+h"]
-toggle_debug = ["alt+d"]
-
-cursor_left = ["left"]
-cursor_right = ["right"]
-cursor_home = ["home"]
-cursor_end = ["end"]
-delete_char = ["backspace"]
-delete_next_char = ["delete"]
-delete_word = ["ctrl+w"]
-delete_to_start = ["ctrl+u"]
-    "#;
-
-        toml::from_str(default_config).expect("This should always be parseable")
+        crate::config::default_config()
+            .expect("Embedded default config should always be parseable")
+            .key_mappings
     }
 
-    fn validate_key_mappings(&self) -> anyhow::Result<()> {
+    pub(crate) fn validate(&self) -> anyhow::Result<()> {
         use crate::config::keymappings::{AppAction, KeyBinding};
         use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
@@ -544,7 +510,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
             ],
         );
 
-        let result = key_mappings.validate_key_mappings();
+        let result = key_mappings.validate();
         assert!(
             result.is_ok(),
             "Validation should pass for valid key mappings"
@@ -560,7 +526,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
             vec![KeyBinding::char_with_mod('a', KeyModifiers::NONE)],
         );
 
-        let result = key_mappings.validate_key_mappings();
+        let result = key_mappings.validate();
         assert!(
             result.is_err(),
             "Validation should fail for single character key without modifiers"
@@ -579,7 +545,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
         key_mappings.insert(AppAction::Quit, vec![duplicate_binding]);
         key_mappings.insert(AppAction::KillProcess, vec![duplicate_binding]); // Same binding for a different action
 
-        let result = key_mappings.validate_key_mappings();
+        let result = key_mappings.validate();
         assert!(
             result.is_err(),
             "Validation should fail for duplicate binding across different actions"
@@ -598,7 +564,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
         // Same binding listed multiple times for the same action
         key_mappings.insert(AppAction::Quit, vec![binding, binding]);
 
-        let result = key_mappings.validate_key_mappings();
+        let result = key_mappings.validate();
         assert!(
             result.is_ok(),
             "Validation should pass for duplicate binding within the same action"
