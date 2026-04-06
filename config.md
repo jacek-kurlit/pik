@@ -208,14 +208,14 @@ Cell can be configured with these properties:
 
 Scrollbar can be configured with these properties:
 
-| Field  | Description              | Possible values      |
-| ------ | ------------------------ | -------------------- |
-| style  | Base style for scrollbar | Style configuration  |
-| thumb  | Thumb symbol             | String               |
-| track  | Track symbol             | String               |
-| begin  | Begin symbol             | String               |
-| end    | End symbol               | String               |
-| margin | Margin for scrollbar     | Margin configuration |
+| Field         | Description              | Possible values      |
+| ------------- | ------------------------ | -------------------- |
+| style         | Base style for scrollbar | Style configuration  |
+| thumb_symbol  | Thumb symbol             | String               |
+| track_symbol  | Track symbol             | String               |
+| begin_symbol  | Begin symbol             | String               |
+| end_symbol    | End symbol               | String               |
+| margin        | Margin for scrollbar     | Margin configuration |
 
 <--▮------->
 ^ ^ ^ ^
