@@ -10,6 +10,12 @@ pub struct KeyMappings {
     pub bindings: HashMap<AppAction, Vec<KeyBinding>>,
 }
 
+impl Default for KeyMappings {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KeyMappings {
     pub fn new() -> Self {
         Self {
@@ -36,53 +42,7 @@ impl KeyMappings {
         self.bindings.insert(action, key_mappings);
     }
 
-    pub fn override_with(mut self, key_mappings: KeyMappings) -> anyhow::Result<KeyMappings> {
-        self.bindings.extend(key_mappings.bindings);
-        self.validate_key_mappings()?;
-        Ok(self)
-    }
-
-    pub fn preconfigured_mappings() -> KeyMappings {
-        let default_config = r#"
-next_item = ["down", "tab", "ctrl+j", "ctrl+n"]
-previous_item = ["up", "shift+backtab", "ctrl+k", "ctrl+p"]
-jump_ten_next_items = ["pagedown"]
-jump_ten_previous_items = ["pageup"]
-go_to_first_item = ["ctrl+up", "ctrl+home"]
-go_to_last_item = ["ctrl+down", "ctrl+end"]
-
-close = ["esc"]
-quit = ["ctrl+c"]
-
-kill_process = ["ctrl+x"]
-force_kill_process = ["shift+ctrl+x"]
-refresh_process_list = ["ctrl+r"]
-copy_process_pid = ["ctrl+y"]
-
-scroll_process_details_down = ["ctrl+f"]
-scroll_process_details_up = ["ctrl+b"]
-
-select_process_parent = ["alt+p"]
-select_process_family = ["alt+f"]
-select_process_siblings = ["alt+s"]
-
-toggle_help = ["ctrl+h"]
-toggle_debug = ["alt+d"]
-
-cursor_left = ["left"]
-cursor_right = ["right"]
-cursor_home = ["home"]
-cursor_end = ["end"]
-delete_char = ["backspace"]
-delete_next_char = ["delete"]
-delete_word = ["ctrl+w"]
-delete_to_start = ["ctrl+u"]
-    "#;
-
-        toml::from_str(default_config).expect("This should always be parseable")
-    }
-
-    fn validate_key_mappings(&self) -> anyhow::Result<()> {
+    pub(crate) fn validate(&self) -> anyhow::Result<()> {
         use crate::config::keymappings::{AppAction, KeyBinding};
         use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 
@@ -133,14 +93,6 @@ delete_to_start = ["ctrl+u"]
                 }
             })
             .unwrap_or(AppAction::Unmapped)
-    }
-}
-
-//TODO: we should think about how to handle this better
-//I don't like the fact that we user do not have config we will parse default config twice
-impl Default for KeyMappings {
-    fn default() -> Self {
-        Self::preconfigured_mappings()
     }
 }
 
@@ -358,8 +310,9 @@ mod test {
 
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-    use crate::config::keymappings::{
-        AppAction, KeyBinding, KeyMappings, str_to_key, str_to_modifier,
+    use crate::config::{
+        keymappings::{AppAction, KeyBinding, KeyMappings, str_to_key, str_to_modifier},
+        parse_config,
     };
 
     #[test]
@@ -544,7 +497,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
             ],
         );
 
-        let result = key_mappings.validate_key_mappings();
+        let result = key_mappings.validate();
         assert!(
             result.is_ok(),
             "Validation should pass for valid key mappings"
@@ -560,7 +513,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
             vec![KeyBinding::char_with_mod('a', KeyModifiers::NONE)],
         );
 
-        let result = key_mappings.validate_key_mappings();
+        let result = key_mappings.validate();
         assert!(
             result.is_err(),
             "Validation should fail for single character key without modifiers"
@@ -579,7 +532,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
         key_mappings.insert(AppAction::Quit, vec![duplicate_binding]);
         key_mappings.insert(AppAction::KillProcess, vec![duplicate_binding]); // Same binding for a different action
 
-        let result = key_mappings.validate_key_mappings();
+        let result = key_mappings.validate();
         assert!(
             result.is_err(),
             "Validation should fail for duplicate binding across different actions"
@@ -598,7 +551,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
         // Same binding listed multiple times for the same action
         key_mappings.insert(AppAction::Quit, vec![binding, binding]);
 
-        let result = key_mappings.validate_key_mappings();
+        let result = key_mappings.validate();
         assert!(
             result.is_ok(),
             "Validation should pass for duplicate binding within the same action"
@@ -606,29 +559,21 @@ toggle_debug = ["ctrl+alt+shift+d"]
     }
 
     #[test]
-    fn test_override_preconfigured_keymappings() {
-        let mut custom_key_mappings = KeyMappings::new();
-        custom_key_mappings.insert(AppAction::Quit, vec![KeyBinding::key(KeyCode::PrintScreen)]);
-        custom_key_mappings.insert(
-            AppAction::KillProcess,
-            vec![
-                KeyBinding::key(KeyCode::Delete),
-                KeyBinding::key_with_mod(KeyCode::Char('x'), KeyModifiers::SUPER),
-                KeyBinding::key_with_mod(KeyCode::Char('x'), KeyModifiers::ALT),
-            ],
-        );
-        custom_key_mappings.insert(
-            AppAction::DeleteNextChar,
-            vec![KeyBinding::key(KeyCode::CapsLock)],
-        );
-
-        let keymapping = KeyMappings::preconfigured_mappings()
-            .override_with(custom_key_mappings)
-            .expect("Should not fail");
+    fn test_parse_config_overrides_default_keymappings() {
+        let keymapping = parse_config(
+            r#"
+            [key_mappings]
+            quit = ["f1"]
+            kill_process = ["delete", "super+x", "alt+x"]
+            delete_next_char = ["insert"]
+            "#,
+        )
+        .expect("Should not fail")
+        .key_mappings;
 
         assert_eq!(
             keymapping.get(AppAction::Quit),
-            &vec![KeyBinding::key(KeyCode::PrintScreen)],
+            &vec![KeyBinding::key(KeyCode::F(1))],
             "Should override default key mapping for Quit"
         );
         assert_eq!(
@@ -642,7 +587,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
         );
         assert_eq!(
             keymapping.get(AppAction::DeleteNextChar),
-            &vec![KeyBinding::key(KeyCode::CapsLock)],
+            &vec![KeyBinding::key(KeyCode::Insert)],
             "Should override default key mapping for DeleteNextChar"
         );
         // Validate that the default key mapping for DeleteNextChar is not present
