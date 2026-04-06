@@ -87,7 +87,6 @@ pub struct AppConfig {
     #[serde(default)]
     pub ignore: IgnoreConfig,
     pub key_mappings: KeyMappings,
-    #[serde(default)]
     pub ui: UIConfig,
 }
 

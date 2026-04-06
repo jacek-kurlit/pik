@@ -10,7 +10,7 @@ use ratatui::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct UIConfig {
     #[serde(default)]
     pub icons: IconConfig,

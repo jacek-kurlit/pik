@@ -125,7 +125,7 @@ mod tests {
                     ignore_other_users: false,
                     paths: vec![]
                 },
-                ui_config: UIConfig::default(),
+                ui_config: default_config().unwrap().ui,
                 key_mappings: default_config().unwrap().key_mappings,
             }
         );
