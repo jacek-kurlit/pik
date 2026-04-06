@@ -73,7 +73,7 @@ mod tests {
 
     use crate::{
         args::{self},
-        config::IgnoreConfig,
+        config::{IgnoreConfig, default_config},
     };
 
     use super::*;
@@ -126,7 +126,7 @@ mod tests {
                     paths: vec![]
                 },
                 ui_config: UIConfig::default(),
-                key_mappings: KeyMappings::default(),
+                key_mappings: default_config().unwrap().key_mappings,
             }
         );
     }

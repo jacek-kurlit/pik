@@ -10,6 +10,12 @@ pub struct KeyMappings {
     pub bindings: HashMap<AppAction, Vec<KeyBinding>>,
 }
 
+impl Default for KeyMappings {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KeyMappings {
     pub fn new() -> Self {
         Self {
@@ -34,18 +40,6 @@ impl KeyMappings {
     // test only
     pub fn insert(&mut self, action: AppAction, key_mappings: Vec<KeyBinding>) {
         self.bindings.insert(action, key_mappings);
-    }
-
-    pub fn override_with(mut self, key_mappings: KeyMappings) -> anyhow::Result<KeyMappings> {
-        self.bindings.extend(key_mappings.bindings);
-        self.validate()?;
-        Ok(self)
-    }
-
-    pub fn preconfigured_mappings() -> KeyMappings {
-        crate::config::default_config()
-            .expect("Embedded default config should always be parseable")
-            .key_mappings
     }
 
     pub(crate) fn validate(&self) -> anyhow::Result<()> {
@@ -99,14 +93,6 @@ impl KeyMappings {
                 }
             })
             .unwrap_or(AppAction::Unmapped)
-    }
-}
-
-//TODO: we should think about how to handle this better
-//I don't like the fact that we user do not have config we will parse default config twice
-impl Default for KeyMappings {
-    fn default() -> Self {
-        Self::preconfigured_mappings()
     }
 }
 
@@ -324,8 +310,9 @@ mod test {
 
     use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-    use crate::config::keymappings::{
-        AppAction, KeyBinding, KeyMappings, str_to_key, str_to_modifier,
+    use crate::config::{
+        keymappings::{AppAction, KeyBinding, KeyMappings, str_to_key, str_to_modifier},
+        parse_config,
     };
 
     #[test]
@@ -572,29 +559,21 @@ toggle_debug = ["ctrl+alt+shift+d"]
     }
 
     #[test]
-    fn test_override_preconfigured_keymappings() {
-        let mut custom_key_mappings = KeyMappings::new();
-        custom_key_mappings.insert(AppAction::Quit, vec![KeyBinding::key(KeyCode::PrintScreen)]);
-        custom_key_mappings.insert(
-            AppAction::KillProcess,
-            vec![
-                KeyBinding::key(KeyCode::Delete),
-                KeyBinding::key_with_mod(KeyCode::Char('x'), KeyModifiers::SUPER),
-                KeyBinding::key_with_mod(KeyCode::Char('x'), KeyModifiers::ALT),
-            ],
-        );
-        custom_key_mappings.insert(
-            AppAction::DeleteNextChar,
-            vec![KeyBinding::key(KeyCode::CapsLock)],
-        );
-
-        let keymapping = KeyMappings::preconfigured_mappings()
-            .override_with(custom_key_mappings)
-            .expect("Should not fail");
+    fn test_parse_config_overrides_default_keymappings() {
+        let keymapping = parse_config(
+            r#"
+            [key_mappings]
+            quit = ["f1"]
+            kill_process = ["delete", "super+x", "alt+x"]
+            delete_next_char = ["insert"]
+            "#,
+        )
+        .expect("Should not fail")
+        .key_mappings;
 
         assert_eq!(
             keymapping.get(AppAction::Quit),
-            &vec![KeyBinding::key(KeyCode::PrintScreen)],
+            &vec![KeyBinding::key(KeyCode::F(1))],
             "Should override default key mapping for Quit"
         );
         assert_eq!(
@@ -608,7 +587,7 @@ toggle_debug = ["ctrl+alt+shift+d"]
         );
         assert_eq!(
             keymapping.get(AppAction::DeleteNextChar),
-            &vec![KeyBinding::key(KeyCode::CapsLock)],
+            &vec![KeyBinding::key(KeyCode::Insert)],
             "Should override default key mapping for DeleteNextChar"
         );
         // Validate that the default key mapping for DeleteNextChar is not present

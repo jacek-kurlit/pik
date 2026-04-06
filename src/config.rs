@@ -80,16 +80,21 @@ use regex::Regex;
 use serde::Deserialize;
 use ui::UIConfig;
 
-#[derive(Debug, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
     pub screen_size: ScreenSize,
     #[serde(default)]
     pub ignore: IgnoreConfig,
-    #[serde(default)]
     pub key_mappings: KeyMappings,
     #[serde(default)]
     pub ui: UIConfig,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        default_config().expect("Embedded default config should always be parseable")
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -186,7 +191,7 @@ mod tests {
                     other_users: true,
                     threads: true
                 },
-                key_mappings: KeyMappings::preconfigured_mappings(),
+                key_mappings: default_config().unwrap().key_mappings,
                 ui: UIConfig {
                     icons: ui::IconConfig::Ascii,
                     process_table: TableTheme {
@@ -338,18 +343,15 @@ mod tests {
             "##,
         )
         .expect("This should be parseable");
-        let mut overrides = KeyMappings::new();
-        overrides.insert(
+        let mut key_mappings = default_config().unwrap().key_mappings;
+        key_mappings.insert(
             AppAction::Quit,
             vec![
                 KeyBinding::char_with_mod('c', KeyModifiers::CONTROL),
                 KeyBinding::char_with_mod('c', KeyModifiers::ALT),
             ],
         );
-        overrides.insert(AppAction::Close, vec![KeyBinding::key(KeyCode::Enter)]);
-        let key_mappings = KeyMappings::preconfigured_mappings()
-            .override_with(overrides)
-            .expect("This should be valid");
+        key_mappings.insert(AppAction::Close, vec![KeyBinding::key(KeyCode::Enter)]);
         assert_eq!(
             overrided_settings,
             AppConfig {

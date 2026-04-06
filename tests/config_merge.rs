@@ -110,3 +110,37 @@ fn partial_style_override_keeps_default_modifiers() {
             .add_modifier(Modifier::REVERSED)
     );
 }
+
+#[test]
+fn partial_style_override_inherits_default_reversed_modifier() {
+    let config = parse_config(
+        r##"
+        [ui.process_table.row]
+        selected = { fg = "#FFFFFF" }
+        "##,
+    )
+    .unwrap();
+
+    assert_eq!(
+        config.ui.process_table.row.selected,
+        Style::new()
+            .fg(tailwind::WHITE)
+            .add_modifier(Modifier::REVERSED)
+    );
+}
+
+#[test]
+fn full_style_block_can_replace_effective_selected_style() {
+    let config = parse_config(
+        r##"
+        [ui.process_table.row]
+        selected = { fg = "#FFFFFF", sub_modifier = "REVERSED", add_modifier = "BOLD" }
+        "##,
+    )
+    .unwrap();
+
+    assert_eq!(
+        config.ui.process_table.row.selected,
+        Style::new().fg(tailwind::WHITE).bold().not_reversed()
+    );
+}
