@@ -110,7 +110,11 @@ impl ProcessesViewComponent {
             .update_process_table_state(number_of_items);
     }
 
-    fn search_for_processess(&mut self) -> Result<(), Notification> {
+    fn search_for_processess(&mut self, triggered_by_refresh: bool) -> Result<(), Notification> {
+        update_refresh_notification_on_search_request(
+            &mut self.show_refresh_result_notification,
+            triggered_by_refresh,
+        );
         let search_text = self.search_bar.get_search_text().to_string();
         match self.ops_sender.send(Operations::Search(search_text)) {
             Ok(_) => Ok(()),
@@ -157,7 +161,7 @@ impl ProcessesViewComponent {
         };
 
         self.search_bar.set_search_text(&search_string);
-        match self.search_for_processess() {
+        match self.search_for_processess(false) {
             Ok(()) => KeyAction::Consumed,
             Err(notification) => KeyAction::Event(ComponentEvent::ShowNotification(notification)),
         }
@@ -188,6 +192,15 @@ impl ProcessesViewComponent {
             }
         }
         KeyAction::Consumed
+    }
+}
+
+fn update_refresh_notification_on_search_request(
+    show_refresh_result_notification: &mut bool,
+    triggered_by_refresh: bool,
+) {
+    if !triggered_by_refresh {
+        *show_refresh_result_notification = false;
     }
 }
 
@@ -285,7 +298,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::RefreshProcessList => {
                 self.show_refresh_result_notification = true;
-                return match self.search_for_processess() {
+                return match self.search_for_processess(true) {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         self.show_refresh_result_notification = false;
@@ -334,7 +347,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteChar => {
                 self.search_bar.delete_char();
-                return match self.search_for_processess() {
+                return match self.search_for_processess(false) {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -344,7 +357,7 @@ impl Component for ProcessesViewComponent {
             AppAction::DeleteNextChar => {
                 self.search_bar.delete_next_char();
 
-                return match self.search_for_processess() {
+                return match self.search_for_processess(false) {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -353,7 +366,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteWord => {
                 self.search_bar.delete_word();
-                return match self.search_for_processess() {
+                return match self.search_for_processess(false) {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -362,7 +375,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteToStart => {
                 self.search_bar.delete_to_start();
-                return match self.search_for_processess() {
+                return match self.search_for_processess(false) {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -371,7 +384,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteToEnd => {
                 self.search_bar.delete_to_end();
-                return match self.search_for_processess() {
+                return match self.search_for_processess(false) {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -380,7 +393,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteNextWord => {
                 self.search_bar.delete_next_word();
-                return match self.search_for_processess() {
+                return match self.search_for_processess(false) {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -390,7 +403,7 @@ impl Component for ProcessesViewComponent {
             AppAction::Unmapped => {
                 if let Char(c) = key.code {
                     self.search_bar.insert_char(c);
-                    return match self.search_for_processess() {
+                    return match self.search_for_processess(false) {
                         Ok(()) => KeyAction::Consumed,
                         Err(notification) => {
                             KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -417,12 +430,18 @@ impl Component for ProcessesViewComponent {
     }
 }
 
+impl Drop for ProcessesViewComponent {
+    fn drop(&mut self) {
+        self.ops_sender.send(Operations::Shutdown).ok();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::processes::{OperationResult, ProcessSearchResults};
     use crate::tui::components::NotificationSeverity;
 
-    use super::notification_for_operation_result;
+    use super::{notification_for_operation_result, update_refresh_notification_on_search_request};
 
     #[test]
     fn maps_process_kill_success_to_success_notification() {
@@ -497,10 +516,22 @@ mod tests {
         assert!(notification.is_none());
         assert!(!show_refresh_result_notification);
     }
-}
 
-impl Drop for ProcessesViewComponent {
-    fn drop(&mut self) {
-        self.ops_sender.send(Operations::Shutdown).ok();
+    #[test]
+    fn non_refresh_search_clears_pending_refresh_notification() {
+        let mut show_refresh_result_notification = true;
+
+        update_refresh_notification_on_search_request(&mut show_refresh_result_notification, false);
+
+        assert!(!show_refresh_result_notification);
+    }
+
+    #[test]
+    fn refresh_search_keeps_pending_refresh_notification() {
+        let mut show_refresh_result_notification = true;
+
+        update_refresh_notification_on_search_request(&mut show_refresh_result_notification, true);
+
+        assert!(show_refresh_result_notification);
     }
 }
