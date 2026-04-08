@@ -34,12 +34,14 @@ pub struct ProcessesViewComponent {
     show_refresh_result_notification: bool,
 }
 
-//NOTE: this is wrapped in a Lazy Mutex because arboard's Clipboard may cause issues when you don't
-//have any clipboard manager installed, and it needs to be initialized only once.
-//FIXME: instead of failing we should send error massage to user
-static CLIPBOARD: std::sync::LazyLock<Mutex<Clipboard>> = std::sync::LazyLock::new(|| {
-    Mutex::new(Clipboard::new().expect("Failed to create clipboard instance"))
-});
+// NOTE: clipboard access is initialized lazily because some systems do not provide a clipboard
+// backend at all. Surface those failures to the user instead of crashing the TUI.
+static CLIPBOARD: std::sync::LazyLock<Result<Mutex<Clipboard>, String>> =
+    std::sync::LazyLock::new(|| {
+        Clipboard::new()
+            .map(Mutex::new)
+            .map_err(|err| format!("Clipboard is unavailable: {err}"))
+    });
 
 impl ProcessesViewComponent {
     pub fn new(
@@ -163,24 +165,53 @@ impl ProcessesViewComponent {
 
     fn copy_pid_to_clipboard(&mut self) -> KeyAction {
         if let Some(prc) = self.get_selected_process() {
-            CLIPBOARD
-                .lock()
-                .expect("Failed to lock clipboard")
-                .set_text(format!("{}", prc.pid))
-                .expect("Failed to copy pid");
+            let clipboard = match CLIPBOARD.as_ref() {
+                Ok(clipboard) => clipboard,
+                Err(err) => {
+                    return KeyAction::Event(ComponentEvent::ShowNotification(
+                        Notification::error(err.clone()),
+                    ));
+                }
+            };
+            let mut clipboard = match clipboard.lock() {
+                Ok(clipboard) => clipboard,
+                Err(_) => {
+                    return KeyAction::Event(ComponentEvent::ShowNotification(
+                        Notification::error("Clipboard is currently unavailable"),
+                    ));
+                }
+            };
+            if let Err(err) = clipboard.set_text(format!("{}", prc.pid)) {
+                return KeyAction::Event(ComponentEvent::ShowNotification(Notification::error(
+                    format!("Failed to copy PID to clipboard: {err}"),
+                )));
+            }
         }
         KeyAction::Consumed
     }
 }
 
-fn notification_for_operation_result(result: &OperationResult) -> Option<Notification> {
+fn notification_for_operation_result(
+    result: &OperationResult,
+    show_refresh_result_notification: &mut bool,
+) -> Option<Notification> {
     match result {
         OperationResult::ProcessKilled(_) => Some(Notification::success("Process killed")),
         OperationResult::ProcessKillFailed => Some(Notification::error(
             "Failed to kill process. Check permissions",
         )),
-        OperationResult::Error(error) => Some(Notification::error(error.clone())),
-        OperationResult::SearchCompleted(_) => None,
+        OperationResult::Error(error) => {
+            *show_refresh_result_notification = false;
+            Some(Notification::error(error.clone()))
+        }
+        OperationResult::SearchCompleted(_) => {
+            if *show_refresh_result_notification {
+                *show_refresh_result_notification = false;
+                Some(Notification::info("Process list refreshed"))
+            } else {
+                None
+            }
+        }
     }
 }
 
@@ -191,28 +222,34 @@ impl Component for ProcessesViewComponent {
                 OperationResult::SearchCompleted(results) => {
                     self.search_results = results;
                     self.update_process_table_state();
-                    if self.show_refresh_result_notification {
-                        self.show_refresh_result_notification = false;
-                        return Some(ComponentEvent::ShowNotification(Notification::info(
-                            "Process list refreshed",
-                        )));
-                    }
+                    return notification_for_operation_result(
+                        &OperationResult::SearchCompleted(ProcessSearchResults::empty()),
+                        &mut self.show_refresh_result_notification,
+                    )
+                    .map(ComponentEvent::ShowNotification);
                 }
                 OperationResult::ProcessKilled(results) => {
                     self.search_results = results;
                     self.update_process_table_state();
-                    return notification_for_operation_result(&OperationResult::ProcessKilled(
-                        ProcessSearchResults::empty(),
-                    ))
+                    return notification_for_operation_result(
+                        &OperationResult::ProcessKilled(ProcessSearchResults::empty()),
+                        &mut self.show_refresh_result_notification,
+                    )
                     .map(ComponentEvent::ShowNotification);
                 }
                 OperationResult::ProcessKillFailed => {
-                    return notification_for_operation_result(&OperationResult::ProcessKillFailed)
-                        .map(ComponentEvent::ShowNotification);
+                    return notification_for_operation_result(
+                        &OperationResult::ProcessKillFailed,
+                        &mut self.show_refresh_result_notification,
+                    )
+                    .map(ComponentEvent::ShowNotification);
                 }
                 OperationResult::Error(err) => {
-                    return notification_for_operation_result(&OperationResult::Error(err))
-                        .map(ComponentEvent::ShowNotification);
+                    return notification_for_operation_result(
+                        &OperationResult::Error(err),
+                        &mut self.show_refresh_result_notification,
+                    )
+                    .map(ComponentEvent::ShowNotification);
                 }
             }
         }
@@ -389,9 +426,11 @@ mod tests {
 
     #[test]
     fn maps_process_kill_success_to_success_notification() {
-        let notification = notification_for_operation_result(&OperationResult::ProcessKilled(
-            ProcessSearchResults::empty(),
-        ))
+        let mut show_refresh_result_notification = false;
+        let notification = notification_for_operation_result(
+            &OperationResult::ProcessKilled(ProcessSearchResults::empty()),
+            &mut show_refresh_result_notification,
+        )
         .unwrap();
 
         assert_eq!(notification.severity, NotificationSeverity::Success);
@@ -400,8 +439,12 @@ mod tests {
 
     #[test]
     fn maps_process_kill_failure_to_error_notification() {
-        let notification =
-            notification_for_operation_result(&OperationResult::ProcessKillFailed).unwrap();
+        let mut show_refresh_result_notification = false;
+        let notification = notification_for_operation_result(
+            &OperationResult::ProcessKillFailed,
+            &mut show_refresh_result_notification,
+        )
+        .unwrap();
 
         assert_eq!(notification.severity, NotificationSeverity::Error);
         assert_eq!(
@@ -412,12 +455,47 @@ mod tests {
 
     #[test]
     fn maps_daemon_errors_to_error_notification() {
-        let notification =
-            notification_for_operation_result(&OperationResult::Error("daemon failed".to_string()))
-                .unwrap();
+        let mut show_refresh_result_notification = false;
+        let notification = notification_for_operation_result(
+            &OperationResult::Error("daemon failed".to_string()),
+            &mut show_refresh_result_notification,
+        )
+        .unwrap();
 
         assert_eq!(notification.severity, NotificationSeverity::Error);
         assert_eq!(notification.message, "daemon failed");
+    }
+
+    #[test]
+    fn clears_refresh_flag_after_daemon_error() {
+        let mut show_refresh_result_notification = true;
+
+        let notification = notification_for_operation_result(
+            &OperationResult::Error("daemon failed".to_string()),
+            &mut show_refresh_result_notification,
+        )
+        .unwrap();
+
+        assert_eq!(notification.severity, NotificationSeverity::Error);
+        assert!(!show_refresh_result_notification);
+    }
+
+    #[test]
+    fn does_not_emit_refresh_notification_after_error_then_next_search_completion() {
+        let mut show_refresh_result_notification = true;
+
+        notification_for_operation_result(
+            &OperationResult::Error("daemon failed".to_string()),
+            &mut show_refresh_result_notification,
+        );
+
+        let notification = notification_for_operation_result(
+            &OperationResult::SearchCompleted(ProcessSearchResults::empty()),
+            &mut show_refresh_result_notification,
+        );
+
+        assert!(notification.is_none());
+        assert!(!show_refresh_result_notification);
     }
 }
 
