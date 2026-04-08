@@ -22,6 +22,8 @@ pub struct UIConfig {
     pub search_bar: SearchBarTheme,
     #[serde(default)]
     pub popups: PopupsTheme,
+    #[serde(default)]
+    pub notifications: NotificationsTheme,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
@@ -309,6 +311,39 @@ impl Default for PopupsTheme {
             selected_row: Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD),
             primary: Style::new().fg(tailwind::BLUE.c400),
             secondary: Style::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct NotificationsTheme {
+    #[serde(default)]
+    pub border: BorderTheme,
+    #[serde(default, with = "StyleDef")]
+    pub info: Style,
+    #[serde(default, with = "StyleDef")]
+    pub success: Style,
+    #[serde(default, with = "StyleDef")]
+    pub error: Style,
+    #[serde(default = "default_notification_timeout_ms")]
+    pub timeout_ms: u64,
+}
+
+const fn default_notification_timeout_ms() -> u64 {
+    2500
+}
+
+impl Default for NotificationsTheme {
+    fn default() -> Self {
+        Self {
+            border: BorderTheme {
+                style: Style::new().fg(tailwind::SLATE.c500),
+                ..Default::default()
+            },
+            info: Style::new().fg(tailwind::BLUE.c300),
+            success: Style::new().fg(tailwind::GREEN.c400),
+            error: Style::new().fg(tailwind::RED.c400),
+            timeout_ms: default_notification_timeout_ms(),
         }
     }
 }

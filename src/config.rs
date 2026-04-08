@@ -167,8 +167,8 @@ mod tests {
         widgets::{BorderType, TitlePosition},
     };
     use ui::{
-        BorderTheme, CellTheme, ProcessDetailsTheme, RowTheme, ScrollbarTheme, SearchBarTheme,
-        TableTheme, TitleTheme,
+        BorderTheme, CellTheme, NotificationsTheme, ProcessDetailsTheme, RowTheme, ScrollbarTheme,
+        SearchBarTheme, TableTheme, TitleTheme,
     };
 
     use crate::config::{
@@ -263,6 +263,16 @@ mod tests {
                         selected_row: Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD),
                         primary: Style::new().fg(tailwind::BLUE.c400),
                         secondary: Style::default(),
+                    },
+                    notifications: NotificationsTheme {
+                        border: BorderTheme {
+                            style: Style::default().fg(tailwind::SLATE.c500),
+                            _type: BorderType::Rounded,
+                        },
+                        info: Style::new().fg(tailwind::BLUE.c300),
+                        success: Style::new().fg(tailwind::GREEN.c400),
+                        error: Style::new().fg(tailwind::RED.c400),
+                        timeout_ms: 2500,
                     }
                 }
             }
@@ -339,6 +349,13 @@ mod tests {
             selected_row = {fg = "#57534e", bg = "#fafaf9", add_modifier = "ITALIC"}
             primary = {fg = "#f472b6", bg = "#4c1d95", add_modifier = "BOLD"}
             secondary = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
+
+            [ui.notifications]
+            timeout_ms = 1500
+            border = {type = "plain", style = {fg = "#6366f1", add_modifier = "BOLD | ITALIC"}}
+            info = {fg = "#a5f3fc", bg = "#0891b2", add_modifier = "CROSSED_OUT"}
+            success = {fg = "#4ade80", bg = "#14532d", add_modifier = "BOLD"}
+            error = {fg = "#f87171", bg = "#450a0a", add_modifier = "ITALIC"}
             "##,
         )
         .expect("This should be parseable");
@@ -463,6 +480,25 @@ mod tests {
                             .fg(tailwind::CYAN.c200)
                             .bg(tailwind::CYAN.c600)
                             .crossed_out(),
+                    },
+                    notifications: NotificationsTheme {
+                        border: BorderTheme {
+                            style: Style::default().fg(tailwind::INDIGO.c500).bold().italic(),
+                            _type: BorderType::Plain,
+                        },
+                        info: Style::new()
+                            .fg(tailwind::CYAN.c200)
+                            .bg(tailwind::CYAN.c600)
+                            .crossed_out(),
+                        success: Style::new()
+                            .fg(tailwind::GREEN.c400)
+                            .bg(Color::Rgb(20, 83, 45))
+                            .bold(),
+                        error: Style::new()
+                            .fg(tailwind::RED.c400)
+                            .bg(tailwind::RED.c950)
+                            .italic(),
+                        timeout_ms: 1500,
                     }
                 }
             }
