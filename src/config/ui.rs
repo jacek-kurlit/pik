@@ -23,7 +23,7 @@ pub struct UIConfig {
     #[serde(default)]
     pub popups: PopupsTheme,
     #[serde(default)]
-    pub notifications: NotificationsTheme,
+    pub notifications: NotificationsConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default, PartialEq, Eq)]
@@ -316,6 +316,27 @@ impl Default for PopupsTheme {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub struct NotificationsConfig {
+    #[serde(default = "default_notification_timeout_ms")]
+    pub timeout_ms: u64,
+    #[serde(default)]
+    pub theme: NotificationsTheme,
+}
+
+const fn default_notification_timeout_ms() -> u64 {
+    2500
+}
+
+impl Default for NotificationsConfig {
+    fn default() -> Self {
+        Self {
+            timeout_ms: default_notification_timeout_ms(),
+            theme: NotificationsTheme::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct NotificationsTheme {
     #[serde(default)]
     pub border: BorderTheme,
@@ -325,12 +346,6 @@ pub struct NotificationsTheme {
     pub success: Style,
     #[serde(default, with = "StyleDef")]
     pub error: Style,
-    #[serde(default = "default_notification_timeout_ms")]
-    pub timeout_ms: u64,
-}
-
-const fn default_notification_timeout_ms() -> u64 {
-    2500
 }
 
 impl Default for NotificationsTheme {
@@ -343,7 +358,6 @@ impl Default for NotificationsTheme {
             info: Style::new().fg(tailwind::BLUE.c300),
             success: Style::new().fg(tailwind::GREEN.c400),
             error: Style::new().fg(tailwind::RED.c400),
-            timeout_ms: default_notification_timeout_ms(),
         }
     }
 }

@@ -44,7 +44,7 @@ fn inline_tables_are_merged_recursively() {
         [ui.popups.border]
         style = { bg = "#4c1d95" }
 
-        [ui.notifications]
+        [ui.notifications.theme]
         success = { bg = "#14532d" }
         "##,
     )
@@ -64,7 +64,7 @@ fn inline_tables_are_merged_recursively() {
             .bg(tailwind::VIOLET.c900)
     );
     assert_eq!(
-        config.ui.notifications.success,
+        config.ui.notifications.theme.success,
         Style::new()
             .fg(tailwind::GREEN.c400)
             .bg(Color::Rgb(20, 83, 45))

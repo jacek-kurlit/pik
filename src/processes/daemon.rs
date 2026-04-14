@@ -51,14 +51,27 @@ impl ProcssAsyncService {
 
 pub enum Operations {
     Search(String),
-    KillProcess { pid: u32, graceful: bool },
+    KillProcess {
+        pid: u32,
+        graceful: bool,
+        name: String,
+    },
     Shutdown,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KilledProcess {
+    pub pid: u32,
+    pub name: String,
 }
 
 #[derive(Debug)]
 pub enum OperationResult {
-    ProcessKilled(ProcessSearchResults),
-    ProcessKillFailed,
+    ProcessKilled {
+        results: ProcessSearchResults,
+        process: KilledProcess,
+    },
+    ProcessKillFailed(KilledProcess),
     SearchCompleted(ProcessSearchResults),
     Error(String),
 }
@@ -83,17 +96,25 @@ fn process_loop(
                     let result = service.refresh_and_find_processes(&query);
                     send_result(OperationResult::SearchCompleted(result), &result_sender);
                 }
-                Operations::KillProcess { pid, graceful } => {
+                Operations::KillProcess {
+                    pid,
+                    graceful,
+                    name,
+                } => {
+                    let process = KilledProcess { pid, name };
                     if service.process_manager.kill_process(pid, graceful) {
                         let mut search_results = service.rerun_last_search();
                         //NOTE: cache refresh takes time and process may reappear in list!
                         search_results.remove(pid);
                         send_result(
-                            OperationResult::ProcessKilled(search_results),
+                            OperationResult::ProcessKilled {
+                                results: search_results,
+                                process,
+                            },
                             &result_sender,
                         );
                     } else {
-                        send_result(OperationResult::ProcessKillFailed, &result_sender);
+                        send_result(OperationResult::ProcessKillFailed(process), &result_sender);
                     }
                 }
                 Operations::Shutdown => {
@@ -230,6 +251,7 @@ mod tests {
         let mut process_manager = ProcessManager::faux();
         let pid = 1000;
         let graceful = true;
+        let name = "pik".to_string();
         faux::when!(process_manager.kill_process(pid, graceful)).then_return(true);
         faux::when!(process_manager.find_processes("", ignore_options))
             .then(|_| ProcessSearchResults::empty());
@@ -241,7 +263,11 @@ mod tests {
 
         // when
         operation_sender
-            .send(crate::processes::Operations::KillProcess { pid, graceful })
+            .send(crate::processes::Operations::KillProcess {
+                pid,
+                graceful,
+                name: name.clone(),
+            })
             .unwrap();
 
         // then
@@ -250,7 +276,10 @@ mod tests {
             .unwrap();
         assert!(matches!(
             actual,
-            crate::processes::OperationResult::ProcessKilled(_)
+            crate::processes::OperationResult::ProcessKilled {
+                process: crate::processes::KilledProcess { pid: 1000, name: _ },
+                ..
+            }
         ));
     }
 
@@ -260,6 +289,7 @@ mod tests {
         let mut process_manager = ProcessManager::faux();
         let pid = 1000;
         let graceful = false;
+        let name = "pik".to_string();
         faux::when!(process_manager.kill_process(pid, graceful)).then_return(false);
 
         let (operation_sender, result_receiver) =
@@ -268,7 +298,11 @@ mod tests {
 
         // when
         operation_sender
-            .send(crate::processes::Operations::KillProcess { pid, graceful })
+            .send(crate::processes::Operations::KillProcess {
+                pid,
+                graceful,
+                name: name.clone(),
+            })
             .unwrap();
 
         // then
@@ -277,7 +311,10 @@ mod tests {
             .unwrap();
         assert!(matches!(
             actual,
-            crate::processes::OperationResult::ProcessKillFailed
+            crate::processes::OperationResult::ProcessKillFailed(crate::processes::KilledProcess {
+                pid: 1000,
+                name: _
+            })
         ));
     }
 

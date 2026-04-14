@@ -8,7 +8,9 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use tui_input::InputRequest;
 
 use crate::config::keymappings::AppAction;
-use crate::processes::{OperationResult, Operations, ProcessManager, ProcssAsyncService};
+use crate::processes::{
+    KilledProcess, OperationResult, Operations, ProcessManager, ProcssAsyncService,
+};
 use crate::tui::components::search_bar::CursorMove;
 use crate::{
     config::ui::UIConfig,
@@ -31,7 +33,6 @@ pub struct ProcessesViewComponent {
     process_table_component: ProcessTableComponent,
     process_details_component: ProcessDetailsComponent,
     search_bar: SearchBarComponent,
-    show_refresh_result_notification: bool,
 }
 
 // NOTE: clipboard access is initialized lazily because some systems do not provide a clipboard
@@ -69,7 +70,6 @@ impl ProcessesViewComponent {
                 &ui_config.search_bar,
                 ui_config.icons.get_icons().search_prompt.as_str(),
             ),
-            show_refresh_result_notification: false,
         };
         component.update_process_table_state();
         Ok(component)
@@ -110,11 +110,7 @@ impl ProcessesViewComponent {
             .update_process_table_state(number_of_items);
     }
 
-    fn search_for_processess(&mut self, triggered_by_refresh: bool) -> Result<(), Notification> {
-        update_refresh_notification_on_search_request(
-            &mut self.show_refresh_result_notification,
-            triggered_by_refresh,
-        );
+    fn search_for_processess(&mut self) -> Result<(), Notification> {
         let search_text = self.search_bar.get_search_text().to_string();
         match self.ops_sender.send(Operations::Search(search_text)) {
             Ok(_) => Ok(()),
@@ -127,10 +123,12 @@ impl ProcessesViewComponent {
     fn kill_selected_process(&mut self, graceful: bool) -> KeyAction {
         if let Some(prc) = self.get_selected_process() {
             let pid = prc.pid;
-            return match self
-                .ops_sender
-                .send(Operations::KillProcess { pid, graceful })
-            {
+            let name = prc.cmd.clone();
+            return match self.ops_sender.send(Operations::KillProcess {
+                pid,
+                graceful,
+                name,
+            }) {
                 Ok(_) => KeyAction::Consumed,
                 Err(_) => KeyAction::Event(ComponentEvent::ShowNotification(Notification::error(
                     "Failed to send kill request to process daemon",
@@ -161,7 +159,7 @@ impl ProcessesViewComponent {
         };
 
         self.search_bar.set_search_text(&search_string);
-        match self.search_for_processess(false) {
+        match self.search_for_processess() {
             Ok(()) => KeyAction::Consumed,
             Err(notification) => KeyAction::Event(ComponentEvent::ShowNotification(notification)),
         }
@@ -195,37 +193,14 @@ impl ProcessesViewComponent {
     }
 }
 
-fn update_refresh_notification_on_search_request(
-    show_refresh_result_notification: &mut bool,
-    triggered_by_refresh: bool,
-) {
-    if !triggered_by_refresh {
-        *show_refresh_result_notification = false;
-    }
-}
+fn process_result_message(prefix: &str, process: &KilledProcess) -> String {
+    let name = if process.name.is_empty() {
+        "unknown"
+    } else {
+        process.name.as_str()
+    };
 
-fn notification_for_operation_result(
-    result: &OperationResult,
-    show_refresh_result_notification: &mut bool,
-) -> Option<Notification> {
-    match result {
-        OperationResult::ProcessKilled(_) => Some(Notification::success("Process killed")),
-        OperationResult::ProcessKillFailed => Some(Notification::error(
-            "Failed to kill process. Check permissions",
-        )),
-        OperationResult::Error(error) => {
-            *show_refresh_result_notification = false;
-            Some(Notification::error(error.clone()))
-        }
-        OperationResult::SearchCompleted(_) => {
-            if *show_refresh_result_notification {
-                *show_refresh_result_notification = false;
-                Some(Notification::info("Process list refreshed"))
-            } else {
-                None
-            }
-        }
-    }
+    format!("{prefix} - {name} : PID {}", process.pid)
 }
 
 impl Component for ProcessesViewComponent {
@@ -235,34 +210,21 @@ impl Component for ProcessesViewComponent {
                 OperationResult::SearchCompleted(results) => {
                     self.search_results = results;
                     self.update_process_table_state();
-                    return notification_for_operation_result(
-                        &OperationResult::SearchCompleted(ProcessSearchResults::empty()),
-                        &mut self.show_refresh_result_notification,
-                    )
-                    .map(ComponentEvent::ShowNotification);
                 }
-                OperationResult::ProcessKilled(results) => {
+                OperationResult::ProcessKilled { results, process } => {
                     self.search_results = results;
                     self.update_process_table_state();
-                    return notification_for_operation_result(
-                        &OperationResult::ProcessKilled(ProcessSearchResults::empty()),
-                        &mut self.show_refresh_result_notification,
-                    )
-                    .map(ComponentEvent::ShowNotification);
+                    return Some(ComponentEvent::ShowNotification(Notification::success(
+                        process_result_message("Process killed", &process),
+                    )));
                 }
-                OperationResult::ProcessKillFailed => {
-                    return notification_for_operation_result(
-                        &OperationResult::ProcessKillFailed,
-                        &mut self.show_refresh_result_notification,
-                    )
-                    .map(ComponentEvent::ShowNotification);
+                OperationResult::ProcessKillFailed(process) => {
+                    return Some(ComponentEvent::ShowNotification(Notification::error(
+                        process_result_message("Failed to kill process", &process),
+                    )));
                 }
                 OperationResult::Error(err) => {
-                    return notification_for_operation_result(
-                        &OperationResult::Error(err),
-                        &mut self.show_refresh_result_notification,
-                    )
-                    .map(ComponentEvent::ShowNotification);
+                    return Some(ComponentEvent::ShowNotification(Notification::error(err)));
                 }
             }
         }
@@ -297,11 +259,9 @@ impl Component for ProcessesViewComponent {
                 return self.kill_selected_process(false);
             }
             AppAction::RefreshProcessList => {
-                self.show_refresh_result_notification = true;
-                return match self.search_for_processess(true) {
+                return match self.search_for_processess() {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
-                        self.show_refresh_result_notification = false;
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
                     }
                 };
@@ -347,7 +307,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteChar => {
                 self.search_bar.delete_char();
-                return match self.search_for_processess(false) {
+                return match self.search_for_processess() {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -357,7 +317,7 @@ impl Component for ProcessesViewComponent {
             AppAction::DeleteNextChar => {
                 self.search_bar.delete_next_char();
 
-                return match self.search_for_processess(false) {
+                return match self.search_for_processess() {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -366,7 +326,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteWord => {
                 self.search_bar.delete_word();
-                return match self.search_for_processess(false) {
+                return match self.search_for_processess() {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -375,7 +335,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteToStart => {
                 self.search_bar.delete_to_start();
-                return match self.search_for_processess(false) {
+                return match self.search_for_processess() {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -384,7 +344,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteToEnd => {
                 self.search_bar.delete_to_end();
-                return match self.search_for_processess(false) {
+                return match self.search_for_processess() {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -393,7 +353,7 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteNextWord => {
                 self.search_bar.delete_next_word();
-                return match self.search_for_processess(false) {
+                return match self.search_for_processess() {
                     Ok(()) => KeyAction::Consumed,
                     Err(notification) => {
                         KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -403,7 +363,7 @@ impl Component for ProcessesViewComponent {
             AppAction::Unmapped => {
                 if let Char(c) = key.code {
                     self.search_bar.insert_char(c);
-                    return match self.search_for_processess(false) {
+                    return match self.search_for_processess() {
                         Ok(()) => KeyAction::Consumed,
                         Err(notification) => {
                             KeyAction::Event(ComponentEvent::ShowNotification(notification))
@@ -438,100 +398,46 @@ impl Drop for ProcessesViewComponent {
 
 #[cfg(test)]
 mod tests {
-    use crate::processes::{OperationResult, ProcessSearchResults};
-    use crate::tui::components::NotificationSeverity;
+    use crate::processes::KilledProcess;
 
-    use super::{notification_for_operation_result, update_refresh_notification_on_search_request};
-
-    #[test]
-    fn maps_process_kill_success_to_success_notification() {
-        let mut show_refresh_result_notification = false;
-        let notification = notification_for_operation_result(
-            &OperationResult::ProcessKilled(ProcessSearchResults::empty()),
-            &mut show_refresh_result_notification,
-        )
-        .unwrap();
-
-        assert_eq!(notification.severity, NotificationSeverity::Success);
-        assert_eq!(notification.message, "Process killed");
-    }
+    use super::process_result_message;
 
     #[test]
-    fn maps_process_kill_failure_to_error_notification() {
-        let mut show_refresh_result_notification = false;
-        let notification = notification_for_operation_result(
-            &OperationResult::ProcessKillFailed,
-            &mut show_refresh_result_notification,
-        )
-        .unwrap();
-
-        assert_eq!(notification.severity, NotificationSeverity::Error);
-        assert_eq!(
-            notification.message,
-            "Failed to kill process. Check permissions"
-        );
-    }
-
-    #[test]
-    fn maps_daemon_errors_to_error_notification() {
-        let mut show_refresh_result_notification = false;
-        let notification = notification_for_operation_result(
-            &OperationResult::Error("daemon failed".to_string()),
-            &mut show_refresh_result_notification,
-        )
-        .unwrap();
-
-        assert_eq!(notification.severity, NotificationSeverity::Error);
-        assert_eq!(notification.message, "daemon failed");
-    }
-
-    #[test]
-    fn clears_refresh_flag_after_daemon_error() {
-        let mut show_refresh_result_notification = true;
-
-        let notification = notification_for_operation_result(
-            &OperationResult::Error("daemon failed".to_string()),
-            &mut show_refresh_result_notification,
-        )
-        .unwrap();
-
-        assert_eq!(notification.severity, NotificationSeverity::Error);
-        assert!(!show_refresh_result_notification);
-    }
-
-    #[test]
-    fn does_not_emit_refresh_notification_after_error_then_next_search_completion() {
-        let mut show_refresh_result_notification = true;
-
-        notification_for_operation_result(
-            &OperationResult::Error("daemon failed".to_string()),
-            &mut show_refresh_result_notification,
+    fn builds_success_message_with_name_and_pid() {
+        let message = process_result_message(
+            "Process killed",
+            &KilledProcess {
+                pid: 4242,
+                name: "pik".to_string(),
+            },
         );
 
-        let notification = notification_for_operation_result(
-            &OperationResult::SearchCompleted(ProcessSearchResults::empty()),
-            &mut show_refresh_result_notification,
+        assert_eq!(message, "Process killed - pik : PID 4242");
+    }
+
+    #[test]
+    fn builds_failure_message_with_name_and_pid() {
+        let message = process_result_message(
+            "Failed to kill process",
+            &KilledProcess {
+                pid: 4242,
+                name: "pik".to_string(),
+            },
         );
 
-        assert!(notification.is_none());
-        assert!(!show_refresh_result_notification);
+        assert_eq!(message, "Failed to kill process - pik : PID 4242");
     }
 
     #[test]
-    fn non_refresh_search_clears_pending_refresh_notification() {
-        let mut show_refresh_result_notification = true;
+    fn falls_back_to_unknown_name_when_process_name_is_empty() {
+        let message = process_result_message(
+            "Process killed",
+            &KilledProcess {
+                pid: 4242,
+                name: String::new(),
+            },
+        );
 
-        update_refresh_notification_on_search_request(&mut show_refresh_result_notification, false);
-
-        assert!(!show_refresh_result_notification);
-    }
-
-    #[test]
-    fn refresh_search_keeps_pending_refresh_notification() {
-        let mut show_refresh_result_notification = true;
-
-        update_refresh_notification_on_search_request(&mut show_refresh_result_notification, true);
-
-        assert!(show_refresh_result_notification);
+        assert_eq!(message, "Process killed - unknown : PID 4242");
     }
 }

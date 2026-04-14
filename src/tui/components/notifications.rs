@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{Block, Clear, Padding, Paragraph, Wrap},
 };
 
-use crate::{config::ui::NotificationsTheme, tui::LayoutRects};
+use crate::{config::ui::NotificationsConfig, tui::LayoutRects};
 
 use super::{Component, ComponentEvent, Notification, NotificationSeverity};
 
@@ -18,27 +18,27 @@ struct ActiveNotification {
 
 pub struct NotificationsComponent {
     active_notification: Option<ActiveNotification>,
-    theme: NotificationsTheme,
+    config: NotificationsConfig,
 }
 
 impl NotificationsComponent {
-    pub fn new(theme: &NotificationsTheme) -> Self {
+    pub fn new(config: &NotificationsConfig) -> Self {
         Self {
             active_notification: None,
-            theme: theme.clone(),
+            config: config.clone(),
         }
     }
 
     fn notification_style(&self, severity: &NotificationSeverity) -> Style {
         match severity {
-            NotificationSeverity::Info => self.theme.info,
-            NotificationSeverity::Success => self.theme.success,
-            NotificationSeverity::Error => self.theme.error,
+            NotificationSeverity::Info => self.config.theme.info,
+            NotificationSeverity::Success => self.config.theme.success,
+            NotificationSeverity::Error => self.config.theme.error,
         }
     }
 
     fn has_expired(&self, shown_at: Instant) -> bool {
-        shown_at.elapsed() >= Duration::from_millis(self.theme.timeout_ms)
+        shown_at.elapsed() >= Duration::from_millis(self.config.timeout_ms)
     }
 }
 
@@ -77,11 +77,10 @@ impl Component for NotificationsComponent {
                 active_notification.notification.severity.title(),
                 style,
             )))
-            .border_type(self.theme.border._type)
-            .border_style(self.theme.border.style)
+            .border_type(self.config.theme.border._type)
+            .border_style(self.config.theme.border.style)
             .padding(Padding::horizontal(1));
         let paragraph = Paragraph::new(active_notification.notification.message.as_str())
-            .style(style)
             .block(block)
             .wrap(Wrap { trim: true });
 
@@ -91,18 +90,18 @@ impl Component for NotificationsComponent {
 }
 
 fn notification_area(area: Rect, message: &str) -> Rect {
-    let max_width = area.width.saturating_sub(2).clamp(1, 60);
-    let min_width = max_width.min(24);
-    let width = (message.chars().count() as u16 + 4).clamp(min_width, max_width);
+    let max_width = area.width.saturating_sub(6).clamp(1, 72);
+    let min_width = max_width.min(36);
+    let width = (message.chars().count() as u16 + 8).clamp(min_width, max_width);
     let inner_width = width.saturating_sub(4).max(1);
     let wrapped_lines = message
         .chars()
         .count()
         .div_ceil(inner_width as usize)
         .max(1);
-    let height = (wrapped_lines as u16).min(3) + 2;
-    let x = area.right().saturating_sub(width + 1);
-    let y = area.y.saturating_add(1);
+    let height = (wrapped_lines as u16).min(4) + 2;
+    let x = area.right().saturating_sub(width + 3);
+    let y = area.y.saturating_add(2);
 
     Rect::new(x, y, width, height)
 }
@@ -113,13 +112,13 @@ mod tests {
 
     use ratatui::style::{Color, Style};
 
-    use crate::config::ui::NotificationsTheme;
+    use crate::config::ui::{NotificationsConfig, NotificationsTheme};
 
     use super::*;
 
     #[test]
     fn replaces_previous_notification_with_latest_one() {
-        let mut component = NotificationsComponent::new(&NotificationsTheme::default());
+        let mut component = NotificationsComponent::new(&NotificationsConfig::default());
         component.handle_event(&ComponentEvent::ShowNotification(Notification::info(
             "first",
         )));
@@ -134,9 +133,9 @@ mod tests {
 
     #[test]
     fn clears_notification_after_timeout() {
-        let mut component = NotificationsComponent::new(&NotificationsTheme {
+        let mut component = NotificationsComponent::new(&NotificationsConfig {
             timeout_ms: 1,
-            ..NotificationsTheme::default()
+            ..NotificationsConfig::default()
         });
         component.active_notification = Some(ActiveNotification {
             notification: Notification::info("expired"),
@@ -156,7 +155,10 @@ mod tests {
             error: Style::new().fg(Color::Red),
             ..NotificationsTheme::default()
         };
-        let component = NotificationsComponent::new(&theme);
+        let component = NotificationsComponent::new(&NotificationsConfig {
+            theme: theme.clone(),
+            ..NotificationsConfig::default()
+        });
 
         assert_eq!(
             component.notification_style(&NotificationSeverity::Info),
