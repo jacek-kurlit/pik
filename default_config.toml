@@ -89,3 +89,15 @@ style = { fg = "#4ade80" }
 selected_row = { bg = "#1e293b", add_modifier = "BOLD" }
 primary = { fg = "#60A5FA" }
 secondary = {}
+
+[ui.notifications]
+timeout_ms = 2500
+
+[ui.notifications.theme.border]
+type = "rounded"
+style = { fg = "#64748b" }
+
+[ui.notifications.theme]
+info = { fg = "#93c5fd" }
+success = { fg = "#4ade80" }
+error = { fg = "#f87171" }

@@ -1,7 +1,7 @@
 use pik::config::{default_config, parse_config};
 use ratatui::{
     layout::Margin,
-    style::{Modifier, Style, palette::tailwind},
+    style::{Color, Modifier, Style, palette::tailwind},
 };
 
 #[test]
@@ -43,6 +43,9 @@ fn inline_tables_are_merged_recursively() {
 
         [ui.popups.border]
         style = { bg = "#4c1d95" }
+
+        [ui.notifications.theme]
+        success = { bg = "#14532d" }
         "##,
     )
     .unwrap();
@@ -59,6 +62,12 @@ fn inline_tables_are_merged_recursively() {
         Style::new()
             .fg(tailwind::GREEN.c400)
             .bg(tailwind::VIOLET.c900)
+    );
+    assert_eq!(
+        config.ui.notifications.theme.success,
+        Style::new()
+            .fg(tailwind::GREEN.c400)
+            .bg(Color::Rgb(20, 83, 45))
     );
 }
 

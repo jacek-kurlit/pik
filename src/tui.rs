@@ -8,7 +8,8 @@ use anyhow::{Context, Result, anyhow};
 use components::{
     Component, ComponentEvent, KeyAction, debug::DebugComponent,
     general_input_handler::GeneralInputHandlerComponent, help_footer::HelpFooterComponent,
-    help_popup::HelpPopupComponent, processes_view::ProcessesViewComponent,
+    help_popup::HelpPopupComponent, notifications::NotificationsComponent,
+    processes_view::ProcessesViewComponent,
 };
 use ratatui::crossterm::{
     event::{self, Event, KeyEventKind},
@@ -46,6 +47,9 @@ impl App {
                 Box::new(HelpPopupComponent::new(
                     &app_settings.ui_config,
                     &app_settings.key_mappings,
+                )),
+                Box::new(NotificationsComponent::new(
+                    &app_settings.ui_config.notifications,
                 )),
                 Box::new(GeneralInputHandlerComponent),
                 Box::new(HelpFooterComponent::new(&app_settings.key_mappings)),

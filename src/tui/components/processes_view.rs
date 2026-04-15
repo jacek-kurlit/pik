@@ -8,12 +8,17 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use tui_input::InputRequest;
 
 use crate::config::keymappings::AppAction;
-use crate::processes::{OperationResult, Operations, ProcessManager, ProcssAsyncService};
+use crate::processes::{
+    KilledProcess, OperationResult, Operations, ProcessManager, ProcssAsyncService,
+};
 use crate::tui::components::search_bar::CursorMove;
 use crate::{
     config::ui::UIConfig,
     processes::{IgnoreOptions, Process, ProcessSearchResults},
-    tui::{ProcessRelatedSearch, components::KeyAction},
+    tui::{
+        ProcessRelatedSearch,
+        components::{KeyAction, Notification},
+    },
 };
 
 use super::{
@@ -30,12 +35,14 @@ pub struct ProcessesViewComponent {
     search_bar: SearchBarComponent,
 }
 
-//NOTE: this is wrapped in a Lazy Mutex because arboard's Clipboard may cause issues when you don't
-//have any clipboard manager installed, and it needs to be initialized only once.
-//FIXME: instead of failing we should send error massage to user
-static CLIPBOARD: std::sync::LazyLock<Mutex<Clipboard>> = std::sync::LazyLock::new(|| {
-    Mutex::new(Clipboard::new().expect("Failed to create clipboard instance"))
-});
+// NOTE: clipboard access is initialized lazily because some systems do not provide a clipboard
+// backend at all. Surface those failures to the user instead of crashing the TUI.
+static CLIPBOARD: std::sync::LazyLock<Result<Mutex<Clipboard>, String>> =
+    std::sync::LazyLock::new(|| {
+        Clipboard::new()
+            .map(Mutex::new)
+            .map_err(|err| format!("Clipboard is unavailable: {err}"))
+    });
 
 impl ProcessesViewComponent {
     pub fn new(
@@ -103,12 +110,12 @@ impl ProcessesViewComponent {
             .update_process_table_state(number_of_items);
     }
 
-    fn search_for_processess(&mut self) -> KeyAction {
+    fn search_for_processess(&mut self) -> Result<(), Notification> {
         let search_text = self.search_bar.get_search_text().to_string();
         match self.ops_sender.send(Operations::Search(search_text)) {
-            Ok(_) => KeyAction::Event(ComponentEvent::ProcessListRefreshRequested),
-            Err(_) => KeyAction::Event(ComponentEvent::ErrorOccurred(
-                "Failed to send search request to process daemon".to_string(),
+            Ok(_) => Ok(()),
+            Err(_) => Err(Notification::error(
+                "Failed to send search request to process daemon",
             )),
         }
     }
@@ -116,17 +123,21 @@ impl ProcessesViewComponent {
     fn kill_selected_process(&mut self, graceful: bool) -> KeyAction {
         if let Some(prc) = self.get_selected_process() {
             let pid = prc.pid;
-            return match self
-                .ops_sender
-                .send(Operations::KillProcess { pid, graceful })
-            {
-                Ok(_) => KeyAction::Event(ComponentEvent::ProcessKillRequested),
-                Err(_) => KeyAction::Event(ComponentEvent::ErrorOccurred(
-                    "Failed to send kill request to process daemon".to_string(),
-                )),
+            let name = prc.cmd.clone();
+            return match self.ops_sender.send(Operations::KillProcess {
+                pid,
+                graceful,
+                name,
+            }) {
+                Ok(_) => KeyAction::Consumed,
+                Err(_) => KeyAction::Event(ComponentEvent::ShowNotification(Notification::error(
+                    "Failed to send kill request to process daemon",
+                ))),
             };
         }
-        KeyAction::Event(ComponentEvent::NoProcessToKill)
+        KeyAction::Event(ComponentEvent::ShowNotification(Notification::info(
+            "No process selected",
+        )))
     }
 
     fn enforce_search_by(&mut self, search_by: ProcessRelatedSearch) -> KeyAction {
@@ -148,19 +159,48 @@ impl ProcessesViewComponent {
         };
 
         self.search_bar.set_search_text(&search_string);
-        self.search_for_processess()
+        match self.search_for_processess() {
+            Ok(()) => KeyAction::Consumed,
+            Err(notification) => KeyAction::Event(ComponentEvent::ShowNotification(notification)),
+        }
     }
 
     fn copy_pid_to_clipboard(&mut self) -> KeyAction {
         if let Some(prc) = self.get_selected_process() {
-            CLIPBOARD
-                .lock()
-                .expect("Failed to lock clipboard")
-                .set_text(format!("{}", prc.pid))
-                .expect("Failed to copy pid");
+            let clipboard = match CLIPBOARD.as_ref() {
+                Ok(clipboard) => clipboard,
+                Err(err) => {
+                    return KeyAction::Event(ComponentEvent::ShowNotification(
+                        Notification::error(err.clone()),
+                    ));
+                }
+            };
+            let mut clipboard = match clipboard.lock() {
+                Ok(clipboard) => clipboard,
+                Err(_) => {
+                    return KeyAction::Event(ComponentEvent::ShowNotification(
+                        Notification::error("Clipboard is currently unavailable"),
+                    ));
+                }
+            };
+            if let Err(err) = clipboard.set_text(format!("{}", prc.pid)) {
+                return KeyAction::Event(ComponentEvent::ShowNotification(Notification::error(
+                    format!("Failed to copy PID to clipboard: {err}"),
+                )));
+            }
         }
         KeyAction::Consumed
     }
+}
+
+fn process_result_message(prefix: &str, process: &KilledProcess) -> String {
+    let name = if process.name.is_empty() {
+        "unknown"
+    } else {
+        process.name.as_str()
+    };
+
+    format!("{prefix} - {name} : PID {}", process.pid)
 }
 
 impl Component for ProcessesViewComponent {
@@ -170,18 +210,21 @@ impl Component for ProcessesViewComponent {
                 OperationResult::SearchCompleted(results) => {
                     self.search_results = results;
                     self.update_process_table_state();
-                    return Some(ComponentEvent::ProcessListRefreshed);
                 }
-                OperationResult::ProcessKilled(results) => {
+                OperationResult::ProcessKilled { results, process } => {
                     self.search_results = results;
                     self.update_process_table_state();
-                    return Some(ComponentEvent::ProcessKilled);
+                    return Some(ComponentEvent::ShowNotification(Notification::success(
+                        process_result_message("Process killed", &process),
+                    )));
                 }
-                OperationResult::ProcessKillFailed => {
-                    return Some(ComponentEvent::ProcessKillFailed);
+                OperationResult::ProcessKillFailed(process) => {
+                    return Some(ComponentEvent::ShowNotification(Notification::error(
+                        process_result_message("Failed to kill process", &process),
+                    )));
                 }
                 OperationResult::Error(err) => {
-                    eprintln!("Error in process daemon: {err}");
+                    return Some(ComponentEvent::ShowNotification(Notification::error(err)));
                 }
             }
         }
@@ -216,7 +259,12 @@ impl Component for ProcessesViewComponent {
                 return self.kill_selected_process(false);
             }
             AppAction::RefreshProcessList => {
-                return self.search_for_processess();
+                return match self.search_for_processess() {
+                    Ok(()) => KeyAction::Consumed,
+                    Err(notification) => {
+                        KeyAction::Event(ComponentEvent::ShowNotification(notification))
+                    }
+                };
             }
             AppAction::CopyProcessPid => {
                 return self.copy_pid_to_clipboard();
@@ -259,33 +307,68 @@ impl Component for ProcessesViewComponent {
             }
             AppAction::DeleteChar => {
                 self.search_bar.delete_char();
-                return self.search_for_processess();
+                return match self.search_for_processess() {
+                    Ok(()) => KeyAction::Consumed,
+                    Err(notification) => {
+                        KeyAction::Event(ComponentEvent::ShowNotification(notification))
+                    }
+                };
             }
             AppAction::DeleteNextChar => {
                 self.search_bar.delete_next_char();
 
-                return self.search_for_processess();
+                return match self.search_for_processess() {
+                    Ok(()) => KeyAction::Consumed,
+                    Err(notification) => {
+                        KeyAction::Event(ComponentEvent::ShowNotification(notification))
+                    }
+                };
             }
             AppAction::DeleteWord => {
                 self.search_bar.delete_word();
-                return self.search_for_processess();
+                return match self.search_for_processess() {
+                    Ok(()) => KeyAction::Consumed,
+                    Err(notification) => {
+                        KeyAction::Event(ComponentEvent::ShowNotification(notification))
+                    }
+                };
             }
             AppAction::DeleteToStart => {
                 self.search_bar.delete_to_start();
-                return self.search_for_processess();
+                return match self.search_for_processess() {
+                    Ok(()) => KeyAction::Consumed,
+                    Err(notification) => {
+                        KeyAction::Event(ComponentEvent::ShowNotification(notification))
+                    }
+                };
             }
             AppAction::DeleteToEnd => {
                 self.search_bar.delete_to_end();
-                return self.search_for_processess();
+                return match self.search_for_processess() {
+                    Ok(()) => KeyAction::Consumed,
+                    Err(notification) => {
+                        KeyAction::Event(ComponentEvent::ShowNotification(notification))
+                    }
+                };
             }
             AppAction::DeleteNextWord => {
                 self.search_bar.delete_next_word();
-                return self.search_for_processess();
+                return match self.search_for_processess() {
+                    Ok(()) => KeyAction::Consumed,
+                    Err(notification) => {
+                        KeyAction::Event(ComponentEvent::ShowNotification(notification))
+                    }
+                };
             }
             AppAction::Unmapped => {
                 if let Char(c) = key.code {
                     self.search_bar.insert_char(c);
-                    return self.search_for_processess();
+                    return match self.search_for_processess() {
+                        Ok(()) => KeyAction::Consumed,
+                        Err(notification) => {
+                            KeyAction::Event(ComponentEvent::ShowNotification(notification))
+                        }
+                    };
                 }
             }
             _ => {
@@ -310,5 +393,51 @@ impl Component for ProcessesViewComponent {
 impl Drop for ProcessesViewComponent {
     fn drop(&mut self) {
         self.ops_sender.send(Operations::Shutdown).ok();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::processes::KilledProcess;
+
+    use super::process_result_message;
+
+    #[test]
+    fn builds_success_message_with_name_and_pid() {
+        let message = process_result_message(
+            "Process killed",
+            &KilledProcess {
+                pid: 4242,
+                name: "pik".to_string(),
+            },
+        );
+
+        assert_eq!(message, "Process killed - pik : PID 4242");
+    }
+
+    #[test]
+    fn builds_failure_message_with_name_and_pid() {
+        let message = process_result_message(
+            "Failed to kill process",
+            &KilledProcess {
+                pid: 4242,
+                name: "pik".to_string(),
+            },
+        );
+
+        assert_eq!(message, "Failed to kill process - pik : PID 4242");
+    }
+
+    #[test]
+    fn falls_back_to_unknown_name_when_process_name_is_empty() {
+        let message = process_result_message(
+            "Process killed",
+            &KilledProcess {
+                pid: 4242,
+                name: String::new(),
+            },
+        );
+
+        assert_eq!(message, "Process killed - unknown : PID 4242");
     }
 }
