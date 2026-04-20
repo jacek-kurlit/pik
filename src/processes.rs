@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::process::Command;
 use std::time::SystemTime;
 
 use anyhow::{Ok, Result};
@@ -28,7 +29,8 @@ use crate::processes::ports::ProcessPorts;
 
 use self::filters::IgnoreProcessesFilter;
 use self::utils::{
-    find_current_process_user, get_process_args, process_run_time, to_system_local_time,
+    find_current_process_user, get_container_processes, get_process_args, process_run_time,
+    to_system_local_time,
 };
 
 pub trait ProcessInfo {
@@ -51,6 +53,10 @@ pub trait ProcessInfo {
     fn run_time(&self) -> u64;
 
     fn args(&self) -> Vec<&str>;
+
+    fn container_id(&self) -> Option<&str> {
+        None
+    }
 }
 
 impl ProcessInfo for sysinfo::Process {
@@ -147,9 +153,24 @@ impl ProcessManager {
         let query_filter = QueryFilter::new(query);
         let ignored_processes_filter = IgnoreProcessesFilter::new(ignore, &self.current_user_id);
 
-        let mut items = self
-            .sys
-            .processes()
+        let system_processes = self.sys.processes();
+
+        let user_id = find_current_process_user(&self.sys).map_or(None, |id| Some(id));
+
+        let mut container_processes = get_container_processes(system_processes, &user_id)
+            .values()
+            .filter(|prc| ignored_processes_filter.accept(*prc))
+            .filter_map(|prc| {
+                let ports = self.process_ports.get(&prc.pid());
+                let match_data = query_filter.accept(prc, ports.map(|p| p.as_str()))?;
+                Some(ResultItem::new(
+                    match_data,
+                    self.create_process_info(prc, ports),
+                ))
+            })
+            .collect::<Vec<ResultItem>>();
+
+        let mut items = system_processes
             .values()
             .filter(|prc| ignored_processes_filter.accept(*prc))
             .filter_map(|prc| {
@@ -162,6 +183,7 @@ impl ProcessManager {
             })
             .collect::<Vec<ResultItem>>();
 
+        items.append(&mut container_processes);
         items.sort_by(|a, b| a.match_data.match_type.cmp(&b.match_data.match_type));
 
         ProcessSearchResults { items }
@@ -184,6 +206,7 @@ impl ProcessManager {
         let cmd = prc.cmd().to_string();
         let cmd_path = prc.cmd_path().map(|p| p.to_string());
         let pid = prc.pid();
+        let container_id = prc.container_id().map_or(None, |id| Some(id.to_string()));
 
         Process {
             pid,
@@ -198,10 +221,23 @@ impl ProcessManager {
                 .format("%H:%M:%S")
                 .to_string(),
             run_time: process_run_time(prc.run_time(), SystemTime::now()),
+            container_id,
         }
     }
 
-    pub fn kill_process(&self, pid: u32, graceful: bool) -> bool {
+    pub fn kill_process(&self, pid: u32, container_id: Option<&str>, graceful: bool) -> bool {
+        if let Some(container_id) = container_id {
+            let output = Command::new("docker")
+                .arg("kill")
+                .arg(container_id)
+                .output()
+                .map_or(String::new(), |output| {
+                    String::from_utf8(output.stdout).map_or(String::new(), |val| val)
+                });
+
+            return !output.is_empty();
+        }
+
         match self.sys.process(Pid::from_u32(pid)) {
             Some(prc) => {
                 let signal = determine_kill_signal(graceful);
@@ -230,7 +266,7 @@ fn process_refresh_kind() -> ProcessRefreshKind {
         .with_user(sysinfo::UpdateKind::OnlyIfNotSet)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Process {
     pub pid: u32,
     pub parent_pid: Option<u32>,
@@ -244,6 +280,7 @@ pub struct Process {
     // pub cpu_usage: f32,
     pub start_time: String,
     pub run_time: String,
+    pub container_id: Option<String>,
 }
 
 impl Process {
