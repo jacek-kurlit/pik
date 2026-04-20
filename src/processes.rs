@@ -155,7 +155,7 @@ impl ProcessManager {
 
         let system_processes = self.sys.processes();
 
-        let user_id = find_current_process_user(&self.sys).map_or(None, |id| Some(id));
+        let user_id = find_current_process_user(&self.sys).ok();
 
         let mut container_processes = get_container_processes(system_processes, &user_id)
             .values()
@@ -206,7 +206,7 @@ impl ProcessManager {
         let cmd = prc.cmd().to_string();
         let cmd_path = prc.cmd_path().map(|p| p.to_string());
         let pid = prc.pid();
-        let container_id = prc.container_id().map_or(None, |id| Some(id.to_string()));
+        let container_id = prc.container_id().map(|id| id.to_string());
 
         Process {
             pid,

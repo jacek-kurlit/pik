@@ -70,7 +70,7 @@ struct ContainerProcess {
 }
 
 impl ContainerProcess {
-    fn new(container_name: &str, cmd_path: &str, pid: u32, args: &Vec<String>) -> Self {
+    fn new(container_name: &str, cmd_path: &str, pid: u32, args: &[String]) -> Self {
         ContainerProcess {
             is_thread: false,
             user_id: None,
@@ -81,7 +81,7 @@ impl ContainerProcess {
             memory: 0,
             start_time: 0,
             run_time: 0,
-            args: args.clone(),
+            args: args.to_vec(),
             container_id: String::new(),
         }
     }
@@ -140,7 +140,7 @@ pub(super) fn get_container_processes(
     let mut container_ids = get_container_ids();
     let mut container_processes = HashMap::with_capacity(container_ids.len());
 
-    if container_ids.len() == 0 {
+    if container_ids.is_empty() {
         return container_processes;
     }
 
@@ -172,7 +172,7 @@ pub(super) fn get_container_ports() -> HashSet<Listener> {
     let container_ids = get_container_ids();
     let mut container_ports = HashSet::with_capacity(container_ids.len());
 
-    if container_ids.len() == 0 {
+    if container_ids.is_empty() {
         return container_ports;
     }
 
@@ -208,7 +208,7 @@ fn get_container_ids() -> Vec<String> {
 fn get_process_information_of_containers(container_ids: &Vec<String>) -> Vec<String> {
     let container_information = Command::new("docker")
         .arg("inspect")
-        .arg("-f \"cmd: '{{.Name}}';cmd_path: '{{.Path}}';pid: '{{.State.Pid}}';args: '{{join .Args \",\"}}'\"")
+        .args(["-f", "cmd: '{{.Name}}';cmd_path: '{{.Path}}';pid: '{{.State.Pid}}';args: '{{join .Args \",\"}}'"])
         .args(container_ids)
         .stderr(Stdio::null())
         .output()
@@ -230,7 +230,7 @@ fn get_process_information_of_containers(container_ids: &Vec<String>) -> Vec<Str
 fn get_network_information_of_containers(container_ids: &Vec<String>) -> Vec<String> {
     let container_information = Command::new("docker")
         .arg("inspect")
-        .arg("-f 'pid: \'{{.State.Pid}}\';ports: \'{{range $p, $conf := .NetworkSettings.Ports}}\'{{$p}}\'->\'{{(index $conf 0).HostIp}}:{{(index $conf 0).HostPort}}\'{{end}}\';'")
+        .args(["-f", "pid: \'{{.State.Pid}}\';ports: \'{{range $p, $conf := .NetworkSettings.Ports}}\'{{$p}}\'->\'{{(index $conf 0).HostIp}}:{{(index $conf 0).HostPort}}\'{{end}}\';"])
         .args(container_ids)
         .stderr(Stdio::null())
         .output()
@@ -253,9 +253,7 @@ fn extract_process_information_from_line(line: &str) -> Option<ContainerProcess>
     let regex_to_extract_information_from_line = Regex::new(r"(?U)^cmd: '/(?<cmd>.*)';cmd_path: '(?<cmd_path>.*)';pid: '(?<pid>\d+)';args: '(?<args>.*)'$")
         .unwrap();
 
-    let Some(line_information) = regex_to_extract_information_from_line.captures(line) else {
-        return None;
-    };
+    let line_information = regex_to_extract_information_from_line.captures(line)?;
 
     let cmd = line_information.name("cmd").unwrap().as_str();
     let cmd_path = line_information.name("cmd_path").unwrap().as_str();
@@ -279,9 +277,7 @@ fn extract_network_information_from_line(line: &str) -> Option<Vec<Listener>> {
     let regex_to_extract_information_from_line =
         Regex::new(r"(?U)^pid: '(?<pid>\d+)';ports: '(?<ports>.*)';$").unwrap();
 
-    let Some(line_information) = regex_to_extract_information_from_line.captures(line) else {
-        return None;
-    };
+    let line_information = regex_to_extract_information_from_line.captures(line)?;
 
     let pid = line_information
         .name("pid")
