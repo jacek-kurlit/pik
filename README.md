@@ -29,6 +29,12 @@ This tool is still under development
   - [Application configuration](#application-configuration)
   - [Multiple meta key names support](#multiple-meta-key-names-support)
   - [Readline style support](#readline-style-support)
+- [Configuration Recipes](#configuration-recipes)
+  - [Minimal configuration](#minimal-configuration)
+  - [macOS: ignore system libraries](#macos-ignore-system-libraries)
+  - [Readline key mappings](#readline-key-mappings)
+- [Migration Guides](#migration-guides)
+  - [0.30.x to 1.0](#030x-to-10)
 - [Caveats](#caveats)
 - [Development](#development)
   - [Supported Systems](#supported-systems)
@@ -158,11 +164,32 @@ toggle_help = ["ctrl+alt+h", "ctrl+shift+h", "f1"]
 
 This allows for flexible keybinding configurations that can accommodate different user preferences and avoid conflicts with terminal or OS shortcuts.
 
-### Readline style support
+## Configuration Recipes
 
-You may configure pik to use readline style key mappings. Here is example config snippet that you may add to your `config.toml` file to enable basic readline style editing:
+### Minimal configuration
 
 ```toml
+screen_size = "fullscreen"
+
+[ui]
+icons = "nerd_font_v3"
+```
+
+### macOS: ignore system libraries
+
+macOS users may want to reduce noise by excluding system and application libraries from search results:
+
+```toml
+[ignore]
+paths = ["/System/.*", "/Applications/.*"]
+```
+
+### Readline key mappings
+
+Notice that you may need to adjust the other key mappings as well to avoid conflicts, and some key combinations may not work depending on your terminal emulator.
+
+```toml
+[key_mappings]
 cursor_left = ["left", "ctrl+b"]
 cursor_right = ["right", "ctrl+f"]
 cursor_home = ["home", "ctrl+a"]
@@ -177,7 +204,42 @@ delete_to_start = ["ctrl+u"]
 delete_to_end = ["ctrl+k"]
 ```
 
-Notice that you may need to adjust the other key mappings as well to avoid conflicts, and some key combinations may not work depending on your terminal emulator.
+## Migration Guides
+
+### 0.30.x to 1.0
+
+Version 1.0 contains an embedded [`default_config.toml`](default_config.toml) that is merged with your local config file. In some cases the merge result may not be what you intended.
+
+**Example:**
+
+Default config:
+
+```toml
+[ui.process_table.cell]
+highlighted = { bg = "Yellow", add_modifier = "ITALIC" }
+```
+
+Your local config:
+
+```toml
+[ui.process_table.cell]
+highlighted = { bg = "Red" }
+```
+
+Resolved result:
+
+```toml
+[ui.process_table.cell]
+highlighted = { bg = "Red", add_modifier = "ITALIC" }
+```
+
+If you meant to remove a field inherited from the default config, you must be explicit about it:
+
+```toml
+highlighted = { bg = "Red", add_modifier = "" }
+```
+
+To inspect your fully resolved configuration, run `pik -P`.
 
 ## Caveats
 
