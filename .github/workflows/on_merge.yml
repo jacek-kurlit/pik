@@ -13,7 +13,7 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: moonrepo/setup-rust@v1
         with:
           components: rustfmt
@@ -28,7 +28,7 @@ jobs:
           - ubuntu-latest
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: moonrepo/setup-rust@v1
         with:
           bins: cargo-make
@@ -67,7 +67,7 @@ jobs:
             target: x86_64-pc-windows-msvc
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install cross
         if: matrix.use-cross
