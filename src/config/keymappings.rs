@@ -4,7 +4,7 @@ use itertools::Itertools;
 use ratatui::crossterm::event::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KeyMappings {
     #[serde(flatten)]
     pub bindings: HashMap<AppAction, Vec<KeyBinding>>,
@@ -153,7 +153,7 @@ impl Display for AppAction {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Serialize)]
 pub struct KeyBinding {
     pub key: KeyCode,
     pub modifier: KeyModifiers,

@@ -133,9 +133,9 @@ You may set your preferences in `config.toml` file located in:
 | Windows  | C:\Users\\_:username_\\.config\pik or C:\Users\\_:username_\AppData\Roaming\pik        |
 
 All options are optional, if skipped default values will be used.
-Most of config fields have cli arg equivalent. If both are set cli arg is preferred.
+Some of config fields have cli arg equivalent. If both are set cli arg is preferred.
 Run `pik -- --help` to see cli options
-The authoritative default configuration lives in [`default_config.toml`](default_config.toml).
+The authoritative default configuration lives in [`default_config.toml`](default_config.toml) which will be overridden with your local config. If you want to see final configuration use `pik --print-config` command.
 Please refer to [config](config.md) for more details how to configure options,theme and key mappings.
 
 ### Multiple meta key names support

@@ -77,10 +77,10 @@ fn deep_merge(base: &mut toml::Value, overlay: toml::Value) {
 
 use keymappings::KeyMappings;
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use ui::UIConfig;
 
-#[derive(Debug, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
     pub screen_size: ScreenSize,
@@ -96,7 +96,7 @@ impl Default for AppConfig {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IgnoreConfig {
     #[serde(with = "serde_regex", default)]
     pub paths: Vec<Regex>,
@@ -139,7 +139,7 @@ impl PartialEq for IgnoreConfig {
 
 impl Eq for IgnoreConfig {}
 
-#[derive(Debug, Eq, PartialEq, Deserialize, Clone, Copy)]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "snake_case")]
 pub enum ScreenSize {
     Fullscreen,
