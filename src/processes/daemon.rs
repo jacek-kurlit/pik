@@ -53,6 +53,7 @@ pub enum Operations {
     Search(String),
     KillProcess {
         pid: u32,
+        container_id: Option<String>,
         graceful: bool,
         name: String,
     },
@@ -98,11 +99,15 @@ fn process_loop(
                 }
                 Operations::KillProcess {
                     pid,
+                    container_id,
                     graceful,
                     name,
                 } => {
                     let process = KilledProcess { pid, name };
-                    if service.process_manager.kill_process(pid, graceful) {
+                    if service
+                        .process_manager
+                        .kill_process(pid, container_id.as_deref(), graceful)
+                    {
                         let mut search_results = service.rerun_last_search();
                         //NOTE: cache refresh takes time and process may reappear in list!
                         search_results.remove(pid);
@@ -252,7 +257,7 @@ mod tests {
         let pid = 1000;
         let graceful = true;
         let name = "pik".to_string();
-        faux::when!(process_manager.kill_process(pid, graceful)).then_return(true);
+        faux::when!(process_manager.kill_process(pid, None, graceful)).then_return(true);
         faux::when!(process_manager.find_processes("", ignore_options))
             .then(|_| ProcessSearchResults::empty());
         faux::when!(process_manager.refresh()).once().then(|_| {});
@@ -265,6 +270,7 @@ mod tests {
         operation_sender
             .send(crate::processes::Operations::KillProcess {
                 pid,
+                container_id: None,
                 graceful,
                 name: name.clone(),
             })
@@ -290,7 +296,7 @@ mod tests {
         let pid = 1000;
         let graceful = false;
         let name = "pik".to_string();
-        faux::when!(process_manager.kill_process(pid, graceful)).then_return(false);
+        faux::when!(process_manager.kill_process(pid, None, graceful)).then_return(false);
 
         let (operation_sender, result_receiver) =
             ProcssAsyncService::new(process_manager, IgnoreOptions::default())
@@ -300,6 +306,7 @@ mod tests {
         operation_sender
             .send(crate::processes::Operations::KillProcess {
                 pid,
+                container_id: None,
                 graceful,
                 name: name.clone(),
             })
