@@ -20,6 +20,9 @@ pub struct CliArgs {
     pub ignore: IgnoreOptions,
     #[command(flatten)]
     pub screen_size: Option<ScreenSizeOptions>,
+    /// Prints configuration on STDOUT and exists
+    #[arg(short = 'P', long, default_value_t = false)]
+    pub print_config: bool,
 }
 
 #[derive(Args, Debug, Clone, Copy)]

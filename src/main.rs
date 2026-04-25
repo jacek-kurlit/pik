@@ -8,6 +8,11 @@ fn main() -> Result<()> {
     let config = pik::config::load_app_config()?;
     let args = CliArgs::parse();
 
+    if args.print_config {
+        println!("{}", toml::to_string_pretty(&config)?);
+        return Ok(());
+    }
+
     let settings = AppSettings::from(config, args);
     start_app(settings)
 }

@@ -113,6 +113,7 @@ mod tests {
                 ignore_other_users_processes: Some(false),
                 paths: None,
             },
+            print_config: false,
         };
         let settings = AppSettings::from(config, cli_args);
         assert_eq!(
@@ -275,6 +276,7 @@ mod tests {
             query: "".to_string(),
             screen_size: None,
             ignore: Default::default(),
+            print_config: false,
         }
     }
 }

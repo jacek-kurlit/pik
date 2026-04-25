@@ -232,7 +232,7 @@ Styles can be configured with these properties:
 | --------------- | ------------------------- | ------------------------------------------------------------------------------------------------------- |
 | fg              | Foreground color          | Color name or hex code (e.g., "#60A5FA")                                                                |
 | bg              | Background color          | Color name or hex code                                                                                  |
-| add_modifier    | Text modifiers to add     | "BOLD", "DIM", "ITALIC", "UNDERLINED", "SLOW_BLINK", "RAPID_BLINK", "REVERSED", "HIDDEN", "CROSSED_OUT" |
+| add_modifier    | Text modifiers to add     | "", "BOLD", "DIM", "ITALIC", "UNDERLINED", "SLOW_BLINK", "RAPID_BLINK", "REVERSED", "HIDDEN", "CROSSED_OUT" |
 | sub_modifier    | Text modifiers to remove  | Same as add_modifier                                                                                    |
 | underline_color | Color for underlined text | Color name or hex code                                                                                  |
 
