@@ -124,10 +124,10 @@ impl ProcessesViewComponent {
         if let Some(prc) = self.get_selected_process() {
             let pid = prc.pid;
             let name = prc.cmd.clone();
-            let container_id = prc.container_id.clone();
+            let process_type = prc.process_type.clone();
             return match self.ops_sender.send(Operations::KillProcess {
                 pid,
-                container_id,
+                process_type,
                 graceful,
                 name,
             }) {

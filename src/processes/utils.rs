@@ -7,7 +7,7 @@ use chrono::{DateTime, Local};
 use itertools::Itertools;
 use listeners::{Listener, Process, Protocol};
 use regex::Regex;
-use sysinfo::{Pid, System, Uid};
+use sysinfo::{System, Uid};
 
 use super::ProcessInfo;
 
@@ -54,118 +54,33 @@ pub(super) fn find_current_process_user(sys: &System) -> Result<Uid> {
         .context("Current process not found!")
 }
 
-#[derive(Debug, PartialEq)]
-struct ContainerProcess {
-    is_thread: bool,
-    user_id: Option<Uid>,
-    container_name: String,
-    cmd_path: String,
-    pid: u32,
-    container_runtime_pid: Option<u32>,
-    memory: u64,
-    start_time: u64,
-    run_time: u64,
-    args: Vec<String>,
-    container_id: String,
-}
-
-impl ContainerProcess {
-    fn new(container_name: &str, cmd_path: &str, pid: u32, args: &[String]) -> Self {
-        ContainerProcess {
-            is_thread: false,
-            user_id: None,
-            container_name: container_name.to_string(),
-            cmd_path: cmd_path.to_string(),
-            pid,
-            container_runtime_pid: None,
-            memory: 0,
-            start_time: 0,
-            run_time: 0,
-            args: args.to_vec(),
-            container_id: String::new(),
-        }
-    }
-}
-
-impl ProcessInfo for ContainerProcess {
-    fn is_thread(&self) -> bool {
-        self.is_thread
-    }
-
-    fn user_id(&self) -> Option<&Uid> {
-        self.user_id.as_ref()
-    }
-
-    fn cmd(&self) -> &str {
-        self.container_name.as_str()
-    }
-
-    fn cmd_path(&self) -> Option<&str> {
-        Some(&self.cmd_path)
-    }
-
-    fn pid(&self) -> u32 {
-        self.pid
-    }
-
-    fn parent_id(&self) -> Option<u32> {
-        self.container_runtime_pid
-    }
-
-    fn memory(&self) -> u64 {
-        self.memory
-    }
-
-    fn start_time(&self) -> u64 {
-        self.start_time
-    }
-
-    fn run_time(&self) -> u64 {
-        self.run_time
-    }
-
-    fn args(&self) -> Vec<&str> {
-        self.args.iter().map(|arg| arg.as_str()).collect()
-    }
-
-    fn container_id(&self) -> Option<&str> {
-        Some(&self.container_id)
-    }
-}
-
-pub(super) fn get_container_processes(
-    processes: &HashMap<Pid, impl ProcessInfo>,
-    user_id: &Option<Uid>,
-) -> HashMap<Pid, impl ProcessInfo> {
+pub(super) fn get_container_pids() -> HashMap<u32, String> {
     let mut container_ids = get_container_ids();
-    let mut container_processes = HashMap::with_capacity(container_ids.len());
-
     if container_ids.is_empty() {
-        return container_processes;
+        return HashMap::new();
     }
 
-    for line in get_process_information_of_containers(&container_ids) {
-        let Some(mut container) = extract_process_information_from_line(&line) else {
-            continue;
-        };
+    let mut container_pids = HashMap::with_capacity(container_ids.len());
+    let pids = get_process_information_of_containers(&container_ids);
 
-        let pid = Pid::from_u32(container.pid);
-        let Some(process_for_container) = processes.get(&pid) else {
-            continue;
-        };
-
-        container.is_thread = process_for_container.is_thread();
-        container.user_id = user_id.clone();
-        container.container_runtime_pid = process_for_container.parent_id();
-        container.memory = process_for_container.memory();
-        container.start_time = process_for_container.start_time();
-        container.run_time = process_for_container.run_time();
-        container.container_id = container_ids.remove(0);
-
-        container_processes.insert(pid, container);
+    for pid in pids {
+        let pid = pid.parse::<u32>().unwrap();
+        container_pids.insert(pid, container_ids.remove(0));
     }
 
-    container_processes
+    container_pids
+}
+
+pub(super) fn kill_container(container_id: &str) -> bool {
+    let output = Command::new("docker")
+        .arg("kill")
+        .arg(container_id)
+        .output()
+        .map_or(String::new(), |output| {
+            String::from_utf8(output.stdout).map_or(String::new(), |val| val)
+        });
+
+    !output.is_empty()
 }
 
 pub(super) fn get_container_ports() -> HashSet<Listener> {
@@ -208,12 +123,13 @@ fn get_container_ids() -> Vec<String> {
 fn get_process_information_of_containers(container_ids: &Vec<String>) -> Vec<String> {
     let container_information = Command::new("docker")
         .arg("inspect")
-        .args(["-f", "cmd: '{{.Name}}';cmd_path: '{{.Path}}';pid: '{{.State.Pid}}';args: '{{join .Args \",\"}}'"])
+        .args(["-f", "{{.State.Pid}}"])
         .args(container_ids)
         .stderr(Stdio::null())
         .output()
-        .map_or(String::new(), |output| String::from_utf8(output.stdout)
-            .map_or(String::new(), |val| val));
+        .map_or(String::new(), |output| {
+            String::from_utf8(output.stdout).map_or(String::new(), |val| val)
+        });
 
     container_information
         .split('\n')
@@ -247,30 +163,6 @@ fn get_network_information_of_containers(container_ids: &Vec<String>) -> Vec<Str
         })
         .filter(|information| !information.is_empty())
         .collect::<Vec<String>>()
-}
-
-fn extract_process_information_from_line(line: &str) -> Option<ContainerProcess> {
-    let regex_to_extract_information_from_line = Regex::new(r"(?U)^cmd: '/(?<cmd>.*)';cmd_path: '(?<cmd_path>.*)';pid: '(?<pid>\d+)';args: '(?<args>.*)'$")
-        .unwrap();
-
-    let line_information = regex_to_extract_information_from_line.captures(line)?;
-
-    let cmd = line_information.name("cmd").unwrap().as_str();
-    let cmd_path = line_information.name("cmd_path").unwrap().as_str();
-    let pid = line_information
-        .name("pid")
-        .map(|pid| pid.as_str().parse::<u32>().unwrap())
-        .unwrap();
-    let args = line_information
-        .name("args")
-        .unwrap()
-        .as_str()
-        .split(',')
-        .map(|id| id.to_string())
-        .filter(|id| !id.is_empty())
-        .collect::<Vec<String>>();
-
-    Some(ContainerProcess::new(cmd, cmd_path, pid, &args))
 }
 
 fn extract_network_information_from_line(line: &str) -> Option<Vec<Listener>> {
@@ -475,22 +367,6 @@ pub mod tests {
         assert_eq!(system_time_utc(0, 0, 0), "00:00:00");
         assert_eq!(system_time_utc(1, 45, 15), "01:45:15");
         assert_eq!(system_time_utc(5, 29, 59), "05:29:59");
-    }
-
-    #[test]
-    fn test_extract_process_information_from_line() {
-        let line =
-            "cmd: '/TestContainer';cmd_path: 'docker-entrypoint.sh';pid: '5862';args: 'postgres'";
-        let expected_container_process = ContainerProcess::new(
-            "TestContainer",
-            "docker-entrypoint.sh",
-            5862,
-            &vec![String::from("postgres")],
-        );
-
-        let container_process = extract_process_information_from_line(line);
-
-        assert_eq!(container_process, Some(expected_container_process));
     }
 
     #[test]
