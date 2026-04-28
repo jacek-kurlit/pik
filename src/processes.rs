@@ -6,6 +6,7 @@ use anyhow::{Ok, Result};
 use sysinfo::{Pid, SUPPORTED_SIGNALS, System, Uid, Users};
 use sysinfo::{ProcessRefreshKind, Signal};
 
+mod container;
 mod daemon;
 mod filters;
 mod ports;
@@ -21,16 +22,17 @@ use filters::QueryFilter;
 pub struct ProcessManager {
     sys: System,
     users: Users,
+    containers: HashMap<u32, String>,
     process_ports: ProcessPorts,
     current_user_id: Uid,
 }
 
 use crate::processes::ports::ProcessPorts;
 
+use self::container::{get_container_pids, kill_container};
 use self::filters::IgnoreProcessesFilter;
 use self::utils::{
-    find_current_process_user, get_container_pids, get_process_args, kill_container,
-    process_run_time, to_system_local_time,
+    find_current_process_user, get_process_args, process_run_time, to_system_local_time,
 };
 
 pub trait ProcessInfo {
@@ -136,10 +138,12 @@ impl ProcessManager {
         let mut users = Users::new_with_refreshed_list();
         let process_ports = optimized_refresh(&mut sys, &mut users);
         let current_user_id = find_current_process_user(&sys)?;
+        let containers = get_container_pids();
 
         Ok(Self {
             sys,
             users,
+            containers,
             process_ports,
             current_user_id,
         })
@@ -148,7 +152,6 @@ impl ProcessManager {
     pub fn find_processes(&mut self, query: &str, ignore: &IgnoreOptions) -> ProcessSearchResults {
         let query_filter = QueryFilter::new(query);
         let ignored_processes_filter = IgnoreProcessesFilter::new(ignore, &self.current_user_id);
-        let docker_processes = get_container_pids();
 
         let mut items = self
             .sys
@@ -160,7 +163,7 @@ impl ProcessManager {
                 let match_data = query_filter.accept(prc, ports.map(|p| p.as_str()))?;
                 Some(ResultItem::new(
                     match_data,
-                    self.create_process_info(prc, ports, &docker_processes),
+                    self.create_process_info(prc, ports),
                 ))
             })
             .collect::<Vec<ResultItem>>();
@@ -172,14 +175,10 @@ impl ProcessManager {
 
     pub fn refresh(&mut self) {
         self.process_ports = optimized_refresh(&mut self.sys, &mut self.users);
+        self.containers = get_container_pids();
     }
 
-    fn create_process_info(
-        &self,
-        prc: &impl ProcessInfo,
-        ports: Option<&String>,
-        containers: &HashMap<u32, String>,
-    ) -> Process {
+    fn create_process_info(&self, prc: &impl ProcessInfo, ports: Option<&String>) -> Process {
         let user_name = prc
             .user_id()
             .map(|user_id| {
@@ -192,7 +191,7 @@ impl ProcessManager {
         let cmd = prc.cmd().to_string();
         let cmd_path = prc.cmd_path().map(|p| p.to_string());
         let pid = prc.pid();
-        let process_type = match containers.get(&pid) {
+        let process_type = match self.containers.get(&pid) {
             Some(container_id) => ProcessType::Container {
                 container_id: container_id.clone(),
             },

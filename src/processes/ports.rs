@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use super::utils::get_container_ports;
+use super::container::get_container_ports;
 use itertools::Itertools;
 use listeners::Listener;
 
