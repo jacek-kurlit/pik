@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use super::container::get_container_ports;
 use itertools::Itertools;
 use listeners::Listener;
 
@@ -10,9 +11,11 @@ pub struct ProcessPorts {
 
 impl ProcessPorts {
     pub fn new_refreshed() -> ProcessPorts {
-        let listeners = listeners::get_all()
+        let mut listeners = listeners::get_all()
             //NOTE: we ignore errors coming from listeners
             .unwrap_or_default();
+        listeners.extend(get_container_ports());
+
         Self {
             ports: create_sorted_process_ports(listeners),
         }

@@ -3,6 +3,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
 use itertools::Itertools;
+use listeners::{Listener, Process, Protocol};
 use sysinfo::{System, Uid};
 
 use super::ProcessInfo;
@@ -48,6 +49,18 @@ pub(super) fn find_current_process_user(sys: &System) -> Result<Uid> {
     sys.process(current_process_pid)
         .and_then(|cp| cp.user_id().cloned())
         .context("Current process not found!")
+}
+
+pub(super) fn create_listener(pid: u32, socket_addr: &str, protocol: Protocol) -> Listener {
+    Listener {
+        process: Process {
+            pid,
+            name: String::new(),
+            path: String::new(),
+        },
+        socket: socket_addr.parse().unwrap(),
+        protocol,
+    }
 }
 
 #[cfg(test)]

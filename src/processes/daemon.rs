@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::Result;
 
-use super::{IgnoreOptions, ProcessManager, ProcessSearchResults};
+use super::{IgnoreOptions, ProcessManager, ProcessSearchResults, ProcessType};
 
 pub struct ProcssAsyncService {
     process_manager: ProcessManager,
@@ -53,6 +53,7 @@ pub enum Operations {
     Search(String),
     KillProcess {
         pid: u32,
+        process_type: ProcessType,
         graceful: bool,
         name: String,
     },
@@ -98,11 +99,15 @@ fn process_loop(
                 }
                 Operations::KillProcess {
                     pid,
+                    process_type,
                     graceful,
                     name,
                 } => {
                     let process = KilledProcess { pid, name };
-                    if service.process_manager.kill_process(pid, graceful) {
+                    if service
+                        .process_manager
+                        .kill_process(pid, &process_type, graceful)
+                    {
                         let mut search_results = service.rerun_last_search();
                         //NOTE: cache refresh takes time and process may reappear in list!
                         search_results.remove(pid);
@@ -156,7 +161,7 @@ mod tests {
     use std::{sync::mpsc::RecvTimeoutError, time::Duration};
 
     use crate::processes::{
-        IgnoreOptions, ProcessManager, ProcessSearchResults, ProcssAsyncService,
+        IgnoreOptions, ProcessManager, ProcessSearchResults, ProcessType, ProcssAsyncService,
     };
 
     #[test]
@@ -252,7 +257,8 @@ mod tests {
         let pid = 1000;
         let graceful = true;
         let name = "pik".to_string();
-        faux::when!(process_manager.kill_process(pid, graceful)).then_return(true);
+        faux::when!(process_manager.kill_process(pid, &ProcessType::Native, graceful))
+            .then_return(true);
         faux::when!(process_manager.find_processes("", ignore_options))
             .then(|_| ProcessSearchResults::empty());
         faux::when!(process_manager.refresh()).once().then(|_| {});
@@ -265,6 +271,7 @@ mod tests {
         operation_sender
             .send(crate::processes::Operations::KillProcess {
                 pid,
+                process_type: ProcessType::Native,
                 graceful,
                 name: name.clone(),
             })
@@ -290,7 +297,8 @@ mod tests {
         let pid = 1000;
         let graceful = false;
         let name = "pik".to_string();
-        faux::when!(process_manager.kill_process(pid, graceful)).then_return(false);
+        faux::when!(process_manager.kill_process(pid, &ProcessType::Native, graceful))
+            .then_return(false);
 
         let (operation_sender, result_receiver) =
             ProcssAsyncService::new(process_manager, IgnoreOptions::default())
@@ -300,6 +308,7 @@ mod tests {
         operation_sender
             .send(crate::processes::Operations::KillProcess {
                 pid,
+                process_type: ProcessType::Native,
                 graceful,
                 name: name.clone(),
             })
