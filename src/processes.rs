@@ -1,10 +1,12 @@
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use std::time::SystemTime;
 
 use anyhow::{Ok, Result};
 use sysinfo::{Pid, SUPPORTED_SIGNALS, System, Uid, Users};
 use sysinfo::{ProcessRefreshKind, Signal};
 
+mod container;
 mod daemon;
 mod filters;
 mod ports;
@@ -20,12 +22,14 @@ use filters::QueryFilter;
 pub struct ProcessManager {
     sys: System,
     users: Users,
+    containers: HashMap<u32, String>,
     process_ports: ProcessPorts,
     current_user_id: Uid,
 }
 
 use crate::processes::ports::ProcessPorts;
 
+use self::container::{get_container_pids, kill_container};
 use self::filters::IgnoreProcessesFilter;
 use self::utils::{
     find_current_process_user, get_process_args, process_run_time, to_system_local_time,
@@ -134,10 +138,12 @@ impl ProcessManager {
         let mut users = Users::new_with_refreshed_list();
         let process_ports = optimized_refresh(&mut sys, &mut users);
         let current_user_id = find_current_process_user(&sys)?;
+        let containers = get_container_pids();
 
         Ok(Self {
             sys,
             users,
+            containers,
             process_ports,
             current_user_id,
         })
@@ -169,6 +175,7 @@ impl ProcessManager {
 
     pub fn refresh(&mut self) {
         self.process_ports = optimized_refresh(&mut self.sys, &mut self.users);
+        self.containers = get_container_pids();
     }
 
     fn create_process_info(&self, prc: &impl ProcessInfo, ports: Option<&String>) -> Process {
@@ -184,6 +191,12 @@ impl ProcessManager {
         let cmd = prc.cmd().to_string();
         let cmd_path = prc.cmd_path().map(|p| p.to_string());
         let pid = prc.pid();
+        let process_type = match self.containers.get(&pid) {
+            Some(container_id) => ProcessType::Container {
+                container_id: container_id.clone(),
+            },
+            None => ProcessType::Native,
+        };
 
         Process {
             pid,
@@ -198,16 +211,20 @@ impl ProcessManager {
                 .format("%H:%M:%S")
                 .to_string(),
             run_time: process_run_time(prc.run_time(), SystemTime::now()),
+            process_type,
         }
     }
 
-    pub fn kill_process(&self, pid: u32, graceful: bool) -> bool {
-        match self.sys.process(Pid::from_u32(pid)) {
-            Some(prc) => {
-                let signal = determine_kill_signal(graceful);
-                prc.kill_with(signal).unwrap_or(false)
-            }
-            None => false,
+    pub fn kill_process(&self, pid: u32, process_type: &ProcessType, graceful: bool) -> bool {
+        match process_type {
+            ProcessType::Native => match self.sys.process(Pid::from_u32(pid)) {
+                Some(prc) => {
+                    let signal = determine_kill_signal(graceful);
+                    prc.kill_with(signal).unwrap_or(false)
+                }
+                None => false,
+            },
+            ProcessType::Container { container_id } => kill_container(container_id),
         }
     }
 }
@@ -230,7 +247,13 @@ fn process_refresh_kind() -> ProcessRefreshKind {
         .with_user(sysinfo::UpdateKind::OnlyIfNotSet)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProcessType {
+    Native,
+    Container { container_id: String },
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Process {
     pub pid: u32,
     pub parent_pid: Option<u32>,
@@ -244,6 +267,7 @@ pub struct Process {
     // pub cpu_usage: f32,
     pub start_time: String,
     pub run_time: String,
+    pub process_type: ProcessType,
 }
 
 impl Process {
