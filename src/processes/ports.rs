@@ -68,6 +68,7 @@ mod tests {
             },
             socket: format!("127.0.0.1:{port}").parse().unwrap(),
             protocol: listeners::Protocol::TCP,
+            state: listeners::SocketState::Listen,
         }
     }
 }

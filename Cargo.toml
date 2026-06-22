@@ -15,8 +15,8 @@ repository = "https://github.com/jacek-kurlit/pik"
 ratatui = { version = "0.30", features = ["serde"] }
 tui-input = "0.15"
 anyhow = "1.0.79"
-sysinfo = "0.38.2"
-listeners = "0.5.1"
+sysinfo = "0.39.4"
+listeners = "0.6.0"
 chrono = "0.4"
 clap = { version = "4.5", features = ["derive"] }
 directories = "6.0"
@@ -24,7 +24,7 @@ toml = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_regex = "1.1"
 fuzzy-matcher = "0.3.7"
-itertools = "0.14"
+itertools = "0.15"
 regex = "1.11"
 unicode-width = "0.2"
 arboard = { version = "3.6", features = ["wayland-data-control"] }
