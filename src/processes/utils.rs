@@ -60,6 +60,7 @@ pub(super) fn create_listener(pid: u32, socket_addr: &str, protocol: Protocol) -
         },
         socket: socket_addr.parse().unwrap(),
         protocol,
+        state: listeners::SocketState::Listen,
     }
 }
 
