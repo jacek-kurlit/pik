@@ -27,7 +27,7 @@ for KEY in "${!PLATFORMS[@]}"; do
     exit 1
   fi
 
-  sed -i "/$ARCH_STR.tar.gz/ {n; s/sha256 \".*\"/sha256 \"$NEW_SHA\"/;}" $FORMULA_PATH
+  sed -i "/$ARCH_STR\.tar\.gz\"/ { s|url \".*\"|url \"$URL\"|; n; s/sha256 \".*\"/sha256 \"$NEW_SHA\"/; }" $FORMULA_PATH
 done
 
 echo "Formula updated successfully."
