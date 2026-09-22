@@ -4,6 +4,13 @@ use sysinfo::Uid;
 
 use super::{MatchData, MatchType, MatchedBy, ProcessInfo, utils::get_process_args};
 
+pub const PORT_PREFIX: char = ':';
+pub const PATH_PREFIX: char = '/';
+pub const ARGS_PREFIX: char = '-';
+pub const EVERYWHERE_PREFIX: char = '~';
+pub const PID_PREFIX: char = '=';
+pub const PROCESS_FAMILY_PREFIX: char = '@';
+
 pub(super) struct QueryFilter {
     query: String,
     pub(super) search_by: SearchBy,
@@ -25,12 +32,12 @@ pub enum SearchBy {
 impl QueryFilter {
     pub fn new(query: &str) -> Self {
         let (search_by, query) = match query.chars().next() {
-            Some(':') => (SearchBy::Port, &query[1..]),
-            Some('/') => (SearchBy::Path, &query[1..]),
-            Some('-') => (SearchBy::Args, &query[1..]),
-            Some('~') => (SearchBy::Everywhere, &query[1..]),
-            Some('=') => (SearchBy::Pid, &query[1..]),
-            Some('@') => (SearchBy::ProcessFamily, &query[1..]),
+            Some(PORT_PREFIX) => (SearchBy::Port, &query[1..]),
+            Some(PATH_PREFIX) => (SearchBy::Path, &query[1..]),
+            Some(ARGS_PREFIX) => (SearchBy::Args, &query[1..]),
+            Some(EVERYWHERE_PREFIX) => (SearchBy::Everywhere, &query[1..]),
+            Some(PID_PREFIX) => (SearchBy::Pid, &query[1..]),
+            Some(PROCESS_FAMILY_PREFIX) => (SearchBy::ProcessFamily, &query[1..]),
             Some(_) => (SearchBy::Cmd, query),
             None => (SearchBy::None, query),
         };

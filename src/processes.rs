@@ -15,6 +15,7 @@ mod utils;
 pub use daemon::*;
 pub use filters::IgnoreOptions;
 pub use filters::SearchBy;
+pub use filters::{PID_PREFIX, PROCESS_FAMILY_PREFIX};
 
 use filters::QueryFilter;
 

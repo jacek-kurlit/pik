@@ -45,7 +45,7 @@ impl ProcessTableComponent {
             headers: vec![
                 format!("USER {}", icons.user).trim().to_string(),
                 format!("PID {}", icons.pid).trim().to_string(),
-                format!("PARENT {}", icons.parent).trim().to_string(),
+                format!("PAR {}", icons.parent).trim().to_string(),
                 format!("TIME {}", icons.time).trim().to_string(),
                 format!("CMD {}", icons.cmd).trim().to_string(),
                 format!("PATH {}", icons.path).trim().to_string(),
