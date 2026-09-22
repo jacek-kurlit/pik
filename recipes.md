@@ -186,6 +186,8 @@ theme below keeps those two colors at a contrast ratio of 3.4:1 or better, and m
 
 ### Gruvbox Dark
 
+![Gruvbox Dark theme](docs/gruvbox.png)
+
 ```toml
 [ui.process_table.border]
 style = { fg = "#83a598" }
@@ -230,6 +232,8 @@ error = { fg = "#fb4934" }
 
 ### Catppuccin Mocha
 
+![Catppuccin Mocha theme](docs/catppuccin.png)
+
 ```toml
 [ui.process_table.border]
 style = { fg = "#89b4fa" }
@@ -273,6 +277,8 @@ error = { fg = "#f38ba8" }
 ```
 
 ### Nord
+
+![Nord theme](docs/nord.png)
 
 ```toml
 [ui.process_table.border]
