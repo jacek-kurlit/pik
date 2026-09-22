@@ -14,6 +14,9 @@ margin = { horizontal = 2 }
 
 In that example, all omitted scrollbar fields still come from `default_config.toml`.
 
+For complete, copy-paste configurations — themes, key mapping sets, ignore rules — see
+[recipes.md](recipes.md). This page is the field-by-field reference.
+
 ## General options
 
 | Field       | Description          | Possible values        |
@@ -70,27 +73,31 @@ These properties are toml table under `[key_mappings]` section
 
 Key mapping rules:
 
-- You may define binding as single key mapping `action = "ctrl+x"` or array `action = ["ctrl+x", "alt+x"]`
+- A binding is always an array, even for a single key: `action = ["ctrl+x"]` or `action = ["ctrl+x", "alt+x"]`. A bare string (`action = "ctrl+x"`) is rejected
 - You can prefix mapping with modifier and '+' sign, allowed values are: "ctrl", "alt", "shift", "super", "hyper", "meta"
-- You can combine multiple modifiers: `action = "ctrl+alt+h"` or `action = "ctrl+shift+h"`
-- Multiple modifiers with multiple bindings: `action = ["ctrl+alt+h", "ctrl+shift+h"]`
+- You can combine multiple modifiers: `action = "ctrl+alt+h"` or `action = "alt+shift+H"`
+- Multiple modifiers with multiple bindings: `action = ["ctrl+alt+h", "alt+shift+H"]`
+- When combining `shift` with a letter, write the letter uppercase (`"alt+shift+H"`) — that is what
+  the terminal reports. `ctrl+shift+<letter>` is indistinguishable from `ctrl+<letter>` on Unix
+  terminals and cannot be bound
 - You **may not** define mapping as single char like `action = "c"` but you may use any special key `action = "tab"`
 - If key binding is assigned to more than **one** action validation error will rise
 
 **Examples:**
 
 ```toml
+[key_mappings]
 # Single binding
-quit = "ctrl+c"
+quit = ["ctrl+c"]
 
 # Multiple bindings for the same action
 toggle_help = ["ctrl+h", "f1"]
 
 # Combined modifiers
-toggle_debug = "ctrl+alt+d"
+toggle_debug = ["ctrl+alt+d"]
 
 # Multiple bindings with combined modifiers
-toggle_help = ["ctrl+alt+h", "ctrl+shift+h"]
+close = ["esc", "ctrl+alt+q"]
 ```
 
 ## UI & Theme

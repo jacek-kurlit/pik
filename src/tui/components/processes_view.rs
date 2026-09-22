@@ -9,7 +9,8 @@ use tui_input::InputRequest;
 
 use crate::config::keymappings::AppAction;
 use crate::processes::{
-    KilledProcess, OperationResult, Operations, ProcessManager, ProcssAsyncService,
+    KilledProcess, OperationResult, Operations, PID_PREFIX, PROCESS_FAMILY_PREFIX, ProcessManager,
+    ProcssAsyncService,
 };
 use crate::tui::components::search_bar::CursorMove;
 use crate::{
@@ -43,6 +44,20 @@ static CLIPBOARD: std::sync::LazyLock<Result<Mutex<Clipboard>, String>> =
             .map(Mutex::new)
             .map_err(|err| format!("Clipboard is unavailable: {err}"))
     });
+
+fn related_search_query(search_by: &ProcessRelatedSearch, pid: u32, parent_pid: u32) -> String {
+    match search_by {
+        ProcessRelatedSearch::Parent => {
+            format!("{}{}", PID_PREFIX, parent_pid)
+        }
+        ProcessRelatedSearch::Family => {
+            format!("{}{}", PROCESS_FAMILY_PREFIX, pid)
+        }
+        ProcessRelatedSearch::Siblings => {
+            format!("{}{}", PROCESS_FAMILY_PREFIX, parent_pid)
+        }
+    }
+}
 
 impl ProcessesViewComponent {
     pub fn new(
@@ -148,17 +163,11 @@ impl ProcessesViewComponent {
             return KeyAction::Consumed;
         }
         let selected_process = selected_process.unwrap();
-        let search_string = match search_by {
-            ProcessRelatedSearch::Parent => {
-                format!("!{}", selected_process.parent_pid.unwrap_or(0))
-            }
-            ProcessRelatedSearch::Family => {
-                format!("@{}", selected_process.pid)
-            }
-            ProcessRelatedSearch::Siblings => {
-                format!("@{}", selected_process.parent_pid.unwrap_or(0))
-            }
-        };
+        let search_string = related_search_query(
+            &search_by,
+            selected_process.pid,
+            selected_process.parent_pid.unwrap_or(0),
+        );
 
         self.search_bar.set_search_text(&search_string);
         match self.search_for_processess() {
@@ -402,7 +411,7 @@ impl Drop for ProcessesViewComponent {
 mod tests {
     use crate::processes::KilledProcess;
 
-    use super::process_result_message;
+    use super::*;
 
     #[test]
     fn builds_success_message_with_name_and_pid() {
@@ -441,5 +450,37 @@ mod tests {
         );
 
         assert_eq!(message, "Process killed - unknown : PID 4242");
+    }
+
+    #[test]
+    fn should_search_parent_by_exact_pid() {
+        assert_eq!(
+            related_search_query(&ProcessRelatedSearch::Parent, 10, 1234),
+            "=1234"
+        );
+    }
+
+    #[test]
+    fn should_search_family_by_own_pid() {
+        assert_eq!(
+            related_search_query(&ProcessRelatedSearch::Family, 1234, 1),
+            "@1234"
+        );
+    }
+
+    #[test]
+    fn should_search_siblings_by_parent_pid() {
+        assert_eq!(
+            related_search_query(&ProcessRelatedSearch::Siblings, 10, 1234),
+            "@1234"
+        );
+    }
+
+    #[test]
+    fn should_fall_back_to_zero_when_process_has_no_parent() {
+        assert_eq!(
+            related_search_query(&ProcessRelatedSearch::Parent, 10, 0),
+            "=0"
+        );
     }
 }
