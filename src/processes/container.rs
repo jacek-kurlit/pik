@@ -29,7 +29,7 @@ pub(super) fn kill_container(container_id: &str) -> bool {
         .arg(container_id)
         .output()
         .map_or(String::new(), |output| {
-            String::from_utf8(output.stdout).map_or(String::new(), |val| val)
+            String::from_utf8(output.stdout).unwrap_or_default()
         });
 
     !output.is_empty()
@@ -62,7 +62,7 @@ fn get_container_ids() -> Vec<String> {
         .stderr(Stdio::null())
         .output()
         .map_or(String::new(), |output| {
-            String::from_utf8(output.stdout).map_or(String::new(), |val| val)
+            String::from_utf8(output.stdout).unwrap_or_default()
         });
 
     container_ids
@@ -80,7 +80,7 @@ fn get_process_information_of_containers(container_ids: &Vec<String>) -> Vec<Str
         .stderr(Stdio::null())
         .output()
         .map_or(String::new(), |output| {
-            String::from_utf8(output.stdout).map_or(String::new(), |val| val)
+            String::from_utf8(output.stdout).unwrap_or_default()
         });
 
     container_information
@@ -103,7 +103,7 @@ fn get_network_information_of_containers(container_ids: &Vec<String>) -> Vec<Str
         .stderr(Stdio::null())
         .output()
         .map_or(String::new(), |output| String::from_utf8(output.stdout)
-            .map_or(String::new(), |val| val));
+            .unwrap_or_default());
 
     container_information
         .split('\n')
