@@ -1,27 +1,5 @@
 # Configuration Recipes
 
-Ready-to-use `config.toml` snippets. Every recipe here is a **partial** config: pik embeds
-[`default_config.toml`](default_config.toml) and deep-merges your file on top of it, so you only write
-the fields you want to change. For the full list of fields see [config.md](config.md).
-
-**Where the file goes**
-
-| Platform | Config file                                                                                          |
-| -------- | ---------------------------------------------------------------------------------------------------- |
-| Linux    | `~/.config/pik/config.toml`                                                                          |
-| macOS    | `~/.config/pik/config.toml` or `~/Library/Application Support/pik/config.toml`                       |
-| Windows  | `C:\Users\<username>\.config\pik\config.toml` or `C:\Users\<username>\AppData\Roaming\pik\config.toml` |
-
-After editing, run `pik -P` (`--print-config`) to print the fully merged result — it is also the
-quickest way to find a field name you want to override.
-
-**Two merge rules worth knowing before you copy anything:**
-
-- Tables merge field by field, so an omitted field keeps its default. To *remove* an inherited value
-  you must be explicit: `add_modifier = ""` clears modifiers, `fg = "Reset"` clears a color.
-- Arrays replace wholesale. Rebinding `next_item` replaces the whole default list, so repeat any of
-  the default keys you want to keep.
-
 ## Table of Contents
 
 - [Minimal configuration](#minimal-configuration)
@@ -170,17 +148,7 @@ Two rules this recipe leans on:
 
 ## Themes
 
-Each theme below is complete: table, details pane, search bar, popups and notifications. Drop one in
-whole. Colors accept `#rrggbb` hex or names like `"Yellow"`, `"LightBlue"`, `"Reset"`.
-
-One field does double duty: `ui.search_bar.cursor_style.bg` is also sent to the terminal as the
-cursor color (OSC 12) while pik runs, and restored on exit.
-
-**If you are writing your own theme, one rule matters more than the rest:** `row.selected.fg` must
-differ from `cell.highlighted.bg`. The selected-row style is *patched over* the already-styled cells,
-so on the selected row a search match ends up with `fg` from `row.selected` and `bg` from
-`cell.highlighted` — and `REVERSED` then swaps the two. Pick the same color for both and the matched
-text renders in its own background color, i.e. invisible, on the row you are actually looking at.
+Example themes
 
 ### Gruvbox Dark
 
@@ -367,24 +335,6 @@ info = { fg = "Blue" }
 success = { fg = "Green" }
 error = { fg = "Red" }
 ```
-
-### Just change the accent color
-
-The default theme with a different border color everywhere:
-
-```toml
-[ui.process_table.border]
-style = { fg = "#f38ba8" }
-
-[ui.process_details.border]
-style = { fg = "#f38ba8" }
-
-[ui.popups.border]
-style = { fg = "#f38ba8" }
-```
-
-Border shape is set next to the color — `type` accepts `"plain"`, `"rounded"`, `"double"`,
-`"thick"`, `"quadrant_inside"` and `"quadrant_outside"`.
 
 ## Icons
 
