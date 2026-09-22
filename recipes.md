@@ -180,9 +180,7 @@ cursor color (OSC 12) while pik runs, and restored on exit.
 differ from `cell.highlighted.bg`. The selected-row style is *patched over* the already-styled cells,
 so on the selected row a search match ends up with `fg` from `row.selected` and `bg` from
 `cell.highlighted` — and `REVERSED` then swaps the two. Pick the same color for both and the matched
-text renders in its own background color, i.e. invisible, on the row you are actually looking at. Each
-theme below keeps those two colors at a contrast ratio of 3.4:1 or better, and marks matches with
-`BOLD` as well so the cue survives even where colors collide.
+text renders in its own background color, i.e. invisible, on the row you are actually looking at.
 
 ### Gruvbox Dark
 
@@ -198,7 +196,7 @@ odd = { fg = "#ebdbb2", bg = "#32302f" }
 selected = { fg = "#fe8019", add_modifier = "REVERSED" }
 
 [ui.process_table.cell]
-highlighted = { fg = "#fbf1c7", bg = "#9d0006", add_modifier = "BOLD" }
+highlighted = { fg = "#fabd2f", bg = "#570501", add_modifier = "BOLD" }
 
 [ui.process_table.scrollbar]
 style = { fg = "#665c54" }
