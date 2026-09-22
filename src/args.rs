@@ -13,6 +13,9 @@ pub struct CliArgs {
         - :<port> - search by port, i.e ':8080'
         - /<path> - search by command path, i.e. '/home/user/bin'
         - -<arg> - search by argument, i.e. '-i'
+        - ~<text> - search by name, path, arguments or port, i.e. '~firefox'
+        - =<pid> - search by exact process id, i.e. '=1234'
+        - @<pid> - search process family (process and its children), i.e. '@1234'
         If no prefix is given search will be done by process name"#
     )]
     pub query: String,

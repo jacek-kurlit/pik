@@ -751,4 +751,36 @@ toggle_debug = ["ctrl+alt+shift+d"]
             AppAction::Unmapped
         );
     }
+
+    #[test]
+    fn test_force_kill_process_resolve() {
+        let key_mappings = parse_config("").unwrap().key_mappings;
+
+        // Unix terminals encode Ctrl+Alt+X as ESC followed by 0x18, which crossterm reports as
+        // Char('x') with CONTROL | ALT
+        assert_eq!(
+            key_mappings.resolve(KeyEvent::new(
+                KeyCode::Char('x'),
+                KeyModifiers::CONTROL | KeyModifiers::ALT
+            )),
+            AppAction::ForceKillProcess
+        );
+
+        // Ctrl+Shift+X is deliberately NOT bound: Unix terminals cannot distinguish it from
+        // Ctrl+X, so binding it would force kill on Windows and gracefully kill everywhere else
+        assert_eq!(
+            key_mappings.resolve(KeyEvent::new(
+                KeyCode::Char('x'),
+                KeyModifiers::CONTROL | KeyModifiers::SHIFT
+            )),
+            AppAction::Unmapped
+        );
+
+        // Ctrl+X must stay a graceful kill: it is what a Unix terminal sends for both Ctrl+X and
+        // Ctrl+Shift+X
+        assert_eq!(
+            key_mappings.resolve(KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL)),
+            AppAction::KillProcess
+        );
+    }
 }

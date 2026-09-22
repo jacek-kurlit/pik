@@ -28,11 +28,7 @@ This tool is still under development
 - [Configuration](#configuration)
   - [Application configuration](#application-configuration)
   - [Multiple meta key names support](#multiple-meta-key-names-support)
-  - [Readline style support](#readline-style-support)
 - [Configuration Recipes](#configuration-recipes)
-  - [Minimal configuration](#minimal-configuration)
-  - [macOS: ignore system libraries](#macos-ignore-system-libraries)
-  - [Readline key mappings](#readline-key-mappings)
 - [Migration Guides](#migration-guides)
   - [0.30.x to 1.0](#030x-to-10)
 - [Caveats](#caveats)
@@ -55,10 +51,11 @@ Pik allows to **fuzzy** search processes by:
   ![Example search by port](docs/search_by_port.gif)
 - Everywhere - Prefix search with '~' for example '~firefox'
   ![Example search everywhere](docs/search_everywhere.gif)
-- Select exact process by id - Prefix with '!' for example '!1234'
+- Select exact process by id - Prefix with '=' for example '=1234'
 - Select process family (process + it's children) - Prefix with '@' for example '@1234'
 
-After selecting process you can kill it with Ctrl + X
+After selecting process you can kill it with Ctrl + X (SIGTERM), or force kill it with
+Ctrl + Alt + X (SIGKILL)
 
 ## Installation
 
@@ -142,7 +139,8 @@ All options are optional, if skipped default values will be used.
 Some of config fields have cli arg equivalent. If both are set cli arg is preferred.
 Run `pik -- --help` to see cli options
 The authoritative default configuration lives in [`default_config.toml`](default_config.toml) which will be overridden with your local config. If you want to see final configuration use `pik --print-config` command.
-Please refer to [config](config.md) for more details how to configure options,theme and key mappings.
+Please refer to [config](config.md) for more details how to configure options,theme and key mappings,
+and to [recipes](recipes.md) for ready-to-use configuration snippets.
 
 ### Multiple meta key names support
 
@@ -151,57 +149,41 @@ Pik supports combining multiple modifier keys (meta keys) in key bindings. You c
 **Examples:**
 
 ```toml
+[key_mappings]
 # Single modifier
-quit = "ctrl+c"
+quit = ["ctrl+c"]
 
 # Combined modifiers
-toggle_help = "ctrl+alt+h"
-toggle_debug = "ctrl+shift+d"
+toggle_debug = ["ctrl+alt+d"]
 
-# Multiple bindings with different modifier combinations for the same action
-toggle_help = ["ctrl+alt+h", "ctrl+shift+h", "f1"]
+# Multiple bindings, with different modifier combinations, for the same action
+toggle_help = ["ctrl+alt+h", "f1", "alt+shift+H"]
 ```
 
 This allows for flexible keybinding configurations that can accommodate different user preferences and avoid conflicts with terminal or OS shortcuts.
 
+Every binding is a list, even when it holds one key: `quit = ["ctrl+c"]`. The bare string form
+`quit = "ctrl+c"` is rejected with *"invalid type: string, expected a sequence"*.
+
+**Combining `shift` with a letter:** terminals report the shifted key as an uppercase character, so
+write the letter uppercase — `"alt+shift+H"`, not `"alt+shift+h"`. The lowercase form is accepted by
+the config parser and then never matches anything you press. Note that `ctrl+shift+<letter>` cannot
+be detected at all on Unix terminals: `ctrl+shift+x` and `ctrl+x` send the same bytes. That is why
+`force_kill_process` is bound to `ctrl+alt+x`, which every platform reports unambiguously.
+
 ## Configuration Recipes
 
-### Minimal configuration
+Ready-to-use snippets live in [recipes.md](recipes.md): themes (Gruvbox, Catppuccin, Nord, terminal
+colors), readline and vim key mappings, macOS ignore paths, nerd font icons and a compact fullscreen
+layout.
+
+A minimal config to start from:
 
 ```toml
 screen_size = "fullscreen"
 
 [ui]
 icons = "nerd_font_v3"
-```
-
-### macOS: ignore system libraries
-
-macOS users may want to reduce noise by excluding system and application libraries from search results:
-
-```toml
-[ignore]
-paths = ["/System/.*", "/Applications/.*"]
-```
-
-### Readline key mappings
-
-Notice that you may need to adjust the other key mappings as well to avoid conflicts, and some key combinations may not work depending on your terminal emulator.
-
-```toml
-[key_mappings]
-cursor_left = ["left", "ctrl+b"]
-cursor_right = ["right", "ctrl+f"]
-cursor_home = ["home", "ctrl+a"]
-cursor_end = ["end", "ctrl+e"]
-cursor_word_left = ["alt+b"]
-cursor_word_right = ["alt+f"]
-delete_char = ["backspace", "ctrl+h"]
-delete_next_char = ["delete", "ctrl+d"]
-delete_word = ["ctrl+w"]
-delete_next_word = ["alt+d"]
-delete_to_start = ["ctrl+u"]
-delete_to_end = ["ctrl+k"]
 ```
 
 ## Migration Guides
